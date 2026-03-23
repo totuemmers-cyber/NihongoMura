@@ -5885,44 +5885,44 @@
 
         switch (obj.type) {
             case 'house': {
-                // Song Dynasty wooden house with curved tiled roof
-                // Wooden walls
-                ctx.fillStyle = '#8B6914';
+                // Japanese wooden house with shoji screens and gable roof
+                // Wooden walls (light wood color)
+                ctx.fillStyle = '#C4A56A';
                 ctx.fillRect(x - w/2 + 2*canvasScale, y - h/4, w - 4*canvasScale, h/2 + 4*canvasScale);
-                // Wall wood grain
-                ctx.strokeStyle = '#7a5a10';
-                ctx.lineWidth = canvasScale * 0.5;
+                // Engawa (veranda) — wooden platform at base
+                ctx.fillStyle = '#B09050';
+                ctx.fillRect(x - w/2 - 3*canvasScale, y + h/4 + 1*canvasScale, w + 6*canvasScale, 4*canvasScale);
+                // Shoji screens (白い障子 — white paper panels with grid)
+                ctx.fillStyle = '#f0e8d8';
+                const panelW = (w - 8*canvasScale) / 3;
                 for (let i = 0; i < 3; i++) {
-                    const ly = y - h/4 + 4*canvasScale + i * h/6;
+                    const px = x - w/2 + 4*canvasScale + i * (panelW + 1*canvasScale);
+                    ctx.fillRect(px, y - h/4 + 4*canvasScale, panelW, h/2 - 2*canvasScale);
+                    // Grid lines
+                    ctx.strokeStyle = '#a09070';
+                    ctx.lineWidth = canvasScale * 0.3;
                     ctx.beginPath();
-                    ctx.moveTo(x - w/2 + 4*canvasScale, ly);
-                    ctx.lineTo(x + w/2 - 4*canvasScale, ly);
+                    ctx.moveTo(px + panelW/2, y - h/4 + 4*canvasScale);
+                    ctx.lineTo(px + panelW/2, y + h/4 + 2*canvasScale);
+                    ctx.moveTo(px, y + 2*canvasScale);
+                    ctx.lineTo(px + panelW, y + 2*canvasScale);
                     ctx.stroke();
                 }
-                // Red door
-                ctx.fillStyle = '#a82020';
-                ctx.fillRect(x - 4*canvasScale, y - h/4 + 6*canvasScale, 8*canvasScale, h/2 - 2*canvasScale);
-                ctx.fillStyle = '#e8c020';
-                ctx.beginPath();
-                ctx.arc(x + 2*canvasScale, y + 2*canvasScale, 1.2*canvasScale, 0, Math.PI*2);
-                ctx.fill();
-                // Curved tiled roof (dark grey trapezoid with curve)
+                // Gable roof (入母屋 irimoya — Japanese hip-and-gable, dark grey)
                 ctx.fillStyle = '#3a3a3a';
                 ctx.beginPath();
-                ctx.moveTo(x - w/2 - 6*canvasScale, y - h/4 + 2*canvasScale);
-                ctx.quadraticCurveTo(x - w/3, y - h/2 - 8*canvasScale, x, y - h/2 - 10*canvasScale);
-                ctx.quadraticCurveTo(x + w/3, y - h/2 - 8*canvasScale, x + w/2 + 6*canvasScale, y - h/4 + 2*canvasScale);
+                ctx.moveTo(x - w/2 - 8*canvasScale, y - h/4 + 2*canvasScale);
+                ctx.lineTo(x, y - h/2 - 8*canvasScale);
+                ctx.lineTo(x + w/2 + 8*canvasScale, y - h/4 + 2*canvasScale);
+                ctx.closePath();
                 ctx.fill();
-                // Roof ridge lines
-                ctx.strokeStyle = '#2a2a2a';
-                ctx.lineWidth = canvasScale * 0.7;
-                for (let i = 1; i <= 3; i++) {
-                    const ry = y - h/4 + 2*canvasScale - i * h/8;
-                    ctx.beginPath();
-                    ctx.moveTo(x - w/2 - 4*canvasScale + i*4*canvasScale, ry + i*2*canvasScale);
-                    ctx.quadraticCurveTo(x, ry - 2*canvasScale, x + w/2 + 4*canvasScale - i*4*canvasScale, ry + i*2*canvasScale);
-                    ctx.stroke();
-                }
+                // Roof ridge line
+                ctx.strokeStyle = '#4a4a4a';
+                ctx.lineWidth = canvasScale * 1.2;
+                ctx.beginPath();
+                ctx.moveTo(x - 12*canvasScale, y - h/2 - 3*canvasScale);
+                ctx.lineTo(x + 12*canvasScale, y - h/2 - 3*canvasScale);
+                ctx.stroke();
                 // Chimney smoke (not during rain)
                 if (currentWeather !== 'rain') {
                     ctx.save();
@@ -5944,40 +5944,45 @@
             }
 
             case 'teahouse': {
-                // Wider open-front teahouse with red awning and steam
-                // Back wall
-                ctx.fillStyle = '#8B6914';
+                // Japanese chaya (茶屋) with noren curtains and steam
+                // Back wall (warm wood)
+                ctx.fillStyle = '#B09050';
                 ctx.fillRect(x - w/2, y - h/4, w, h/2 + 4*canvasScale);
-                // Open front (darker interior)
-                ctx.fillStyle = '#4a3a10';
+                // Open front (darker interior with tatami hint)
+                ctx.fillStyle = '#5a4a20';
                 ctx.fillRect(x - w/2 + 2*canvasScale, y - h/4 + 2*canvasScale, w - 4*canvasScale, h/3);
-                // Support posts
-                ctx.fillStyle = '#6a4a1a';
+                // Support posts (dark wood)
+                ctx.fillStyle = '#5a3a1a';
                 ctx.fillRect(x - w/2 + 1*canvasScale, y - h/4, 3*canvasScale, h/2 + 4*canvasScale);
                 ctx.fillRect(x + w/2 - 4*canvasScale, y - h/4, 3*canvasScale, h/2 + 4*canvasScale);
                 ctx.fillRect(x - 1.5*canvasScale, y - h/4, 3*canvasScale, h/2 + 4*canvasScale);
-                // Red fabric awning
-                ctx.fillStyle = '#c03020';
-                ctx.beginPath();
-                ctx.moveTo(x - w/2 - 4*canvasScale, y - h/4);
-                ctx.lineTo(x - w/2 + 2*canvasScale, y - h/3 - 6*canvasScale);
-                ctx.lineTo(x + w/2 - 2*canvasScale, y - h/3 - 6*canvasScale);
-                ctx.lineTo(x + w/2 + 4*canvasScale, y - h/4);
-                ctx.fill();
-                // Awning drape scallops
-                ctx.fillStyle = '#a82818';
-                for (let i = 0; i < 3; i++) {
-                    const sx = x - w/2 + 2*canvasScale + i * (w - 4*canvasScale) / 3;
-                    const cw = (w - 4*canvasScale) / 3;
+                // Noren curtains (暖簾) — hanging fabric strips, navy blue with white circle
+                const norenSway = Math.sin(gameTick * 0.025) * 1.5 * canvasScale;
+                const norenW = (w - 10*canvasScale) / 4;
+                ctx.fillStyle = '#2a3a6a';
+                for (let i = 0; i < 4; i++) {
+                    const nx = x - w/2 + 4*canvasScale + i * (norenW + 1*canvasScale);
+                    const sway = Math.sin(gameTick * 0.025 + i * 0.8) * 1.5 * canvasScale;
                     ctx.beginPath();
-                    ctx.arc(sx + cw/2, y - h/4 + 2*canvasScale, cw/2, Math.PI, 0);
+                    ctx.moveTo(nx, y - h/4 + 2*canvasScale);
+                    ctx.lineTo(nx + norenW, y - h/4 + 2*canvasScale);
+                    ctx.lineTo(nx + norenW + sway, y - h/4 + h/3 - 2*canvasScale);
+                    ctx.lineTo(nx + sway, y - h/4 + h/3 - 2*canvasScale);
+                    ctx.closePath();
                     ctx.fill();
                 }
-                // Roof
+                // White circle on center noren (mon crest)
+                ctx.fillStyle = 'rgba(240,235,220,0.7)';
+                ctx.beginPath();
+                ctx.arc(x, y - h/4 + h/6, 4*canvasScale, 0, Math.PI*2);
+                ctx.fill();
+                // Gable roof
                 ctx.fillStyle = '#3a3a3a';
                 ctx.beginPath();
-                ctx.moveTo(x - w/2 - 6*canvasScale, y - h/3 - 4*canvasScale);
-                ctx.quadraticCurveTo(x, y - h/2 - 12*canvasScale, x + w/2 + 6*canvasScale, y - h/3 - 4*canvasScale);
+                ctx.moveTo(x - w/2 - 6*canvasScale, y - h/4);
+                ctx.lineTo(x, y - h/2 - 10*canvasScale);
+                ctx.lineTo(x + w/2 + 6*canvasScale, y - h/4);
+                ctx.closePath();
                 ctx.fill();
                 // Steam wisps rising from teahouse (animated)
                 const st = gameTick * 0.03;
@@ -6463,37 +6468,57 @@
             }
 
             case 'shrine': {
-                // Small red shrine with incense
-                // Base platform
-                ctx.fillStyle = '#7a7a6a';
-                ctx.fillRect(x - w/3 - 2*canvasScale, y + h/6, w*2/3 + 4*canvasScale, 4*canvasScale);
-                // Shrine body
-                ctx.fillStyle = '#a82020';
+                // Shinto shrine (神社) with shimenawa rope and offering box
+                // Stone base platform (wider)
+                ctx.fillStyle = '#8a8a7a';
+                ctx.fillRect(x - w/3 - 4*canvasScale, y + h/6, w*2/3 + 8*canvasScale, 5*canvasScale);
+                // Shrine body (warm wood, not red)
+                ctx.fillStyle = '#C4A56A';
                 ctx.fillRect(x - w/3, y - h/4, w*2/3, h/4 + h/6);
-                // Dark interior
-                ctx.fillStyle = '#3a1010';
+                // Dark interior (offering area)
+                ctx.fillStyle = '#3a2a10';
                 ctx.fillRect(x - w/4, y - h/6, w/2, h/4);
-                // Small roof
+                // Offering box (賽銭箱 saisen-bako)
+                ctx.fillStyle = '#5a3a1a';
+                ctx.fillRect(x - 4*canvasScale, y + h/6 - 3*canvasScale, 8*canvasScale, 3*canvasScale);
+                // Gable roof
                 ctx.fillStyle = '#3a3a3a';
                 ctx.beginPath();
-                ctx.moveTo(x - w/3 - 5*canvasScale, y - h/4 + 2*canvasScale);
-                ctx.quadraticCurveTo(x - w/3 - 6*canvasScale, y - h/4 - 2*canvasScale, x - w/3 - 3*canvasScale, y - h/4 - 4*canvasScale);
-                ctx.lineTo(x, y - h/3 - 4*canvasScale);
-                ctx.lineTo(x + w/3 + 3*canvasScale, y - h/4 - 4*canvasScale);
-                ctx.quadraticCurveTo(x + w/3 + 6*canvasScale, y - h/4 - 2*canvasScale, x + w/3 + 5*canvasScale, y - h/4 + 2*canvasScale);
+                ctx.moveTo(x - w/3 - 6*canvasScale, y - h/4 + 2*canvasScale);
+                ctx.lineTo(x, y - h/3 - 6*canvasScale);
+                ctx.lineTo(x + w/3 + 6*canvasScale, y - h/4 + 2*canvasScale);
                 ctx.closePath();
                 ctx.fill();
-                // Incense sticks
-                ctx.strokeStyle = '#c8a030';
-                ctx.lineWidth = canvasScale;
+                // Chigi (千木) — crossed beams on roof ridge
+                ctx.strokeStyle = '#C4A56A';
+                ctx.lineWidth = canvasScale * 1.2;
                 ctx.beginPath();
-                ctx.moveTo(x - 2*canvasScale, y - h/6 + 2*canvasScale);
-                ctx.lineTo(x - 2*canvasScale, y - h/3);
+                ctx.moveTo(x - 3*canvasScale, y - h/3 - 2*canvasScale);
+                ctx.lineTo(x - 1*canvasScale, y - h/3 - 10*canvasScale);
+                ctx.moveTo(x + 3*canvasScale, y - h/3 - 2*canvasScale);
+                ctx.lineTo(x + 1*canvasScale, y - h/3 - 10*canvasScale);
                 ctx.stroke();
+                // Shimenawa (注連縄) — sacred rope across front
+                ctx.strokeStyle = '#c8b060';
+                ctx.lineWidth = canvasScale * 2;
                 ctx.beginPath();
-                ctx.moveTo(x + 2*canvasScale, y - h/6 + 2*canvasScale);
-                ctx.lineTo(x + 2*canvasScale, y - h/3);
+                ctx.moveTo(x - w/3 + 2*canvasScale, y - h/4 + 4*canvasScale);
+                ctx.quadraticCurveTo(x, y - h/4 + 8*canvasScale, x + w/3 - 2*canvasScale, y - h/4 + 4*canvasScale);
                 ctx.stroke();
+                // Shide (紙垂) — zigzag paper strips on shimenawa
+                ctx.fillStyle = '#f0e8d8';
+                for (let i = -1; i <= 1; i++) {
+                    const sx = x + i * 8*canvasScale;
+                    const sy = y - h/4 + 6*canvasScale + Math.abs(i)*2*canvasScale;
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(sx - 1.5*canvasScale, sy + 4*canvasScale);
+                    ctx.lineTo(sx + 0.5*canvasScale, sy + 4*canvasScale);
+                    ctx.lineTo(sx - 1*canvasScale, sy + 8*canvasScale);
+                    ctx.lineTo(sx + 1*canvasScale, sy + 8*canvasScale);
+                    ctx.closePath();
+                    ctx.fill();
+                }
                 // Incense smoke (animated)
                 const it = gameTick * 0.04;
                 ctx.strokeStyle = 'rgba(180,180,180,0.25)';
@@ -6502,8 +6527,8 @@
                     const ix = x + (i*4 - 2)*canvasScale;
                     const sOff = Math.sin(it + i*2) * 2*canvasScale;
                     ctx.beginPath();
-                    ctx.moveTo(ix, y - h/3);
-                    ctx.quadraticCurveTo(ix + sOff, y - h/3 - 6*canvasScale, ix - sOff, y - h/3 - 12*canvasScale);
+                    ctx.moveTo(ix, y - h/3 - 6*canvasScale);
+                    ctx.quadraticCurveTo(ix + sOff, y - h/3 - 12*canvasScale, ix - sOff, y - h/3 - 18*canvasScale);
                     ctx.stroke();
                 }
                 break;
@@ -7585,7 +7610,7 @@
         'masen': 'neg',         // → negation
     };
 
-    function conjugateVerb(infinitive, pronoun) {
+    function conjugateGermanVerb(infinitive, pronoun) {
         const key = pronoun || 'er';
         // Try exact match
         const conj = DE_VERB_CONJ[infinitive];
@@ -7658,7 +7683,7 @@
                     // Simple past → "habe gegessen" is complex; use present for simplicity
                     // but prepend "habe" for perfekt feel
                     if (subject) {
-                        const haben = conjugateVerb('haben', conjKey);
+                        const haben = conjugateGermanVerb('haben', conjKey);
                         tokens.push(haben);
                     }
                     // Past participle approximation: ge + stem + t
@@ -7692,11 +7717,11 @@
                     objects = []; modifiers = []; // consumed
                 } else if (effects.has('exp')) {
                     // Experience: "schon einmal gegessen"
-                    verbForm = conjugateVerb(verb.de, conjKey);
+                    verbForm = conjugateGermanVerb(verb.de, conjKey);
                     tokens.push('schon einmal');
                     tokens.push(verbForm);
                 } else {
-                    verbForm = conjugateVerb(verb.de, conjKey);
+                    verbForm = conjugateGermanVerb(verb.de, conjKey);
                     tokens.push(verbForm);
                 }
             }
