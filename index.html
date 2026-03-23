@@ -7194,8 +7194,8 @@
         const enhanced = applyGrammar(words, tier, action);
         // Determine punctuation based on sentence-final particle
         const lastId = enhanced.length > 0 ? enhanced[enhanced.length - 1].conceptId : '';
-        const punct = (lastId === 'ma_q' || lastId === 'ne_q') ? '?'
-                     : (lastId === 'a_mood' || lastId === 'la_mood' || lastId === 'ba_sug') ? '' : '!';
+        const punct = (lastId === 'ka_q') ? '?'
+                     : (lastId === 'yo_emph' || lastId === 'ne_confirm') ? '' : '!';
         const kanjiText = enhanced.map(w => w.kanji).join('') + punct;
         const kanaText = enhanced.map(w => w.kana).join(' ') + punct;
         const text = kanjiText;
@@ -7291,17 +7291,18 @@
         'snow': ['der','den'], 'bamboo': ['der','den'], 'song': ['das','das'],
     };
 
-    // Particle → German effect
+    // Japanese particle → German effect
     const DE_PARTICLE_EFFECT = {
-        'le_perf': 'past',     // → past tense marker
-        'ma_q': 'question',    // → question mark
-        'ne_q': 'question',
-        'a_mood': 'exclaim',   // → !
-        'ba_sug': 'suggest',   // → "Lass uns..."
-        'la_mood': 'exclaim',
-        'zai_prog': 'prog',    // → "gerade"
-        'mei_neg': 'neg_past', // → "nicht" (past)
-        'guo_exp': 'exp',      // → "schon einmal"
+        'wa_topic': null,       // topic marker, no German effect
+        'ga_subj': null,        // subject marker
+        'wo_obj': null,         // object marker
+        'ni_loc': null,         // dative/location
+        'de_means': null,       // instrument/location
+        'ka_q': 'question',     // → question mark
+        'yo_emph': 'exclaim',   // → !
+        'ne_confirm': 'exclaim', // → !
+        'mashita': 'past',      // → past tense
+        'masen': 'neg',         // → negation
     };
 
     function conjugateVerb(infinitive, pronoun) {
@@ -7516,8 +7517,8 @@
                 }));
                 const words = applyGrammar(baseWords, getGrammarTier(), actionDef);
                 const lastId = words.length > 0 ? words[words.length - 1].conceptId : '';
-                const sPunct = (lastId === 'ma_q' || lastId === 'ne_q') ? '?'
-                             : (lastId === 'a_mood' || lastId === 'la_mood' || lastId === 'ba_sug') ? '' : '。';
+                const sPunct = (lastId === 'ka_q') ? '?'
+                             : (lastId === 'yo_emph' || lastId === 'ne_confirm') ? '' : '。';
                 const kanjiText = words.map(w => w.kanji).join('') + sPunct;
                 const kanaText = words.map(w => w.kana).join(' ') + (sPunct === '?' ? '?' : '.');
                 storytelling.sentences.push({ text: kanjiText, kanjiText, kanaText, words });
