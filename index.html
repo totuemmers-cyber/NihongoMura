@@ -2630,7 +2630,7 @@
     }
 
     // Check if a point is inside any building (for avoidance)
-    const BUILDING_TYPES = ['house', 'teahouse', 'kitchen', 'workshop', 'market', 'pagoda', 'shrine', 'gate', 'school', 'medicine_hut', 'stable'];
+    const BUILDING_TYPES = ['house', 'teahouse', 'kitchen', 'workshop', 'market', 'pagoda', 'shrine', 'torii', 'school', 'medicine_hut', 'stable'];
     const GROUND_TYPES = ['rice_paddy', 'river', 'lotus_pond', 'fish_pond', 'garden'];
     const VISUAL_BOTTOM = {
         house: 18, teahouse: 19, market: 14, well: 10, bridge: 22,
@@ -3270,7 +3270,7 @@
             activityDe: 'denkt an Zuhause', visibleConcepts: ['think','home','mother','father','far','sad','worried','dream','village','love','head']
         },
         {
-            id: 'wait_friend', target: 'gate', duration: 120,
+            id: 'wait_friend', target: 'torii', duration: 120,
             templates: [['me','wait','friend'],['wait','here','now'],['friend','come']],
             effects: {}, priority: 'idle',
             activityDe: 'wartet auf Freund', visibleConcepts: ['wait','friend','come','anxious','road','person','arrive','where']
@@ -3409,7 +3409,7 @@
             activityDe: 'begruesst Freund', visibleConcepts: ['hello','name','meetknow','call','glad','welcome']
         },
         {
-            id: 'say_goodbye', target: 'gate', duration: 80,
+            id: 'say_goodbye', target: 'torii', duration: 80,
             templates: [['me','goodbye','you'],['goodbye','friend'],['we','goodbye','now']],
             effects: {}, priority: 'social', requiresOther: true,
             activityDe: 'verabschiedet sich', visibleConcepts: ['goodbye','friend','go','return','tomorrow','sad']
@@ -3521,7 +3521,7 @@
             activityDe: 'probiert das Essen', visibleConcepts: ['try','taste','sour','bitter','spicy','sweet','sugar','salt','mouth','smell','fragrant','stinky']
         },
         {
-            id: 'arrive_village', target: 'gate', duration: 80,
+            id: 'arrive_village', target: 'torii', duration: 80,
             templates: [['me','arrive','here'],['arrive','village','now'],['me','come','here']],
             effects: {}, priority: 'idle',
             activityDe: 'kommt im Dorf an', visibleConcepts: ['arrive','village','come','return','road','gate','welcome','hello','near']
@@ -5902,64 +5902,34 @@
                 break;
             }
 
-            case 'gate': {
-                // Red/brown archway with tiled roof cap
-                // Pillars
-                ctx.fillStyle = '#8a2020';
-                ctx.fillRect(x - w/2, y - h/3, 5*canvasScale, h/2 + h/4);
-                ctx.fillRect(x + w/2 - 5*canvasScale, y - h/3, 5*canvasScale, h/2 + h/4);
-                // Arch beam
-                ctx.fillStyle = '#6a1818';
-                ctx.fillRect(x - w/2, y - h/3, w, 4*canvasScale);
-                // Archway opening
-                ctx.fillStyle = '#4a3a20';
+            case 'gate':
+            case 'torii': {
+                // Torii gate (鳥居) — vermillion red, two pillars + two crossbars
+                const pillarW = 5 * canvasScale;
+                const pillarH = h * 0.85;
+                // Main pillars
+                ctx.fillStyle = '#c83030';
+                ctx.fillRect(x - w/2, y - h/3, pillarW, pillarH);
+                ctx.fillRect(x + w/2 - pillarW, y - h/3, pillarW, pillarH);
+                // Top crossbar (kasagi) — extends beyond pillars, slight upward curve at ends
+                ctx.fillStyle = '#b82828';
                 ctx.beginPath();
-                ctx.moveTo(x - w/2 + 5*canvasScale, y + h/4 + h/12);
-                ctx.lineTo(x - w/2 + 5*canvasScale, y - h/6);
-                ctx.arc(x, y - h/6, w/2 - 5*canvasScale, Math.PI, 0);
-                ctx.lineTo(x + w/2 - 5*canvasScale, y + h/4 + h/12);
-                ctx.fill();
-                // Tiled roof cap
-                ctx.fillStyle = '#3a3a3a';
-                ctx.beginPath();
-                ctx.moveTo(x - w/2 - 6*canvasScale, y - h/3 + 2*canvasScale);
-                ctx.quadraticCurveTo(x - w/2 - 8*canvasScale, y - h/3 - 4*canvasScale, x - w/2 - 4*canvasScale, y - h/3 - 6*canvasScale);
-                ctx.lineTo(x, y - h/2 - 4*canvasScale);
-                ctx.lineTo(x + w/2 + 4*canvasScale, y - h/3 - 6*canvasScale);
-                ctx.quadraticCurveTo(x + w/2 + 8*canvasScale, y - h/3 - 4*canvasScale, x + w/2 + 6*canvasScale, y - h/3 + 2*canvasScale);
+                ctx.moveTo(x - w/2 - 8*canvasScale, y - h/3 + 2*canvasScale);
+                ctx.quadraticCurveTo(x - w/2 - 6*canvasScale, y - h/3 - 4*canvasScale, x - w/2, y - h/3 - 2*canvasScale);
+                ctx.lineTo(x + w/2, y - h/3 - 2*canvasScale);
+                ctx.quadraticCurveTo(x + w/2 + 6*canvasScale, y - h/3 - 4*canvasScale, x + w/2 + 8*canvasScale, y - h/3 + 2*canvasScale);
+                ctx.lineTo(x + w/2 + 8*canvasScale, y - h/3 + 5*canvasScale);
+                ctx.lineTo(x - w/2 - 8*canvasScale, y - h/3 + 5*canvasScale);
                 ctx.closePath();
                 ctx.fill();
-                // Gold characters (decorative dots)
-                ctx.fillStyle = '#c8a030';
-                ctx.fillRect(x - 5*canvasScale, y - h/3 + 6*canvasScale, 10*canvasScale, 3*canvasScale);
-                // Red banners hanging from arch beam — swaying
-                const bannerSway = Math.sin(gameTick * 0.03) * 2 * canvasScale;
-                const bannerSway2 = Math.sin(gameTick * 0.03 + 1.5) * 2 * canvasScale;
-                ctx.fillStyle = '#cc3030';
-                // Left banner
-                ctx.save();
-                ctx.translate(x - w/4, y - h/3 + 4*canvasScale);
-                ctx.beginPath();
-                ctx.moveTo(-2*canvasScale, 0);
-                ctx.lineTo(2*canvasScale, 0);
-                ctx.lineTo(2*canvasScale + bannerSway, 14*canvasScale);
-                ctx.lineTo(0 + bannerSway, 16*canvasScale); // pointed bottom
-                ctx.lineTo(-2*canvasScale + bannerSway, 14*canvasScale);
-                ctx.closePath();
-                ctx.fill();
-                ctx.restore();
-                // Right banner
-                ctx.save();
-                ctx.translate(x + w/4, y - h/3 + 4*canvasScale);
-                ctx.beginPath();
-                ctx.moveTo(-2*canvasScale, 0);
-                ctx.lineTo(2*canvasScale, 0);
-                ctx.lineTo(2*canvasScale + bannerSway2, 14*canvasScale);
-                ctx.lineTo(0 + bannerSway2, 16*canvasScale);
-                ctx.lineTo(-2*canvasScale + bannerSway2, 14*canvasScale);
-                ctx.closePath();
-                ctx.fill();
-                ctx.restore();
+                // Lower crossbar (nuki) — between pillars
+                ctx.fillStyle = '#c83030';
+                const nukiY = y - h/3 + h * 0.2;
+                ctx.fillRect(x - w/2 + pillarW, nukiY, w - pillarW * 2, 3*canvasScale);
+                // Pillar caps (daiwa)
+                ctx.fillStyle = '#a02020';
+                ctx.fillRect(x - w/2 - 2*canvasScale, y - h/3 - 2*canvasScale, pillarW + 4*canvasScale, 3*canvasScale);
+                ctx.fillRect(x + w/2 - pillarW - 2*canvasScale, y - h/3 - 2*canvasScale, pillarW + 4*canvasScale, 3*canvasScale);
                 break;
             }
 
@@ -8437,13 +8407,14 @@
         { type: 'koi',       seasons: ['spring','summer','autumn'], speed: 0.3, fleeRange: 20, zonePref: 'water', flockSize: 2 },
         { type: 'cat',       seasons: ['spring','summer','autumn','winter'], speed: 0.6, fleeRange: 50, zonePref: 'land', flockSize: 1 },
         { type: 'butterfly', seasons: ['spring','summer'],          speed: 0.8, fleeRange: 60, zonePref: 'sky',   flockSize: 2 },
+        { type: 'tanuki',    seasons: ['spring','summer','autumn'], speed: 0.7, fleeRange: 80, zonePref: 'land', flockSize: 1 },
     ];
 
     // Water zone near the pond south of village
     const WATER_ZONE = { x: 420, y: 560, r: 40 };
 
     // Land animals must avoid the river
-    const LAND_ANIMAL_TYPES = new Set(['rabbit', 'cat']);
+    const LAND_ANIMAL_TYPES = new Set(['rabbit', 'cat', 'tanuki']);
 
     function clampLandAnimal(x, y) {
         // Push out of river zone (RIVER_LEFT..RIVER_RIGHT), except near bridge (wide tolerance)
@@ -8965,6 +8936,55 @@
                     ctx.moveTo(0, -2*s);
                     ctx.lineTo(2*s, -4*s);
                     ctx.stroke();
+                    break;
+                }
+                case 'tanuki': {
+                    // Tanuki (raccoon dog) — round body, dark mask, bushy tail
+                    // Body
+                    ctx.fillStyle = '#7a6040';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 6*s, 4*s, 0, 0, Math.PI*2);
+                    ctx.fill();
+                    // Head
+                    const tnkHx = Math.cos(a.facing) * 4*s;
+                    ctx.beginPath();
+                    ctx.arc(tnkHx, -3*s, 3.5*s, 0, Math.PI*2);
+                    ctx.fillStyle = '#7a6040';
+                    ctx.fill();
+                    // Face mask (dark patches around eyes)
+                    ctx.fillStyle = '#3a2a18';
+                    ctx.beginPath();
+                    ctx.ellipse(tnkHx - 1.5*s, -3.5*s, 1.5*s, 1.2*s, 0, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(tnkHx + 1.5*s, -3.5*s, 1.5*s, 1.2*s, 0, 0, Math.PI*2);
+                    ctx.fill();
+                    // Eyes
+                    ctx.fillStyle = '#111';
+                    ctx.beginPath();
+                    ctx.arc(tnkHx - 1.5*s, -3.5*s, 0.7*s, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(tnkHx + 1.5*s, -3.5*s, 0.7*s, 0, Math.PI*2);
+                    ctx.fill();
+                    // Nose
+                    ctx.fillStyle = '#2a1a0a';
+                    ctx.beginPath();
+                    ctx.arc(tnkHx, -2*s, 0.8*s, 0, Math.PI*2);
+                    ctx.fill();
+                    // Belly (lighter)
+                    ctx.fillStyle = '#b09a70';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 1*s, 4*s, 2.5*s, 0, 0, Math.PI*2);
+                    ctx.fill();
+                    // Bushy tail
+                    ctx.fillStyle = '#5a4a30';
+                    ctx.beginPath();
+                    ctx.moveTo(-5*s, 0);
+                    ctx.quadraticCurveTo(-9*s, -4*s + Math.sin(t * 1.5)*2*s, -6*s, -8*s);
+                    ctx.quadraticCurveTo(-4*s, -6*s, -4*s, -1*s);
+                    ctx.closePath();
+                    ctx.fill();
                     break;
                 }
             }
