@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Longmen">
-    <title>Longmen — Chinesisch-Sprachsimulation</title>
+    <meta name="apple-mobile-web-app-title" content="Nihongo Mura">
+    <title>Nihongo Mura — Japanisch-Sprachsimulation</title>
     <style>
         :root {
             --bg-primary: #1a1a1a;
@@ -30,7 +30,7 @@
             --accent-red-dark: #5a3020;
             --accent-red-stamp: #a03020;
             --accent-green: #6a8a5a;
-            --accent-pinyin: #a09070;
+            --accent-kana: #a09070;
             --border-primary: #4a3e30;
             --border-section: #3a2a1a;
             --border-input: #3a3020;
@@ -41,7 +41,7 @@
         html, body {
             background: var(--bg-primary);
             color: var(--text-primary);
-            font-family: 'Courier New', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
+            font-family: 'Courier New', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Microsoft YaHei', monospace;
             overflow: hidden;
             height: 100%;
             height: 100dvh;
@@ -83,7 +83,7 @@
             min-width: 44px;
             min-height: 44px;
             padding: 4px 10px;
-            font-family: 'Courier New', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
+            font-family: 'Courier New', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Microsoft YaHei', monospace;
             font-size: 14px;
             cursor: pointer;
             border-radius: 4px;
@@ -297,7 +297,7 @@
             border: 1px solid var(--border-input);
             border-radius: 2px;
             color: var(--text-primary);
-            font-family: 'Courier New', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
+            font-family: 'Courier New', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Microsoft YaHei', monospace;
             font-size: 11px;
             outline: none;
             box-sizing: border-box;
@@ -322,7 +322,7 @@
             line-height: 1.4;
         }
         .vocab-word .pseudo { color: var(--accent-gold); width: 42px; flex-shrink: 0; }
-        .vocab-word .pinyin { color: var(--accent-pinyin); font-size: 10px; width: 70px; flex-shrink: 0; text-align: center; }
+        .vocab-word .kana { color: var(--accent-kana); font-size: 10px; width: 70px; flex-shrink: 0; text-align: center; }
         .vocab-word .meaning { color: var(--accent-green); flex: 1; text-align: right; }
         .vocab-word.new { animation: flashGreen 1s; }
         @keyframes flashGreen {
@@ -359,7 +359,7 @@
             margin-left: 6px;
             transform: rotate(-3deg);
             opacity: 0.7;
-            font-family: 'Microsoft YaHei','PingFang SC','Noto Sans SC',sans-serif;
+            font-family: 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif;
         }
         #event-log {
             max-height: 180px;
@@ -387,7 +387,7 @@
         #command-label {
             color: var(--accent-red);
             font-size: 13px;
-            font-family: 'Microsoft YaHei','PingFang SC','Noto Sans SC',sans-serif;
+            font-family: 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif;
             flex-shrink: 0;
         }
         #command-input {
@@ -397,7 +397,7 @@
             border: 1px solid var(--border-input);
             border-radius: 2px;
             color: var(--text-primary);
-            font-family: 'Courier New', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
+            font-family: 'Courier New', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Microsoft YaHei', monospace;
             font-size: 12px;
             outline: none;
             min-width: 0;
@@ -430,7 +430,7 @@
 </head>
 <body>
     <div id="header">
-        <h1>LONGMEN 龙门 — CHINESISCH-SPRACHSIMULATION</h1>
+        <h1>NIHONGO MURA 日本語村 — JAPANISCH-SPRACHSIMULATION</h1>
         <div id="controls">
             <button id="btn-pause" onclick="setSpeed(0)" aria-label="Pause">II</button>
             <button id="btn-1x" class="active" onclick="setSpeed(1)" aria-label="Normalgeschwindigkeit">1x</button>
@@ -445,21 +445,21 @@
     <button id="panel-toggle" onclick="togglePanel()" aria-label="Seitenpanel umschalten">i</button>
     <div id="command-bar">
         <span id="command-label">命令</span>
-        <input type="text" id="command-input" placeholder="Befehl eingeben (Pinyin/Hanzi)..." autocomplete="off">
+        <input type="text" id="command-input" placeholder="Befehl eingeben (Romaji/Kana)..." autocomplete="off">
         <button id="command-send" onclick="submitCommand()" aria-label="Befehl senden">▶</button>
     </div>
     <div id="main">
         <div id="canvas-wrap">
-            <canvas id="gameCanvas" role="img" aria-label="Longmen Spielwelt — chinesisches Dorf mit Charakteren"></canvas>
+            <canvas id="gameCanvas" role="img" aria-label="Nihongo Mura Spielwelt — japanisches Dorf mit Charakteren"></canvas>
         </div>
         <div id="panel">
             <div id="char1-panel" class="panel-section"></div>
             <div id="char2-panel" class="panel-section"></div>
             <div id="vocab-panel" class="panel-section">
-                <h2>Vokabular<span class="seal-stamp">词</span></h2>
+                <h2>Vokabular<span class="seal-stamp">語</span></h2>
                 <div class="progress-text" id="vocab-progress">0 / 0 Wörter gelernt</div>
                 <div class="progress-bar-bg"><div class="progress-bar" id="vocab-bar" style="width:0%"></div></div>
-                <input type="text" id="vocab-search" placeholder="Suche (Pinyin / Deutsch)..." autocomplete="off">
+                <input type="text" id="vocab-search" placeholder="Suche (Romaji / Deutsch)..." autocomplete="off">
                 <div class="vocab-list" id="vocab-list"></div>
             </div>
             <div class="panel-section">
@@ -477,14 +477,14 @@
     const WORLD_H = 640;
     const HEARING_RANGE = 180; // base reference; actual range is per-learner via wahrnehmung
     const TICK_MS = 16;
-    const SPEAKER_NAMES = ["明","兰","伟","芳","强","秀","志","玉","建","莲","军","慧","东","雪","海","丽"];
+    const SPEAKER_NAMES = ["明","花","健","美","太郎","桜","翔","葵","蓮","凛","陸","結","悠","愛","大","智"];
     const LEARNER_NAMES = ["Hans","Lena","Fritz","Greta","Karl","Anna","Otto","Helga","Klaus","Ingrid","Max","Elsa"];
-    const NPC_NAMES = ["德","林","华","英","国","春","文","红","平","荣","光","清","福","寿","康","宝"];
+    const NPC_NAMES = ["誠","真","優","和","幸","信","義","勇","恵","雅","光","清","福","寿","康","宝"];
 
     // ============================================================
-    //  AUDIO ENGINE (Web Audio API — procedural Chinese soundtrack)
-    //  Instruments: dizi (竹笛), guzheng (古筝), erhu (二胡),
-    //  Chinese percussion (木鱼 muyu, 锣 luo, 磬 qing, 梆子 bangzi)
+    //  AUDIO ENGINE (Web Audio API — procedural Japanese soundtrack)
+    //  Instruments: shakuhachi (尺八), koto (琴), shamisen (三味線),
+    //  Japanese percussion (太鼓 taiko, 鈴 suzu, 鉦 kane, 木魚 mokugyo)
     // ============================================================
     let audioCtx = null;
     let audioMaster = null;
@@ -507,7 +507,7 @@
         if (audioCtx.state === 'suspended') audioCtx.resume();
         if (!audioStarted) {
             audioStarted = true;
-            startChineseMusic();
+            startJapaneseMusic();
         }
     }
 
@@ -523,13 +523,13 @@
         btn.classList.toggle('active', soundEnabled);
         if (soundEnabled) {
             resumeAudio();
-            if (audioStarted && !musicPlaying) startChineseMusic();
+            if (audioStarted && !musicPlaying) startJapaneseMusic();
         } else {
-            stopChineseMusic();
+            stopJapaneseMusic();
         }
     }
 
-    function stopChineseMusic() {
+    function stopJapaneseMusic() {
         if (!musicPlaying) return;
         musicPlaying = false;
         musicGeneration++;
@@ -543,7 +543,7 @@
             } catch (_) {}
         }
         musicNodes = [];
-        // Reset references so startChineseMusic can recreate them
+        // Reset references so startJapaneseMusic can recreate them
         musicGainNode = null;
         droneOsc1 = null; droneOsc2 = null; droneFilt = null; droneGainNode = null; droneLfo = null;
         ambNoiseNode = null; ambFiltNode = null; ambGainNode = null; ambLfo = null; ambLfoGain = null;
@@ -694,7 +694,7 @@
         return 'day';
     }
 
-    function startChineseMusic() {
+    function startJapaneseMusic() {
         if (musicPlaying || !audioCtx) return;
         musicPlaying = true;
 
@@ -2095,7 +2095,7 @@
     }
 
     // ============================================================
-    //  MANDARIN CHINESE VOCABULARY (static — no random generation)
+    //  JAPANESE VOCABULARY (static — no random generation)
     // ============================================================
     function randEl(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
     function randInt(a,b) { return Math.floor(Math.random()*(b-a+1))+a; }
@@ -2103,449 +2103,449 @@
 
     const VOCABULARY = [
         // Nouns — Nature & Landscape (HSK 1-2)
-        { id: 'water',     hanzi: '水',   pinyin: 'shuǐ',      de: 'Wasser',      type: 'noun' },
-        { id: 'fire',      hanzi: '火',   pinyin: 'huǒ',       de: 'Feuer',       type: 'noun' },
-        { id: 'sky',       hanzi: '天',   pinyin: 'tiān',      de: 'Himmel',      type: 'noun' },
-        { id: 'mountain',  hanzi: '山',   pinyin: 'shān',      de: 'Berg',        type: 'noun' },
-        { id: 'flower',    hanzi: '花',   pinyin: 'huā',       de: 'Blume',       type: 'noun' },
-        { id: 'tree',      hanzi: '树',   pinyin: 'shù',       de: 'Baum',        type: 'noun' },
-        { id: 'fish',      hanzi: '鱼',   pinyin: 'yú',        de: 'Fisch',       type: 'noun' },
-        { id: 'tea',       hanzi: '茶',   pinyin: 'chá',       de: 'Tee',         type: 'noun' },
-        { id: 'rice',      hanzi: '米',   pinyin: 'mǐ',        de: 'Reis',        type: 'noun' },
-        { id: 'food',      hanzi: '饭',   pinyin: 'fàn',       de: 'Essen',       type: 'noun' },
-        { id: 'vegetable', hanzi: '菜',   pinyin: 'cài',       de: 'Gemuese',     type: 'noun' },
-        { id: 'meat',      hanzi: '肉',   pinyin: 'ròu',       de: 'Fleisch',     type: 'noun' },
-        { id: 'egg',       hanzi: '蛋',   pinyin: 'dàn',       de: 'Ei',          type: 'noun' },
-        { id: 'dog',       hanzi: '狗',   pinyin: 'gǒu',       de: 'Hund',        type: 'noun' },
-        { id: 'cat',       hanzi: '猫',   pinyin: 'māo',       de: 'Katze',       type: 'noun' },
-        { id: 'bird',      hanzi: '鸟',   pinyin: 'niǎo',      de: 'Vogel',       type: 'noun' },
-        { id: 'book',      hanzi: '书',   pinyin: 'shū',       de: 'Buch',        type: 'noun' },
-        { id: 'cup',       hanzi: '杯',   pinyin: 'bēi',       de: 'Tasse',       type: 'noun' },
-        { id: 'bowl',      hanzi: '碗',   pinyin: 'wǎn',       de: 'Schuessel',   type: 'noun' },
-        { id: 'knife',     hanzi: '刀',   pinyin: 'dāo',       de: 'Messer',      type: 'noun' },
-        { id: 'door',      hanzi: '门',   pinyin: 'mén',       de: 'Tor',         type: 'noun' },
-        { id: 'bridge',    hanzi: '桥',   pinyin: 'qiáo',      de: 'Bruecke',     type: 'noun' },
-        { id: 'road',      hanzi: '路',   pinyin: 'lù',        de: 'Weg',         type: 'noun' },
-        { id: 'person',    hanzi: '人',   pinyin: 'rén',       de: 'Mensch',      type: 'noun' },
-        { id: 'friend',    hanzi: '朋友', pinyin: 'péngyou',   de: 'Freund',      type: 'noun' },
-        { id: 'child',     hanzi: '孩子', pinyin: 'háizi',     de: 'Kind',        type: 'noun' },
-        { id: 'teacher',   hanzi: '老师', pinyin: 'lǎoshī',    de: 'Lehrer',      type: 'noun' },
-        { id: 'home',      hanzi: '家',   pinyin: 'jiā',       de: 'Zuhause',     type: 'noun' },
-        { id: 'house',     hanzi: '房子', pinyin: 'fángzi',    de: 'Haus',        type: 'noun' },
-        { id: 'garden',    hanzi: '花园', pinyin: 'huāyuán',   de: 'Garten',      type: 'noun' },
-        { id: 'boat',      hanzi: '船',   pinyin: 'chuán',     de: 'Boot',        type: 'noun' },
-        { id: 'money',     hanzi: '钱',   pinyin: 'qián',      de: 'Geld',        type: 'noun' },
-        { id: 'rain',      hanzi: '雨',   pinyin: 'yǔ',        de: 'Regen',       type: 'noun' },
-        { id: 'wind',      hanzi: '风',   pinyin: 'fēng',      de: 'Wind',        type: 'noun' },
-        { id: 'sun',       hanzi: '太阳', pinyin: 'tàiyáng',   de: 'Sonne',       type: 'noun' },
-        { id: 'moon',      hanzi: '月',   pinyin: 'yuè',       de: 'Mond',        type: 'noun' },
-        { id: 'river',     hanzi: '河',   pinyin: 'hé',        de: 'Fluss',       type: 'noun' },
-        { id: 'song',      hanzi: '歌',   pinyin: 'gē',        de: 'Lied',        type: 'noun' },
-        { id: 'story',     hanzi: '故事', pinyin: 'gùshi',     de: 'Geschichte',  type: 'noun' },
-        { id: 'thing',     hanzi: '东西', pinyin: 'dōngxi',    de: 'Ding',        type: 'noun' },
-        { id: 'day',       hanzi: '日',   pinyin: 'rì',        de: 'Tag',         type: 'noun' },
-        { id: 'night',     hanzi: '晚上', pinyin: 'wǎnshang',  de: 'Nacht',       type: 'noun' },
-        { id: 'morning',   hanzi: '早上', pinyin: 'zǎoshang',  de: 'Morgen',      type: 'noun' },
+        { id: 'water',     kanji: '水',   kana: 'shuǐ',      de: 'Wasser',      type: 'noun' },
+        { id: 'fire',      kanji: '火',   kana: 'huǒ',       de: 'Feuer',       type: 'noun' },
+        { id: 'sky',       kanji: '天',   kana: 'tiān',      de: 'Himmel',      type: 'noun' },
+        { id: 'mountain',  kanji: '山',   kana: 'shān',      de: 'Berg',        type: 'noun' },
+        { id: 'flower',    kanji: '花',   kana: 'huā',       de: 'Blume',       type: 'noun' },
+        { id: 'tree',      kanji: '树',   kana: 'shù',       de: 'Baum',        type: 'noun' },
+        { id: 'fish',      kanji: '鱼',   kana: 'yú',        de: 'Fisch',       type: 'noun' },
+        { id: 'tea',       kanji: '茶',   kana: 'chá',       de: 'Tee',         type: 'noun' },
+        { id: 'rice',      kanji: '米',   kana: 'mǐ',        de: 'Reis',        type: 'noun' },
+        { id: 'food',      kanji: '饭',   kana: 'fàn',       de: 'Essen',       type: 'noun' },
+        { id: 'vegetable', kanji: '菜',   kana: 'cài',       de: 'Gemuese',     type: 'noun' },
+        { id: 'meat',      kanji: '肉',   kana: 'ròu',       de: 'Fleisch',     type: 'noun' },
+        { id: 'egg',       kanji: '蛋',   kana: 'dàn',       de: 'Ei',          type: 'noun' },
+        { id: 'dog',       kanji: '狗',   kana: 'gǒu',       de: 'Hund',        type: 'noun' },
+        { id: 'cat',       kanji: '猫',   kana: 'māo',       de: 'Katze',       type: 'noun' },
+        { id: 'bird',      kanji: '鸟',   kana: 'niǎo',      de: 'Vogel',       type: 'noun' },
+        { id: 'book',      kanji: '书',   kana: 'shū',       de: 'Buch',        type: 'noun' },
+        { id: 'cup',       kanji: '杯',   kana: 'bēi',       de: 'Tasse',       type: 'noun' },
+        { id: 'bowl',      kanji: '碗',   kana: 'wǎn',       de: 'Schuessel',   type: 'noun' },
+        { id: 'knife',     kanji: '刀',   kana: 'dāo',       de: 'Messer',      type: 'noun' },
+        { id: 'door',      kanji: '门',   kana: 'mén',       de: 'Tor',         type: 'noun' },
+        { id: 'bridge',    kanji: '桥',   kana: 'qiáo',      de: 'Bruecke',     type: 'noun' },
+        { id: 'road',      kanji: '路',   kana: 'lù',        de: 'Weg',         type: 'noun' },
+        { id: 'person',    kanji: '人',   kana: 'rén',       de: 'Mensch',      type: 'noun' },
+        { id: 'friend',    kanji: '朋友', kana: 'péngyou',   de: 'Freund',      type: 'noun' },
+        { id: 'child',     kanji: '孩子', kana: 'háizi',     de: 'Kind',        type: 'noun' },
+        { id: 'teacher',   kanji: '老师', kana: 'lǎoshī',    de: 'Lehrer',      type: 'noun' },
+        { id: 'home',      kanji: '家',   kana: 'jiā',       de: 'Zuhause',     type: 'noun' },
+        { id: 'house',     kanji: '房子', kana: 'fángzi',    de: 'Haus',        type: 'noun' },
+        { id: 'garden',    kanji: '花园', kana: 'huāyuán',   de: 'Garten',      type: 'noun' },
+        { id: 'boat',      kanji: '船',   kana: 'chuán',     de: 'Boot',        type: 'noun' },
+        { id: 'money',     kanji: '钱',   kana: 'qián',      de: 'Geld',        type: 'noun' },
+        { id: 'rain',      kanji: '雨',   kana: 'yǔ',        de: 'Regen',       type: 'noun' },
+        { id: 'wind',      kanji: '风',   kana: 'fēng',      de: 'Wind',        type: 'noun' },
+        { id: 'sun',       kanji: '太阳', kana: 'tàiyáng',   de: 'Sonne',       type: 'noun' },
+        { id: 'moon',      kanji: '月',   kana: 'yuè',       de: 'Mond',        type: 'noun' },
+        { id: 'river',     kanji: '河',   kana: 'hé',        de: 'Fluss',       type: 'noun' },
+        { id: 'song',      kanji: '歌',   kana: 'gē',        de: 'Lied',        type: 'noun' },
+        { id: 'story',     kanji: '故事', kana: 'gùshi',     de: 'Geschichte',  type: 'noun' },
+        { id: 'thing',     kanji: '东西', kana: 'dōngxi',    de: 'Ding',        type: 'noun' },
+        { id: 'day',       kanji: '日',   kana: 'rì',        de: 'Tag',         type: 'noun' },
+        { id: 'night',     kanji: '晚上', kana: 'wǎnshang',  de: 'Nacht',       type: 'noun' },
+        { id: 'morning',   kanji: '早上', kana: 'zǎoshang',  de: 'Morgen',      type: 'noun' },
         // Setting-specific nouns (HSK 3+ only where needed)
-        { id: 'brush',     hanzi: '笔',   pinyin: 'bǐ',        de: 'Pinsel',      type: 'noun' },
-        { id: 'ink',       hanzi: '墨',   pinyin: 'mò',        de: 'Tusche',      type: 'noun' },
-        { id: 'paper',     hanzi: '纸',   pinyin: 'zhǐ',       de: 'Papier',      type: 'noun' },
-        { id: 'silk',      hanzi: '丝',   pinyin: 'sī',        de: 'Seide',       type: 'noun' },
-        { id: 'bamboo',    hanzi: '竹',   pinyin: 'zhú',       de: 'Bambus',      type: 'noun' },
-        { id: 'pagoda',    hanzi: '塔',   pinyin: 'tǎ',        de: 'Pagode',      type: 'noun' },
-        { id: 'lantern',   hanzi: '灯',   pinyin: 'dēng',      de: 'Laterne',     type: 'noun' },
-        { id: 'basket',    hanzi: '篮',   pinyin: 'lán',       de: 'Korb',        type: 'noun' },
-        { id: 'fan',       hanzi: '扇',   pinyin: 'shàn',      de: 'Faecher',     type: 'noun' },
-        { id: 'pot',       hanzi: '锅',   pinyin: 'guō',       de: 'Topf',        type: 'noun' },
-        { id: 'lotus',     hanzi: '莲',   pinyin: 'lián',      de: 'Lotus',       type: 'noun' },
-        { id: 'picture',   hanzi: '画',   pinyin: 'huà',       de: 'Bild',        type: 'noun' },
-        { id: 'music',     hanzi: '音乐', pinyin: 'yīnyuè',    de: 'Musik',       type: 'noun' },
+        { id: 'brush',     kanji: '笔',   kana: 'bǐ',        de: 'Pinsel',      type: 'noun' },
+        { id: 'ink',       kanji: '墨',   kana: 'mò',        de: 'Tusche',      type: 'noun' },
+        { id: 'paper',     kanji: '纸',   kana: 'zhǐ',       de: 'Papier',      type: 'noun' },
+        { id: 'silk',      kanji: '丝',   kana: 'sī',        de: 'Seide',       type: 'noun' },
+        { id: 'bamboo',    kanji: '竹',   kana: 'zhú',       de: 'Bambus',      type: 'noun' },
+        { id: 'pagoda',    kanji: '塔',   kana: 'tǎ',        de: 'Pagode',      type: 'noun' },
+        { id: 'lantern',   kanji: '灯',   kana: 'dēng',      de: 'Laterne',     type: 'noun' },
+        { id: 'basket',    kanji: '篮',   kana: 'lán',       de: 'Korb',        type: 'noun' },
+        { id: 'fan',       kanji: '扇',   kana: 'shàn',      de: 'Faecher',     type: 'noun' },
+        { id: 'pot',       kanji: '锅',   kana: 'guō',       de: 'Topf',        type: 'noun' },
+        { id: 'lotus',     kanji: '莲',   kana: 'lián',      de: 'Lotus',       type: 'noun' },
+        { id: 'picture',   kanji: '画',   kana: 'huà',       de: 'Bild',        type: 'noun' },
+        { id: 'music',     kanji: '音乐', kana: 'yīnyuè',    de: 'Musik',       type: 'noun' },
         // Verbs (HSK 1-2)
-        { id: 'eat',       hanzi: '吃',   pinyin: 'chī',       de: 'essen',       type: 'verb' },
-        { id: 'drink',     hanzi: '喝',   pinyin: 'hē',        de: 'trinken',     type: 'verb' },
-        { id: 'sleep',     hanzi: '睡',   pinyin: 'shuì',      de: 'schlafen',    type: 'verb' },
-        { id: 'make',      hanzi: '做',   pinyin: 'zuò',       de: 'machen',      type: 'verb' },
-        { id: 'buy',       hanzi: '买',   pinyin: 'mǎi',       de: 'kaufen',      type: 'verb' },
-        { id: 'sell',      hanzi: '卖',   pinyin: 'mài',       de: 'verkaufen',   type: 'verb' },
-        { id: 'walk',      hanzi: '走',   pinyin: 'zǒu',       de: 'gehen',       type: 'verb' },
-        { id: 'run',       hanzi: '跑',   pinyin: 'pǎo',       de: 'laufen',      type: 'verb' },
-        { id: 'sit',       hanzi: '坐',   pinyin: 'zuò',       de: 'sitzen',      type: 'verb' },
-        { id: 'look',      hanzi: '看',   pinyin: 'kàn',       de: 'schauen',     type: 'verb' },
-        { id: 'listen',    hanzi: '听',   pinyin: 'tīng',      de: 'zuhoeren',    type: 'verb' },
-        { id: 'say',       hanzi: '说',   pinyin: 'shuō',      de: 'sprechen',    type: 'verb' },
-        { id: 'read',      hanzi: '读',   pinyin: 'dú',        de: 'lesen',       type: 'verb' },
-        { id: 'write',     hanzi: '写',   pinyin: 'xiě',       de: 'schreiben',   type: 'verb' },
-        { id: 'learn',     hanzi: '学',   pinyin: 'xué',       de: 'lernen',      type: 'verb' },
-        { id: 'teach',     hanzi: '教',   pinyin: 'jiāo',      de: 'lehren',      type: 'verb' },
-        { id: 'give',      hanzi: '给',   pinyin: 'gěi',       de: 'geben',       type: 'verb' },
-        { id: 'find',      hanzi: '找',   pinyin: 'zhǎo',      de: 'finden',      type: 'verb' },
-        { id: 'sing',      hanzi: '唱',   pinyin: 'chàng',     de: 'singen',      type: 'verb' },
-        { id: 'wash',      hanzi: '洗',   pinyin: 'xǐ',        de: 'waschen',     type: 'verb' },
-        { id: 'cook',      hanzi: '做饭', pinyin: 'zuòfàn',    de: 'kochen',      type: 'verb' },
-        { id: 'cut',       hanzi: '切',   pinyin: 'qiē',       de: 'schneiden',   type: 'verb' },
-        { id: 'carry',     hanzi: '拿',   pinyin: 'ná',        de: 'tragen',      type: 'verb' },
-        { id: 'tell',      hanzi: '讲',   pinyin: 'jiǎng',     de: 'erzaehlen',   type: 'verb' },
-        { id: 'smell',     hanzi: '闻',   pinyin: 'wén',       de: 'riechen',     type: 'verb' },
-        { id: 'paint',     hanzi: '画',   pinyin: 'huà',       de: 'malen',       type: 'verb' },
-        { id: 'catch',     hanzi: '抓',   pinyin: 'zhuā',      de: 'fangen',      type: 'verb' },
-        { id: 'play',      hanzi: '玩',   pinyin: 'wán',       de: 'spielen',     type: 'verb' },
+        { id: 'eat',       kanji: '吃',   kana: 'chī',       de: 'essen',       type: 'verb' },
+        { id: 'drink',     kanji: '喝',   kana: 'hē',        de: 'trinken',     type: 'verb' },
+        { id: 'sleep',     kanji: '睡',   kana: 'shuì',      de: 'schlafen',    type: 'verb' },
+        { id: 'make',      kanji: '做',   kana: 'zuò',       de: 'machen',      type: 'verb' },
+        { id: 'buy',       kanji: '买',   kana: 'mǎi',       de: 'kaufen',      type: 'verb' },
+        { id: 'sell',      kanji: '卖',   kana: 'mài',       de: 'verkaufen',   type: 'verb' },
+        { id: 'walk',      kanji: '走',   kana: 'zǒu',       de: 'gehen',       type: 'verb' },
+        { id: 'run',       kanji: '跑',   kana: 'pǎo',       de: 'laufen',      type: 'verb' },
+        { id: 'sit',       kanji: '坐',   kana: 'zuò',       de: 'sitzen',      type: 'verb' },
+        { id: 'look',      kanji: '看',   kana: 'kàn',       de: 'schauen',     type: 'verb' },
+        { id: 'listen',    kanji: '听',   kana: 'tīng',      de: 'zuhoeren',    type: 'verb' },
+        { id: 'say',       kanji: '说',   kana: 'shuō',      de: 'sprechen',    type: 'verb' },
+        { id: 'read',      kanji: '读',   kana: 'dú',        de: 'lesen',       type: 'verb' },
+        { id: 'write',     kanji: '写',   kana: 'xiě',       de: 'schreiben',   type: 'verb' },
+        { id: 'learn',     kanji: '学',   kana: 'xué',       de: 'lernen',      type: 'verb' },
+        { id: 'teach',     kanji: '教',   kana: 'jiāo',      de: 'lehren',      type: 'verb' },
+        { id: 'give',      kanji: '给',   kana: 'gěi',       de: 'geben',       type: 'verb' },
+        { id: 'find',      kanji: '找',   kana: 'zhǎo',      de: 'finden',      type: 'verb' },
+        { id: 'sing',      kanji: '唱',   kana: 'chàng',     de: 'singen',      type: 'verb' },
+        { id: 'wash',      kanji: '洗',   kana: 'xǐ',        de: 'waschen',     type: 'verb' },
+        { id: 'cook',      kanji: '做饭', kana: 'zuòfàn',    de: 'kochen',      type: 'verb' },
+        { id: 'cut',       kanji: '切',   kana: 'qiē',       de: 'schneiden',   type: 'verb' },
+        { id: 'carry',     kanji: '拿',   kana: 'ná',        de: 'tragen',      type: 'verb' },
+        { id: 'tell',      kanji: '讲',   kana: 'jiǎng',     de: 'erzaehlen',   type: 'verb' },
+        { id: 'smell',     kanji: '闻',   kana: 'wén',       de: 'riechen',     type: 'verb' },
+        { id: 'paint',     kanji: '画',   kana: 'huà',       de: 'malen',       type: 'verb' },
+        { id: 'catch',     kanji: '抓',   kana: 'zhuā',      de: 'fangen',      type: 'verb' },
+        { id: 'play',      kanji: '玩',   kana: 'wán',       de: 'spielen',     type: 'verb' },
         // Modifiers (HSK 1-2)
-        { id: 'good',      hanzi: '好',   pinyin: 'hǎo',       de: 'gut',         type: 'mod' },
-        { id: 'big',       hanzi: '大',   pinyin: 'dà',        de: 'gross',       type: 'mod' },
-        { id: 'small',     hanzi: '小',   pinyin: 'xiǎo',      de: 'klein',       type: 'mod' },
-        { id: 'many',      hanzi: '多',   pinyin: 'duō',       de: 'viele',       type: 'mod' },
-        { id: 'few',       hanzi: '少',   pinyin: 'shǎo',      de: 'wenige',      type: 'mod' },
-        { id: 'hot',       hanzi: '热',   pinyin: 'rè',        de: 'heiss',       type: 'mod' },
-        { id: 'cold',      hanzi: '冷',   pinyin: 'lěng',      de: 'kalt',        type: 'mod' },
-        { id: 'fast',      hanzi: '快',   pinyin: 'kuài',      de: 'schnell',     type: 'mod' },
-        { id: 'slow',      hanzi: '慢',   pinyin: 'màn',       de: 'langsam',     type: 'mod' },
-        { id: 'new',       hanzi: '新',   pinyin: 'xīn',       de: 'neu',         type: 'mod' },
-        { id: 'long',      hanzi: '长',   pinyin: 'cháng',     de: 'lang',        type: 'mod' },
-        { id: 'red',       hanzi: '红',   pinyin: 'hóng',      de: 'rot',         type: 'mod' },
-        { id: 'white',     hanzi: '白',   pinyin: 'bái',       de: 'weiss',       type: 'mod' },
-        { id: 'tall',      hanzi: '高',   pinyin: 'gāo',       de: 'hoch',        type: 'mod' },
-        { id: 'beautiful', hanzi: '漂亮', pinyin: 'piàoliang',  de: 'schoen',      type: 'mod' },
-        { id: 'old',       hanzi: '老',   pinyin: 'lǎo',       de: 'alt',         type: 'mod' },
-        { id: 'quiet',     hanzi: '安静', pinyin: 'ānjìng',    de: 'ruhig',       type: 'mod' },
+        { id: 'good',      kanji: '好',   kana: 'hǎo',       de: 'gut',         type: 'mod' },
+        { id: 'big',       kanji: '大',   kana: 'dà',        de: 'gross',       type: 'mod' },
+        { id: 'small',     kanji: '小',   kana: 'xiǎo',      de: 'klein',       type: 'mod' },
+        { id: 'many',      kanji: '多',   kana: 'duō',       de: 'viele',       type: 'mod' },
+        { id: 'few',       kanji: '少',   kana: 'shǎo',      de: 'wenige',      type: 'mod' },
+        { id: 'hot',       kanji: '热',   kana: 'rè',        de: 'heiss',       type: 'mod' },
+        { id: 'cold',      kanji: '冷',   kana: 'lěng',      de: 'kalt',        type: 'mod' },
+        { id: 'fast',      kanji: '快',   kana: 'kuài',      de: 'schnell',     type: 'mod' },
+        { id: 'slow',      kanji: '慢',   kana: 'màn',       de: 'langsam',     type: 'mod' },
+        { id: 'new',       kanji: '新',   kana: 'xīn',       de: 'neu',         type: 'mod' },
+        { id: 'long',      kanji: '长',   kana: 'cháng',     de: 'lang',        type: 'mod' },
+        { id: 'red',       kanji: '红',   kana: 'hóng',      de: 'rot',         type: 'mod' },
+        { id: 'white',     kanji: '白',   kana: 'bái',       de: 'weiss',       type: 'mod' },
+        { id: 'tall',      kanji: '高',   kana: 'gāo',       de: 'hoch',        type: 'mod' },
+        { id: 'beautiful', kanji: '漂亮', kana: 'piàoliang',  de: 'schoen',      type: 'mod' },
+        { id: 'old',       kanji: '老',   kana: 'lǎo',       de: 'alt',         type: 'mod' },
+        { id: 'quiet',     kanji: '安静', kana: 'ānjìng',    de: 'ruhig',       type: 'mod' },
         // Pronouns / Particles (HSK 1)
-        { id: 'me',        hanzi: '我',   pinyin: 'wǒ',        de: 'ich',         type: 'pronoun' },
-        { id: 'you',       hanzi: '你',   pinyin: 'nǐ',        de: 'du',          type: 'pronoun' },
-        { id: 'he',        hanzi: '他',   pinyin: 'tā',        de: 'er',          type: 'pronoun' },
-        { id: 'we',        hanzi: '我们', pinyin: 'wǒmen',     de: 'wir',         type: 'pronoun' },
-        { id: 'this',      hanzi: '这',   pinyin: 'zhè',       de: 'dies',        type: 'pronoun' },
-        { id: 'that',      hanzi: '那',   pinyin: 'nà',        de: 'das',         type: 'pronoun' },
-        { id: 'here',      hanzi: '这里', pinyin: 'zhèlǐ',     de: 'hier',        type: 'mod' },
-        { id: 'there',     hanzi: '那里', pinyin: 'nàlǐ',      de: 'dort',        type: 'mod' },
-        { id: 'now',       hanzi: '现在', pinyin: 'xiànzài',   de: 'jetzt',       type: 'mod' },
-        { id: 'yes',       hanzi: '是',   pinyin: 'shì',       de: 'ja',          type: 'mod' },
-        { id: 'no',        hanzi: '不',   pinyin: 'bù',        de: 'nein',        type: 'mod' },
+        { id: 'me',        kanji: '我',   kana: 'wǒ',        de: 'ich',         type: 'pronoun' },
+        { id: 'you',       kanji: '你',   kana: 'nǐ',        de: 'du',          type: 'pronoun' },
+        { id: 'he',        kanji: '他',   kana: 'tā',        de: 'er',          type: 'pronoun' },
+        { id: 'we',        kanji: '我们', kana: 'wǒmen',     de: 'wir',         type: 'pronoun' },
+        { id: 'this',      kanji: '这',   kana: 'zhè',       de: 'dies',        type: 'pronoun' },
+        { id: 'that',      kanji: '那',   kana: 'nà',        de: 'das',         type: 'pronoun' },
+        { id: 'here',      kanji: '这里', kana: 'zhèlǐ',     de: 'hier',        type: 'mod' },
+        { id: 'there',     kanji: '那里', kana: 'nàlǐ',      de: 'dort',        type: 'mod' },
+        { id: 'now',       kanji: '现在', kana: 'xiànzài',   de: 'jetzt',       type: 'mod' },
+        { id: 'yes',       kanji: '是',   kana: 'shì',       de: 'ja',          type: 'mod' },
+        { id: 'no',        kanji: '不',   kana: 'bù',        de: 'nein',        type: 'mod' },
         // ── Expansion: Nouns — Animals (HSK 1-2) ──
-        { id: 'horse',     hanzi: '马',   pinyin: 'mǎ',        de: 'Pferd',       type: 'noun' },
-        { id: 'cow',       hanzi: '牛',   pinyin: 'niú',       de: 'Rind',        type: 'noun' },
-        { id: 'chicken',   hanzi: '鸡',   pinyin: 'jī',        de: 'Huhn',        type: 'noun' },
-        { id: 'sheep',     hanzi: '羊',   pinyin: 'yáng',      de: 'Schaf',       type: 'noun' },
-        { id: 'rabbit',    hanzi: '兔子', pinyin: 'tùzi',      de: 'Hase',        type: 'noun' },
-        { id: 'frog',      hanzi: '青蛙', pinyin: 'qīngwā',    de: 'Frosch',      type: 'noun' },
-        { id: 'butterfly', hanzi: '蝴蝶', pinyin: 'húdié',     de: 'Schmetterling', type: 'noun' },
+        { id: 'horse',     kanji: '马',   kana: 'mǎ',        de: 'Pferd',       type: 'noun' },
+        { id: 'cow',       kanji: '牛',   kana: 'niú',       de: 'Rind',        type: 'noun' },
+        { id: 'chicken',   kanji: '鸡',   kana: 'jī',        de: 'Huhn',        type: 'noun' },
+        { id: 'sheep',     kanji: '羊',   kana: 'yáng',      de: 'Schaf',       type: 'noun' },
+        { id: 'rabbit',    kanji: '兔子', kana: 'tùzi',      de: 'Hase',        type: 'noun' },
+        { id: 'frog',      kanji: '青蛙', kana: 'qīngwā',    de: 'Frosch',      type: 'noun' },
+        { id: 'butterfly', kanji: '蝴蝶', kana: 'húdié',     de: 'Schmetterling', type: 'noun' },
         // ── Expansion: Nouns — Body (HSK 1-2) ──
-        { id: 'hand',      hanzi: '手',   pinyin: 'shǒu',      de: 'Hand',        type: 'noun' },
-        { id: 'eye',       hanzi: '眼睛', pinyin: 'yǎnjing',   de: 'Auge',        type: 'noun' },
-        { id: 'mouth',     hanzi: '嘴',   pinyin: 'zuǐ',       de: 'Mund',        type: 'noun' },
-        { id: 'ear',       hanzi: '耳朵', pinyin: 'ěrduo',     de: 'Ohr',         type: 'noun' },
-        { id: 'head',      hanzi: '头',   pinyin: 'tóu',       de: 'Kopf',        type: 'noun' },
-        { id: 'heart',     hanzi: '心',   pinyin: 'xīn',       de: 'Herz',        type: 'noun' },
-        { id: 'foot',      hanzi: '脚',   pinyin: 'jiǎo',      de: 'Fuss',        type: 'noun' },
+        { id: 'hand',      kanji: '手',   kana: 'shǒu',      de: 'Hand',        type: 'noun' },
+        { id: 'eye',       kanji: '眼睛', kana: 'yǎnjing',   de: 'Auge',        type: 'noun' },
+        { id: 'mouth',     kanji: '嘴',   kana: 'zuǐ',       de: 'Mund',        type: 'noun' },
+        { id: 'ear',       kanji: '耳朵', kana: 'ěrduo',     de: 'Ohr',         type: 'noun' },
+        { id: 'head',      kanji: '头',   kana: 'tóu',       de: 'Kopf',        type: 'noun' },
+        { id: 'heart',     kanji: '心',   kana: 'xīn',       de: 'Herz',        type: 'noun' },
+        { id: 'foot',      kanji: '脚',   kana: 'jiǎo',      de: 'Fuss',        type: 'noun' },
         // ── Expansion: Nouns — Food & Drink (HSK 1-3) ──
-        { id: 'fruit',     hanzi: '水果', pinyin: 'shuǐguǒ',   de: 'Obst',        type: 'noun' },
-        { id: 'apple',     hanzi: '苹果', pinyin: 'píngguǒ',   de: 'Apfel',       type: 'noun' },
-        { id: 'sugar',     hanzi: '糖',   pinyin: 'táng',      de: 'Zucker',      type: 'noun' },
-        { id: 'salt',      hanzi: '盐',   pinyin: 'yán',       de: 'Salz',        type: 'noun' },
-        { id: 'oil',       hanzi: '油',   pinyin: 'yóu',       de: 'Oel',         type: 'noun' },
-        { id: 'noodle',    hanzi: '面',   pinyin: 'miàn',      de: 'Nudel',       type: 'noun' },
-        { id: 'soup',      hanzi: '汤',   pinyin: 'tāng',      de: 'Suppe',       type: 'noun' },
-        { id: 'wine',      hanzi: '酒',   pinyin: 'jiǔ',       de: 'Wein',        type: 'noun' },
-        { id: 'milk',      hanzi: '奶',   pinyin: 'nǎi',       de: 'Milch',       type: 'noun' },
+        { id: 'fruit',     kanji: '水果', kana: 'shuǐguǒ',   de: 'Obst',        type: 'noun' },
+        { id: 'apple',     kanji: '苹果', kana: 'píngguǒ',   de: 'Apfel',       type: 'noun' },
+        { id: 'sugar',     kanji: '糖',   kana: 'táng',      de: 'Zucker',      type: 'noun' },
+        { id: 'salt',      kanji: '盐',   kana: 'yán',       de: 'Salz',        type: 'noun' },
+        { id: 'oil',       kanji: '油',   kana: 'yóu',       de: 'Oel',         type: 'noun' },
+        { id: 'noodle',    kanji: '面',   kana: 'miàn',      de: 'Nudel',       type: 'noun' },
+        { id: 'soup',      kanji: '汤',   kana: 'tāng',      de: 'Suppe',       type: 'noun' },
+        { id: 'wine',      kanji: '酒',   kana: 'jiǔ',       de: 'Wein',        type: 'noun' },
+        { id: 'milk',      kanji: '奶',   kana: 'nǎi',       de: 'Milch',       type: 'noun' },
         // ── Expansion: Nouns — Nature (HSK 1-3) ──
-        { id: 'stone',     hanzi: '石头', pinyin: 'shítou',    de: 'Stein',       type: 'noun' },
-        { id: 'earth',     hanzi: '土',   pinyin: 'tǔ',        de: 'Erde',        type: 'noun' },
-        { id: 'grass',     hanzi: '草',   pinyin: 'cǎo',       de: 'Gras',        type: 'noun' },
-        { id: 'leaf',      hanzi: '叶子', pinyin: 'yèzi',      de: 'Blatt',       type: 'noun' },
-        { id: 'star',      hanzi: '星星', pinyin: 'xīngxing',  de: 'Stern',       type: 'noun' },
-        { id: 'snow',      hanzi: '雪',   pinyin: 'xuě',       de: 'Schnee',      type: 'noun' },
-        { id: 'cloud',     hanzi: '云',   pinyin: 'yún',       de: 'Wolke',       type: 'noun' },
-        { id: 'lake',      hanzi: '湖',   pinyin: 'hú',        de: 'See',         type: 'noun' },
-        { id: 'forest',    hanzi: '林',   pinyin: 'lín',       de: 'Wald',        type: 'noun' },
-        { id: 'field',     hanzi: '田',   pinyin: 'tián',      de: 'Feld',        type: 'noun' },
+        { id: 'stone',     kanji: '石头', kana: 'shítou',    de: 'Stein',       type: 'noun' },
+        { id: 'earth',     kanji: '土',   kana: 'tǔ',        de: 'Erde',        type: 'noun' },
+        { id: 'grass',     kanji: '草',   kana: 'cǎo',       de: 'Gras',        type: 'noun' },
+        { id: 'leaf',      kanji: '叶子', kana: 'yèzi',      de: 'Blatt',       type: 'noun' },
+        { id: 'star',      kanji: '星星', kana: 'xīngxing',  de: 'Stern',       type: 'noun' },
+        { id: 'snow',      kanji: '雪',   kana: 'xuě',       de: 'Schnee',      type: 'noun' },
+        { id: 'cloud',     kanji: '云',   kana: 'yún',       de: 'Wolke',       type: 'noun' },
+        { id: 'lake',      kanji: '湖',   kana: 'hú',        de: 'See',         type: 'noun' },
+        { id: 'forest',    kanji: '林',   kana: 'lín',       de: 'Wald',        type: 'noun' },
+        { id: 'field',     kanji: '田',   kana: 'tián',      de: 'Feld',        type: 'noun' },
         // ── Expansion: Nouns — Daily Objects (HSK 1-3) ──
-        { id: 'clothes',   hanzi: '衣服', pinyin: 'yīfu',      de: 'Kleidung',    type: 'noun' },
-        { id: 'shoes',     hanzi: '鞋子', pinyin: 'xiézi',     de: 'Schuhe',      type: 'noun' },
-        { id: 'hat',       hanzi: '帽子', pinyin: 'màozi',     de: 'Hut',         type: 'noun' },
-        { id: 'bed',       hanzi: '床',   pinyin: 'chuáng',    de: 'Bett',        type: 'noun' },
-        { id: 'table',     hanzi: '桌子', pinyin: 'zhuōzi',    de: 'Tisch',       type: 'noun' },
-        { id: 'chair',     hanzi: '椅子', pinyin: 'yǐzi',      de: 'Stuhl',       type: 'noun' },
-        { id: 'rope',      hanzi: '绳子', pinyin: 'shéngzi',   de: 'Seil',        type: 'noun' },
-        { id: 'needle',    hanzi: '针',   pinyin: 'zhēn',      de: 'Nadel',       type: 'noun' },
-        { id: 'candle',    hanzi: '蜡烛', pinyin: 'làzhú',     de: 'Kerze',       type: 'noun' },
-        { id: 'broom',     hanzi: '扫帚', pinyin: 'sàozhou',   de: 'Besen',       type: 'noun' },
+        { id: 'clothes',   kanji: '衣服', kana: 'yīfu',      de: 'Kleidung',    type: 'noun' },
+        { id: 'shoes',     kanji: '鞋子', kana: 'xiézi',     de: 'Schuhe',      type: 'noun' },
+        { id: 'hat',       kanji: '帽子', kana: 'màozi',     de: 'Hut',         type: 'noun' },
+        { id: 'bed',       kanji: '床',   kana: 'chuáng',    de: 'Bett',        type: 'noun' },
+        { id: 'table',     kanji: '桌子', kana: 'zhuōzi',    de: 'Tisch',       type: 'noun' },
+        { id: 'chair',     kanji: '椅子', kana: 'yǐzi',      de: 'Stuhl',       type: 'noun' },
+        { id: 'rope',      kanji: '绳子', kana: 'shéngzi',   de: 'Seil',        type: 'noun' },
+        { id: 'needle',    kanji: '针',   kana: 'zhēn',      de: 'Nadel',       type: 'noun' },
+        { id: 'candle',    kanji: '蜡烛', kana: 'làzhú',     de: 'Kerze',       type: 'noun' },
+        { id: 'broom',     kanji: '扫帚', kana: 'sàozhou',   de: 'Besen',       type: 'noun' },
         // ── Expansion: Nouns — People (HSK 1-2) ──
-        { id: 'mother',    hanzi: '妈妈', pinyin: 'māma',      de: 'Mutter',      type: 'noun' },
-        { id: 'father',    hanzi: '爸爸', pinyin: 'bàba',      de: 'Vater',       type: 'noun' },
-        { id: 'brother',   hanzi: '哥哥', pinyin: 'gēge',      de: 'Bruder',      type: 'noun' },
-        { id: 'sister',    hanzi: '姐姐', pinyin: 'jiějie',    de: 'Schwester',   type: 'noun' },
-        { id: 'girl',      hanzi: '女孩', pinyin: 'nǚhái',     de: 'Maedchen',    type: 'noun' },
-        { id: 'boy',       hanzi: '男孩', pinyin: 'nánhái',    de: 'Junge',       type: 'noun' },
-        { id: 'doctor',    hanzi: '医生', pinyin: 'yīshēng',   de: 'Arzt',        type: 'noun' },
-        { id: 'neighbor',  hanzi: '邻居', pinyin: 'línjū',     de: 'Nachbar',     type: 'noun' },
+        { id: 'mother',    kanji: '妈妈', kana: 'māma',      de: 'Mutter',      type: 'noun' },
+        { id: 'father',    kanji: '爸爸', kana: 'bàba',      de: 'Vater',       type: 'noun' },
+        { id: 'brother',   kanji: '哥哥', kana: 'gēge',      de: 'Bruder',      type: 'noun' },
+        { id: 'sister',    kanji: '姐姐', kana: 'jiějie',    de: 'Schwester',   type: 'noun' },
+        { id: 'girl',      kanji: '女孩', kana: 'nǚhái',     de: 'Maedchen',    type: 'noun' },
+        { id: 'boy',       kanji: '男孩', kana: 'nánhái',    de: 'Junge',       type: 'noun' },
+        { id: 'doctor',    kanji: '医生', kana: 'yīshēng',   de: 'Arzt',        type: 'noun' },
+        { id: 'neighbor',  kanji: '邻居', kana: 'línjū',     de: 'Nachbar',     type: 'noun' },
         // ── Expansion: Nouns — Places & Time (HSK 1-2) ──
-        { id: 'school',    hanzi: '学校', pinyin: 'xuéxiào',   de: 'Schule',      type: 'noun' },
-        { id: 'shop',      hanzi: '商店', pinyin: 'shāngdiàn', de: 'Laden',       type: 'noun' },
-        { id: 'village',   hanzi: '村子', pinyin: 'cūnzi',     de: 'Dorf',        type: 'noun' },
-        { id: 'year',      hanzi: '年',   pinyin: 'nián',      de: 'Jahr',        type: 'noun' },
-        { id: 'today',     hanzi: '今天', pinyin: 'jīntiān',   de: 'heute',       type: 'noun' },
-        { id: 'tomorrow',  hanzi: '明天', pinyin: 'míngtiān',  de: 'morgen',      type: 'noun' },
-        { id: 'yesterday', hanzi: '昨天', pinyin: 'zuótiān',   de: 'gestern',     type: 'noun' },
+        { id: 'school',    kanji: '学校', kana: 'xuéxiào',   de: 'Schule',      type: 'noun' },
+        { id: 'shop',      kanji: '商店', kana: 'shāngdiàn', de: 'Laden',       type: 'noun' },
+        { id: 'village',   kanji: '村子', kana: 'cūnzi',     de: 'Dorf',        type: 'noun' },
+        { id: 'year',      kanji: '年',   kana: 'nián',      de: 'Jahr',        type: 'noun' },
+        { id: 'today',     kanji: '今天', kana: 'jīntiān',   de: 'heute',       type: 'noun' },
+        { id: 'tomorrow',  kanji: '明天', kana: 'míngtiān',  de: 'morgen',      type: 'noun' },
+        { id: 'yesterday', kanji: '昨天', kana: 'zuótiān',   de: 'gestern',     type: 'noun' },
         // ── Expansion: Verbs (HSK 1-3) ──
-        { id: 'open',      hanzi: '开',   pinyin: 'kāi',       de: 'oeffnen',     type: 'verb' },
-        { id: 'close',     hanzi: '关',   pinyin: 'guān',      de: 'schliessen',  type: 'verb' },
-        { id: 'help',      hanzi: '帮',   pinyin: 'bāng',      de: 'helfen',      type: 'verb' },
-        { id: 'want',      hanzi: '要',   pinyin: 'yào',       de: 'wollen',      type: 'verb' },
-        { id: 'can',       hanzi: '能',   pinyin: 'néng',      de: 'koennen',     type: 'verb' },
-        { id: 'love',      hanzi: '爱',   pinyin: 'ài',        de: 'lieben',      type: 'verb' },
-        { id: 'know',      hanzi: '知道', pinyin: 'zhīdào',    de: 'wissen',      type: 'verb' },
-        { id: 'understand', hanzi: '懂',  pinyin: 'dǒng',      de: 'verstehen',   type: 'verb' },
-        { id: 'wait',      hanzi: '等',   pinyin: 'děng',      de: 'warten',      type: 'verb' },
-        { id: 'ask',       hanzi: '问',   pinyin: 'wèn',       de: 'fragen',      type: 'verb' },
-        { id: 'answer',    hanzi: '回答', pinyin: 'huídá',     de: 'antworten',   type: 'verb' },
-        { id: 'come',      hanzi: '来',   pinyin: 'lái',       de: 'kommen',      type: 'verb' },
-        { id: 'go',        hanzi: '去',   pinyin: 'qù',        de: 'gehen',       type: 'verb' },
-        { id: 'return',    hanzi: '回',   pinyin: 'huí',       de: 'zurueckkehren', type: 'verb' },
-        { id: 'think',     hanzi: '想',   pinyin: 'xiǎng',     de: 'denken',      type: 'verb' },
-        { id: 'remember',  hanzi: '记',   pinyin: 'jì',        de: 'erinnern',    type: 'verb' },
-        { id: 'forget',    hanzi: '忘',   pinyin: 'wàng',      de: 'vergessen',   type: 'verb' },
-        { id: 'use',       hanzi: '用',   pinyin: 'yòng',      de: 'benutzen',    type: 'verb' },
-        { id: 'plant',     hanzi: '种',   pinyin: 'zhòng',     de: 'pflanzen',    type: 'verb' },
-        { id: 'repair',    hanzi: '修',   pinyin: 'xiū',       de: 'reparieren',  type: 'verb' },
-        { id: 'sweep',     hanzi: '扫',   pinyin: 'sǎo',       de: 'fegen',       type: 'verb' },
-        { id: 'pour',      hanzi: '倒',   pinyin: 'dào',       de: 'giessen',     type: 'verb' },
-        { id: 'dance',     hanzi: '跳舞', pinyin: 'tiàowǔ',    de: 'tanzen',      type: 'verb' },
-        { id: 'laugh',     hanzi: '笑',   pinyin: 'xiào',      de: 'lachen',      type: 'verb' },
-        { id: 'cry',       hanzi: '哭',   pinyin: 'kū',        de: 'weinen',      type: 'verb' },
-        { id: 'climb',     hanzi: '爬',   pinyin: 'pá',        de: 'klettern',    type: 'verb' },
-        { id: 'fly',       hanzi: '飞',   pinyin: 'fēi',       de: 'fliegen',     type: 'verb' },
-        { id: 'stand',     hanzi: '站',   pinyin: 'zhàn',      de: 'stehen',      type: 'verb' },
-        { id: 'rest',      hanzi: '休息', pinyin: 'xiūxi',     de: 'ausruhen',    type: 'verb' },
-        { id: 'begin',     hanzi: '开始', pinyin: 'kāishǐ',    de: 'anfangen',    type: 'verb' },
-        { id: 'finish',    hanzi: '完',   pinyin: 'wán',       de: 'beenden',     type: 'verb' },
-        { id: 'send',      hanzi: '送',   pinyin: 'sòng',      de: 'schicken',    type: 'verb' },
-        { id: 'receive',   hanzi: '收',   pinyin: 'shōu',      de: 'empfangen',   type: 'verb' },
-        { id: 'feed',      hanzi: '喂',   pinyin: 'wèi',       de: 'fuettern',    type: 'verb' },
-        { id: 'pick',      hanzi: '摘',   pinyin: 'zhāi',      de: 'pfluecken',   type: 'verb' },
+        { id: 'open',      kanji: '开',   kana: 'kāi',       de: 'oeffnen',     type: 'verb' },
+        { id: 'close',     kanji: '关',   kana: 'guān',      de: 'schliessen',  type: 'verb' },
+        { id: 'help',      kanji: '帮',   kana: 'bāng',      de: 'helfen',      type: 'verb' },
+        { id: 'want',      kanji: '要',   kana: 'yào',       de: 'wollen',      type: 'verb' },
+        { id: 'can',       kanji: '能',   kana: 'néng',      de: 'koennen',     type: 'verb' },
+        { id: 'love',      kanji: '爱',   kana: 'ài',        de: 'lieben',      type: 'verb' },
+        { id: 'know',      kanji: '知道', kana: 'zhīdào',    de: 'wissen',      type: 'verb' },
+        { id: 'understand', kanji: '懂',  kana: 'dǒng',      de: 'verstehen',   type: 'verb' },
+        { id: 'wait',      kanji: '等',   kana: 'děng',      de: 'warten',      type: 'verb' },
+        { id: 'ask',       kanji: '问',   kana: 'wèn',       de: 'fragen',      type: 'verb' },
+        { id: 'answer',    kanji: '回答', kana: 'huídá',     de: 'antworten',   type: 'verb' },
+        { id: 'come',      kanji: '来',   kana: 'lái',       de: 'kommen',      type: 'verb' },
+        { id: 'go',        kanji: '去',   kana: 'qù',        de: 'gehen',       type: 'verb' },
+        { id: 'return',    kanji: '回',   kana: 'huí',       de: 'zurueckkehren', type: 'verb' },
+        { id: 'think',     kanji: '想',   kana: 'xiǎng',     de: 'denken',      type: 'verb' },
+        { id: 'remember',  kanji: '记',   kana: 'jì',        de: 'erinnern',    type: 'verb' },
+        { id: 'forget',    kanji: '忘',   kana: 'wàng',      de: 'vergessen',   type: 'verb' },
+        { id: 'use',       kanji: '用',   kana: 'yòng',      de: 'benutzen',    type: 'verb' },
+        { id: 'plant',     kanji: '种',   kana: 'zhòng',     de: 'pflanzen',    type: 'verb' },
+        { id: 'repair',    kanji: '修',   kana: 'xiū',       de: 'reparieren',  type: 'verb' },
+        { id: 'sweep',     kanji: '扫',   kana: 'sǎo',       de: 'fegen',       type: 'verb' },
+        { id: 'pour',      kanji: '倒',   kana: 'dào',       de: 'giessen',     type: 'verb' },
+        { id: 'dance',     kanji: '跳舞', kana: 'tiàowǔ',    de: 'tanzen',      type: 'verb' },
+        { id: 'laugh',     kanji: '笑',   kana: 'xiào',      de: 'lachen',      type: 'verb' },
+        { id: 'cry',       kanji: '哭',   kana: 'kū',        de: 'weinen',      type: 'verb' },
+        { id: 'climb',     kanji: '爬',   kana: 'pá',        de: 'klettern',    type: 'verb' },
+        { id: 'fly',       kanji: '飞',   kana: 'fēi',       de: 'fliegen',     type: 'verb' },
+        { id: 'stand',     kanji: '站',   kana: 'zhàn',      de: 'stehen',      type: 'verb' },
+        { id: 'rest',      kanji: '休息', kana: 'xiūxi',     de: 'ausruhen',    type: 'verb' },
+        { id: 'begin',     kanji: '开始', kana: 'kāishǐ',    de: 'anfangen',    type: 'verb' },
+        { id: 'finish',    kanji: '完',   kana: 'wán',       de: 'beenden',     type: 'verb' },
+        { id: 'send',      kanji: '送',   kana: 'sòng',      de: 'schicken',    type: 'verb' },
+        { id: 'receive',   kanji: '收',   kana: 'shōu',      de: 'empfangen',   type: 'verb' },
+        { id: 'feed',      kanji: '喂',   kana: 'wèi',       de: 'fuettern',    type: 'verb' },
+        { id: 'pick',      kanji: '摘',   kana: 'zhāi',      de: 'pfluecken',   type: 'verb' },
         // ── Expansion: Modifiers (HSK 1-3) ──
-        { id: 'sweet',     hanzi: '甜',   pinyin: 'tián',      de: 'suess',       type: 'mod' },
-        { id: 'sour',      hanzi: '酸',   pinyin: 'suān',      de: 'sauer',       type: 'mod' },
-        { id: 'bitter',    hanzi: '苦',   pinyin: 'kǔ',        de: 'bitter',      type: 'mod' },
-        { id: 'spicy',     hanzi: '辣',   pinyin: 'là',        de: 'scharf',      type: 'mod' },
-        { id: 'soft',      hanzi: '软',   pinyin: 'ruǎn',      de: 'weich',       type: 'mod' },
-        { id: 'hard',      hanzi: '硬',   pinyin: 'yìng',      de: 'hart',        type: 'mod' },
-        { id: 'heavy',     hanzi: '重',   pinyin: 'zhòng',     de: 'schwer',      type: 'mod' },
-        { id: 'light',     hanzi: '轻',   pinyin: 'qīng',      de: 'leicht',      type: 'mod' },
-        { id: 'round',     hanzi: '圆',   pinyin: 'yuán',      de: 'rund',        type: 'mod' },
-        { id: 'clean',     hanzi: '干净', pinyin: 'gānjìng',   de: 'sauber',      type: 'mod' },
-        { id: 'dirty',     hanzi: '脏',   pinyin: 'zāng',      de: 'schmutzig',   type: 'mod' },
-        { id: 'happy',     hanzi: '开心', pinyin: 'kāixīn',    de: 'gluecklich',  type: 'mod' },
-        { id: 'tired',     hanzi: '累',   pinyin: 'lèi',       de: 'muede',       type: 'mod' },
-        { id: 'hungry',    hanzi: '饿',   pinyin: 'è',         de: 'hungrig',     type: 'mod' },
-        { id: 'full',      hanzi: '饱',   pinyin: 'bǎo',       de: 'satt',        type: 'mod' },
-        { id: 'near',      hanzi: '近',   pinyin: 'jìn',       de: 'nah',         type: 'mod' },
-        { id: 'far',       hanzi: '远',   pinyin: 'yuǎn',      de: 'weit',        type: 'mod' },
-        { id: 'early',     hanzi: '早',   pinyin: 'zǎo',       de: 'frueh',       type: 'mod' },
-        { id: 'late',      hanzi: '晚',   pinyin: 'wǎn',       de: 'spaet',       type: 'mod' },
-        { id: 'dark',      hanzi: '暗',   pinyin: 'àn',        de: 'dunkel',      type: 'mod' },
-        { id: 'bright',    hanzi: '亮',   pinyin: 'liàng',     de: 'hell',        type: 'mod' },
-        { id: 'right',     hanzi: '对',   pinyin: 'duì',       de: 'richtig',     type: 'mod' },
-        { id: 'wrong',     hanzi: '错',   pinyin: 'cuò',       de: 'falsch',      type: 'mod' },
-        { id: 'deep',      hanzi: '深',   pinyin: 'shēn',      de: 'tief',        type: 'mod' },
-        { id: 'shallow',   hanzi: '浅',   pinyin: 'qiǎn',      de: 'flach',       type: 'mod' },
+        { id: 'sweet',     kanji: '甜',   kana: 'tián',      de: 'suess',       type: 'mod' },
+        { id: 'sour',      kanji: '酸',   kana: 'suān',      de: 'sauer',       type: 'mod' },
+        { id: 'bitter',    kanji: '苦',   kana: 'kǔ',        de: 'bitter',      type: 'mod' },
+        { id: 'spicy',     kanji: '辣',   kana: 'là',        de: 'scharf',      type: 'mod' },
+        { id: 'soft',      kanji: '软',   kana: 'ruǎn',      de: 'weich',       type: 'mod' },
+        { id: 'hard',      kanji: '硬',   kana: 'yìng',      de: 'hart',        type: 'mod' },
+        { id: 'heavy',     kanji: '重',   kana: 'zhòng',     de: 'schwer',      type: 'mod' },
+        { id: 'light',     kanji: '轻',   kana: 'qīng',      de: 'leicht',      type: 'mod' },
+        { id: 'round',     kanji: '圆',   kana: 'yuán',      de: 'rund',        type: 'mod' },
+        { id: 'clean',     kanji: '干净', kana: 'gānjìng',   de: 'sauber',      type: 'mod' },
+        { id: 'dirty',     kanji: '脏',   kana: 'zāng',      de: 'schmutzig',   type: 'mod' },
+        { id: 'happy',     kanji: '开心', kana: 'kāixīn',    de: 'gluecklich',  type: 'mod' },
+        { id: 'tired',     kanji: '累',   kana: 'lèi',       de: 'muede',       type: 'mod' },
+        { id: 'hungry',    kanji: '饿',   kana: 'è',         de: 'hungrig',     type: 'mod' },
+        { id: 'full',      kanji: '饱',   kana: 'bǎo',       de: 'satt',        type: 'mod' },
+        { id: 'near',      kanji: '近',   kana: 'jìn',       de: 'nah',         type: 'mod' },
+        { id: 'far',       kanji: '远',   kana: 'yuǎn',      de: 'weit',        type: 'mod' },
+        { id: 'early',     kanji: '早',   kana: 'zǎo',       de: 'frueh',       type: 'mod' },
+        { id: 'late',      kanji: '晚',   kana: 'wǎn',       de: 'spaet',       type: 'mod' },
+        { id: 'dark',      kanji: '暗',   kana: 'àn',        de: 'dunkel',      type: 'mod' },
+        { id: 'bright',    kanji: '亮',   kana: 'liàng',     de: 'hell',        type: 'mod' },
+        { id: 'right',     kanji: '对',   kana: 'duì',       de: 'richtig',     type: 'mod' },
+        { id: 'wrong',     kanji: '错',   kana: 'cuò',       de: 'falsch',      type: 'mod' },
+        { id: 'deep',      kanji: '深',   kana: 'shēn',      de: 'tief',        type: 'mod' },
+        { id: 'shallow',   kanji: '浅',   kana: 'qiǎn',      de: 'flach',       type: 'mod' },
         // ── Expansion: Colors (HSK 1-2) ──
-        { id: 'yellow',    hanzi: '黄',   pinyin: 'huáng',     de: 'gelb',        type: 'mod' },
-        { id: 'blue',      hanzi: '蓝',   pinyin: 'lán',       de: 'blau',        type: 'mod' },
-        { id: 'green',     hanzi: '绿',   pinyin: 'lǜ',        de: 'gruen',       type: 'mod' },
-        { id: 'black',     hanzi: '黑',   pinyin: 'hēi',       de: 'schwarz',     type: 'mod' },
+        { id: 'yellow',    kanji: '黄',   kana: 'huáng',     de: 'gelb',        type: 'mod' },
+        { id: 'blue',      kanji: '蓝',   kana: 'lán',       de: 'blau',        type: 'mod' },
+        { id: 'green',     kanji: '绿',   kana: 'lǜ',        de: 'gruen',       type: 'mod' },
+        { id: 'black',     kanji: '黑',   kana: 'hēi',       de: 'schwarz',     type: 'mod' },
         // ── Expansion: Pronouns & Function Words (HSK 1-2) ──
-        { id: 'she',       hanzi: '她',   pinyin: 'tā',        de: 'sie',         type: 'pronoun' },
-        { id: 'they',      hanzi: '他们', pinyin: 'tāmen',     de: 'sie (Pl.)',   type: 'pronoun' },
-        { id: 'who',       hanzi: '谁',   pinyin: 'shéi',      de: 'wer',         type: 'pronoun' },
-        { id: 'what',      hanzi: '什么', pinyin: 'shénme',    de: 'was',         type: 'pronoun' },
-        { id: 'where',     hanzi: '哪里', pinyin: 'nǎlǐ',      de: 'wo',          type: 'pronoun' },
-        { id: 'every',     hanzi: '每',   pinyin: 'měi',       de: 'jede/r',      type: 'mod' },
-        { id: 'also',      hanzi: '也',   pinyin: 'yě',        de: 'auch',        type: 'mod' },
-        { id: 'very',      hanzi: '很',   pinyin: 'hěn',       de: 'sehr',        type: 'mod' },
-        { id: 'still',     hanzi: '还',   pinyin: 'hái',       de: 'noch',        type: 'mod' },
-        { id: 'already',   hanzi: '已经', pinyin: 'yǐjīng',    de: 'schon',       type: 'mod' },
+        { id: 'she',       kanji: '她',   kana: 'tā',        de: 'sie',         type: 'pronoun' },
+        { id: 'they',      kanji: '他们', kana: 'tāmen',     de: 'sie (Pl.)',   type: 'pronoun' },
+        { id: 'who',       kanji: '谁',   kana: 'shéi',      de: 'wer',         type: 'pronoun' },
+        { id: 'what',      kanji: '什么', kana: 'shénme',    de: 'was',         type: 'pronoun' },
+        { id: 'where',     kanji: '哪里', kana: 'nǎlǐ',      de: 'wo',          type: 'pronoun' },
+        { id: 'every',     kanji: '每',   kana: 'měi',       de: 'jede/r',      type: 'mod' },
+        { id: 'also',      kanji: '也',   kana: 'yě',        de: 'auch',        type: 'mod' },
+        { id: 'very',      kanji: '很',   kana: 'hěn',       de: 'sehr',        type: 'mod' },
+        { id: 'still',     kanji: '还',   kana: 'hái',       de: 'noch',        type: 'mod' },
+        { id: 'already',   kanji: '已经', kana: 'yǐjīng',    de: 'schon',       type: 'mod' },
         // ── Expansion: New HSK 1-2 — Verbs ──
-        { id: 'have',      hanzi: '有',   pinyin: 'yǒu',       de: 'haben',       type: 'verb' },
-        { id: 'live',      hanzi: '住',   pinyin: 'zhù',       de: 'wohnen',      type: 'verb' },
-        { id: 'like',      hanzi: '喜欢', pinyin: 'xǐhuan',    de: 'moegen',      type: 'verb' },
-        { id: 'call',      hanzi: '叫',   pinyin: 'jiào',      de: 'rufen',       type: 'verb' },
-        { id: 'enter',     hanzi: '进',   pinyin: 'jìn',       de: 'eintreten',   type: 'verb' },
-        { id: 'exit2',     hanzi: '出',   pinyin: 'chū',       de: 'hinausgehen', type: 'verb' },
-        { id: 'arrive',    hanzi: '到',   pinyin: 'dào',       de: 'ankommen',    type: 'verb' },
-        { id: 'wear',      hanzi: '穿',   pinyin: 'chuān',     de: 'anziehen',    type: 'verb' },
-        { id: 'prepare',   hanzi: '准备', pinyin: 'zhǔnbèi',   de: 'vorbereiten', type: 'verb' },
-        { id: 'swim',      hanzi: '游泳', pinyin: 'yóuyǒng',   de: 'schwimmen',   type: 'verb' },
-        { id: 'allow',     hanzi: '让',   pinyin: 'ràng',      de: 'lassen',      type: 'verb' },
-        { id: 'inform',    hanzi: '告诉', pinyin: 'gàosù',     de: 'erzaehlen',   type: 'verb' },
-        { id: 'hope',      hanzi: '希望', pinyin: 'xīwàng',    de: 'hoffen',      type: 'verb' },
-        { id: 'feel',      hanzi: '觉得', pinyin: 'juédé',     de: 'finden',      type: 'verb' },
+        { id: 'have',      kanji: '有',   kana: 'yǒu',       de: 'haben',       type: 'verb' },
+        { id: 'live',      kanji: '住',   kana: 'zhù',       de: 'wohnen',      type: 'verb' },
+        { id: 'like',      kanji: '喜欢', kana: 'xǐhuan',    de: 'moegen',      type: 'verb' },
+        { id: 'call',      kanji: '叫',   kana: 'jiào',      de: 'rufen',       type: 'verb' },
+        { id: 'enter',     kanji: '进',   kana: 'jìn',       de: 'eintreten',   type: 'verb' },
+        { id: 'exit2',     kanji: '出',   kana: 'chū',       de: 'hinausgehen', type: 'verb' },
+        { id: 'arrive',    kanji: '到',   kana: 'dào',       de: 'ankommen',    type: 'verb' },
+        { id: 'wear',      kanji: '穿',   kana: 'chuān',     de: 'anziehen',    type: 'verb' },
+        { id: 'prepare',   kanji: '准备', kana: 'zhǔnbèi',   de: 'vorbereiten', type: 'verb' },
+        { id: 'swim',      kanji: '游泳', kana: 'yóuyǒng',   de: 'schwimmen',   type: 'verb' },
+        { id: 'allow',     kanji: '让',   kana: 'ràng',      de: 'lassen',      type: 'verb' },
+        { id: 'inform',    kanji: '告诉', kana: 'gàosù',     de: 'erzaehlen',   type: 'verb' },
+        { id: 'hope',      kanji: '希望', kana: 'xīwàng',    de: 'hoffen',      type: 'verb' },
+        { id: 'feel',      kanji: '觉得', kana: 'juédé',     de: 'finden',      type: 'verb' },
         // ── Expansion: New HSK 1-2 — Nouns ──
-        { id: 'name',      hanzi: '名字', pinyin: 'míngzi',    de: 'Name',        type: 'noun' },
-        { id: 'weather',   hanzi: '天气', pinyin: 'tiānqì',    de: 'Wetter',      type: 'noun' },
-        { id: 'son',       hanzi: '儿子', pinyin: 'érzi',      de: 'Sohn',        type: 'noun' },
-        { id: 'daughter',  hanzi: '女儿', pinyin: 'nǚér',      de: 'Tochter',     type: 'noun' },
-        { id: 'room',      hanzi: '房间', pinyin: 'fángjiān',  de: 'Zimmer',      type: 'noun' },
-        { id: 'medicine',  hanzi: '药',   pinyin: 'yào',       de: 'Medizin',     type: 'noun' },
-        { id: 'body',      hanzi: '身体', pinyin: 'shēntǐ',    de: 'Koerper',     type: 'noun' },
-        { id: 'student',   hanzi: '学生', pinyin: 'xuéshēng',  de: 'Schueler',    type: 'noun' },
-        { id: 'character', hanzi: '字',   pinyin: 'zì',        de: 'Zeichen',     type: 'noun' },
-        { id: 'lesson',    hanzi: '课',   pinyin: 'kè',        de: 'Unterricht',  type: 'noun' },
-        { id: 'question',  hanzi: '题',   pinyin: 'tí',        de: 'Frage',       type: 'noun' },
-        { id: 'time',      hanzi: '时间', pinyin: 'shíjiān',   de: 'Zeit',        type: 'noun' },
-        { id: 'exercise',  hanzi: '运动', pinyin: 'yùndòng',   de: 'Bewegung',    type: 'noun' },
+        { id: 'name',      kanji: '名字', kana: 'míngzi',    de: 'Name',        type: 'noun' },
+        { id: 'weather',   kanji: '天气', kana: 'tiānqì',    de: 'Wetter',      type: 'noun' },
+        { id: 'son',       kanji: '儿子', kana: 'érzi',      de: 'Sohn',        type: 'noun' },
+        { id: 'daughter',  kanji: '女儿', kana: 'nǚér',      de: 'Tochter',     type: 'noun' },
+        { id: 'room',      kanji: '房间', kana: 'fángjiān',  de: 'Zimmer',      type: 'noun' },
+        { id: 'medicine',  kanji: '药',   kana: 'yào',       de: 'Medizin',     type: 'noun' },
+        { id: 'body',      kanji: '身体', kana: 'shēntǐ',    de: 'Koerper',     type: 'noun' },
+        { id: 'student',   kanji: '学生', kana: 'xuéshēng',  de: 'Schueler',    type: 'noun' },
+        { id: 'character', kanji: '字',   kana: 'zì',        de: 'Zeichen',     type: 'noun' },
+        { id: 'lesson',    kanji: '课',   kana: 'kè',        de: 'Unterricht',  type: 'noun' },
+        { id: 'question',  kanji: '题',   kana: 'tí',        de: 'Frage',       type: 'noun' },
+        { id: 'time',      kanji: '时间', kana: 'shíjiān',   de: 'Zeit',        type: 'noun' },
+        { id: 'exercise',  kanji: '运动', kana: 'yùndòng',   de: 'Bewegung',    type: 'noun' },
         // ── Expansion: New HSK 1-2 — Modifiers ──
-        { id: 'up',        hanzi: '上',   pinyin: 'shàng',     de: 'oben',        type: 'mod' },
-        { id: 'down',      hanzi: '下',   pinyin: 'xià',       de: 'unten',       type: 'mod' },
-        { id: 'inside',    hanzi: '里面', pinyin: 'lǐmiàn',    de: 'drinnen',     type: 'mod' },
-        { id: 'front',     hanzi: '前面', pinyin: 'qiánmiàn',  de: 'vorne',       type: 'mod' },
-        { id: 'behind',    hanzi: '后面', pinyin: 'hòumiàn',   de: 'hinten',      type: 'mod' },
-        { id: 'outside',   hanzi: '外',   pinyin: 'wài',       de: 'draussen',    type: 'mod' },
-        { id: 'please',    hanzi: '请',   pinyin: 'qǐng',      de: 'bitte',       type: 'mod' },
-        { id: 'thanks',    hanzi: '谢谢', pinyin: 'xièxie',    de: 'danke',       type: 'mod' },
-        { id: 'expensive', hanzi: '贵',   pinyin: 'guì',       de: 'teuer',       type: 'mod' },
-        { id: 'cheap',     hanzi: '便宜', pinyin: 'piányi',    de: 'billig',      type: 'mod' },
-        { id: 'busy',      hanzi: '忙',   pinyin: 'máng',      de: 'beschaeftigt', type: 'mod' },
-        { id: 'really',    hanzi: '真',   pinyin: 'zhēn',      de: 'wirklich',    type: 'mod' },
-        { id: 'extremely', hanzi: '非常', pinyin: 'fēicháng',  de: 'sehr',        type: 'mod' },
-        { id: 'together',  hanzi: '一起', pinyin: 'yìqǐ',      de: 'zusammen',    type: 'mod' },
-        { id: 'glad',      hanzi: '高兴', pinyin: 'gāoxìng',   de: 'froh',        type: 'mod' },
-        { id: 'joyful',    hanzi: '快乐', pinyin: 'kuàilè',    de: 'gluecklich',  type: 'mod' },
+        { id: 'up',        kanji: '上',   kana: 'shàng',     de: 'oben',        type: 'mod' },
+        { id: 'down',      kanji: '下',   kana: 'xià',       de: 'unten',       type: 'mod' },
+        { id: 'inside',    kanji: '里面', kana: 'lǐmiàn',    de: 'drinnen',     type: 'mod' },
+        { id: 'front',     kanji: '前面', kana: 'qiánmiàn',  de: 'vorne',       type: 'mod' },
+        { id: 'behind',    kanji: '后面', kana: 'hòumiàn',   de: 'hinten',      type: 'mod' },
+        { id: 'outside',   kanji: '外',   kana: 'wài',       de: 'draussen',    type: 'mod' },
+        { id: 'please',    kanji: '请',   kana: 'qǐng',      de: 'bitte',       type: 'mod' },
+        { id: 'thanks',    kanji: '谢谢', kana: 'xièxie',    de: 'danke',       type: 'mod' },
+        { id: 'expensive', kanji: '贵',   kana: 'guì',       de: 'teuer',       type: 'mod' },
+        { id: 'cheap',     kanji: '便宜', kana: 'piányi',    de: 'billig',      type: 'mod' },
+        { id: 'busy',      kanji: '忙',   kana: 'máng',      de: 'beschaeftigt', type: 'mod' },
+        { id: 'really',    kanji: '真',   kana: 'zhēn',      de: 'wirklich',    type: 'mod' },
+        { id: 'extremely', kanji: '非常', kana: 'fēicháng',  de: 'sehr',        type: 'mod' },
+        { id: 'together',  kanji: '一起', kana: 'yìqǐ',      de: 'zusammen',    type: 'mod' },
+        { id: 'glad',      kanji: '高兴', kana: 'gāoxìng',   de: 'froh',        type: 'mod' },
+        { id: 'joyful',    kanji: '快乐', kana: 'kuàilè',    de: 'gluecklich',  type: 'mod' },
         // ── Expansion: Numbers (HSK 1) ──
-        { id: 'one',       hanzi: '一',   pinyin: 'yī',        de: 'eins',        type: 'mod' },
-        { id: 'two',       hanzi: '二',   pinyin: 'èr',        de: 'zwei',        type: 'mod' },
-        { id: 'three',     hanzi: '三',   pinyin: 'sān',       de: 'drei',        type: 'mod' },
-        { id: 'four',      hanzi: '四',   pinyin: 'sì',        de: 'vier',        type: 'mod' },
-        { id: 'five',      hanzi: '五',   pinyin: 'wǔ',        de: 'fuenf',       type: 'mod' },
-        { id: 'six',       hanzi: '六',   pinyin: 'liù',       de: 'sechs',       type: 'mod' },
-        { id: 'seven',     hanzi: '七',   pinyin: 'qī',        de: 'sieben',      type: 'mod' },
-        { id: 'eight',     hanzi: '八',   pinyin: 'bā',        de: 'acht',        type: 'mod' },
-        { id: 'nine',      hanzi: '九',   pinyin: 'jiǔ',       de: 'neun',        type: 'mod' },
-        { id: 'ten',       hanzi: '十',   pinyin: 'shí',       de: 'zehn',        type: 'mod' },
-        { id: 'hundred',   hanzi: '百',   pinyin: 'bǎi',       de: 'hundert',     type: 'mod' },
+        { id: 'one',       kanji: '一',   kana: 'yī',        de: 'eins',        type: 'mod' },
+        { id: 'two',       kanji: '二',   kana: 'èr',        de: 'zwei',        type: 'mod' },
+        { id: 'three',     kanji: '三',   kana: 'sān',       de: 'drei',        type: 'mod' },
+        { id: 'four',      kanji: '四',   kana: 'sì',        de: 'vier',        type: 'mod' },
+        { id: 'five',      kanji: '五',   kana: 'wǔ',        de: 'fuenf',       type: 'mod' },
+        { id: 'six',       kanji: '六',   kana: 'liù',       de: 'sechs',       type: 'mod' },
+        { id: 'seven',     kanji: '七',   kana: 'qī',        de: 'sieben',      type: 'mod' },
+        { id: 'eight',     kanji: '八',   kana: 'bā',        de: 'acht',        type: 'mod' },
+        { id: 'nine',      kanji: '九',   kana: 'jiǔ',       de: 'neun',        type: 'mod' },
+        { id: 'ten',       kanji: '十',   kana: 'shí',       de: 'zehn',        type: 'mod' },
+        { id: 'hundred',   kanji: '百',   kana: 'bǎi',       de: 'hundert',     type: 'mod' },
         // ── Expansion: Social Phrases (HSK 1-2) ──
-        { id: 'hello',     hanzi: '你好', pinyin: 'nǐhǎo',     de: 'hallo',       type: 'mod' },
-        { id: 'goodbye',   hanzi: '再见', pinyin: 'zàijiàn',   de: 'tschuess',    type: 'mod' },
-        { id: 'sorry',     hanzi: '对不起', pinyin: 'duìbuqǐ',  de: 'Entschuldigung', type: 'mod' },
-        { id: 'nevermind', hanzi: '没关系', pinyin: 'méiguānxi', de: 'macht nichts', type: 'mod' },
-        { id: 'yourewelcome', hanzi: '不客气', pinyin: 'búkèqi', de: 'gern geschehen', type: 'mod' },
-        { id: 'welcome',   hanzi: '欢迎', pinyin: 'huānyíng',  de: 'willkommen',  type: 'mod' },
-        { id: 'careful',   hanzi: '小心', pinyin: 'xiǎoxīn',   de: 'Vorsicht',    type: 'mod' },
-        { id: 'goforit',   hanzi: '加油', pinyin: 'jiāyóu',    de: 'Los!',        type: 'mod' },
+        { id: 'hello',     kanji: '你好', kana: 'nǐhǎo',     de: 'hallo',       type: 'mod' },
+        { id: 'goodbye',   kanji: '再见', kana: 'zàijiàn',   de: 'tschuess',    type: 'mod' },
+        { id: 'sorry',     kanji: '对不起', kana: 'duìbuqǐ',  de: 'Entschuldigung', type: 'mod' },
+        { id: 'nevermind', kanji: '没关系', kana: 'méiguānxi', de: 'macht nichts', type: 'mod' },
+        { id: 'yourewelcome', kanji: '不客气', kana: 'búkèqi', de: 'gern geschehen', type: 'mod' },
+        { id: 'welcome',   kanji: '欢迎', kana: 'huānyíng',  de: 'willkommen',  type: 'mod' },
+        { id: 'careful',   kanji: '小心', kana: 'xiǎoxīn',   de: 'Vorsicht',    type: 'mod' },
+        { id: 'goforit',   kanji: '加油', kana: 'jiāyóu',    de: 'Los!',        type: 'mod' },
         // ── Grammar Particles (structural) ──
-        { id: 'de_poss',   hanzi: '的', pinyin: 'de',  de: '(Besitz)',     type: 'particle' },
-        { id: 'le_perf',   hanzi: '了', pinyin: 'le',  de: '(abgeschl.)',  type: 'particle' },
-        { id: 'ma_q',      hanzi: '吗', pinyin: 'ma',  de: '(Frage)',      type: 'particle' },
-        { id: 'ne_q',      hanzi: '呢', pinyin: 'ne',  de: '(und du?)',    type: 'particle' },
-        { id: 'de_comp',   hanzi: '得', pinyin: 'de',  de: '(Grad)',       type: 'particle' },
-        { id: 'zhe_dur',   hanzi: '着', pinyin: 'zhe', de: '(andauernd)',  type: 'particle' },
-        { id: 'guo_exp',   hanzi: '过', pinyin: 'guo', de: '(Erfahrung)', type: 'particle' },
-        { id: 'zai_prog',  hanzi: '在', pinyin: 'zài', de: '(gerade)',    type: 'particle' },
-        { id: 'mei_neg',   hanzi: '没', pinyin: 'méi', de: '(nicht/kein)', type: 'particle' },
-        { id: 'ba_disp',   hanzi: '把', pinyin: 'bǎ',  de: '(Objekt-VZ)', type: 'particle' },
-        { id: 'a_mood',    hanzi: '啊', pinyin: 'a',   de: '(Ausruf)',    type: 'particle' },
-        { id: 'ba_sug',    hanzi: '吧', pinyin: 'ba',  de: '(Vorschlag)', type: 'particle' },
-        { id: 'la_mood',   hanzi: '啦', pinyin: 'la',  de: '(Freude)',    type: 'particle' },
-        { id: 'dou_all',   hanzi: '都', pinyin: 'dōu', de: '(alle)',      type: 'particle' },
-        { id: 'jiu_then',  hanzi: '就', pinyin: 'jiù', de: '(dann/gleich)', type: 'particle' },
-        { id: 'zai_again', hanzi: '再', pinyin: 'zài', de: '(nochmal)',   type: 'particle' },
+        { id: 'de_poss',   kanji: '的', kana: 'de',  de: '(Besitz)',     type: 'particle' },
+        { id: 'le_perf',   kanji: '了', kana: 'le',  de: '(abgeschl.)',  type: 'particle' },
+        { id: 'ma_q',      kanji: '吗', kana: 'ma',  de: '(Frage)',      type: 'particle' },
+        { id: 'ne_q',      kanji: '呢', kana: 'ne',  de: '(und du?)',    type: 'particle' },
+        { id: 'de_comp',   kanji: '得', kana: 'de',  de: '(Grad)',       type: 'particle' },
+        { id: 'zhe_dur',   kanji: '着', kana: 'zhe', de: '(andauernd)',  type: 'particle' },
+        { id: 'guo_exp',   kanji: '过', kana: 'guo', de: '(Erfahrung)', type: 'particle' },
+        { id: 'zai_prog',  kanji: '在', kana: 'zài', de: '(gerade)',    type: 'particle' },
+        { id: 'mei_neg',   kanji: '没', kana: 'méi', de: '(nicht/kein)', type: 'particle' },
+        { id: 'ba_disp',   kanji: '把', kana: 'bǎ',  de: '(Objekt-VZ)', type: 'particle' },
+        { id: 'a_mood',    kanji: '啊', kana: 'a',   de: '(Ausruf)',    type: 'particle' },
+        { id: 'ba_sug',    kanji: '吧', kana: 'ba',  de: '(Vorschlag)', type: 'particle' },
+        { id: 'la_mood',   kanji: '啦', kana: 'la',  de: '(Freude)',    type: 'particle' },
+        { id: 'dou_all',   kanji: '都', kana: 'dōu', de: '(alle)',      type: 'particle' },
+        { id: 'jiu_then',  kanji: '就', kana: 'jiù', de: '(dann/gleich)', type: 'particle' },
+        { id: 'zai_again', kanji: '再', kana: 'zài', de: '(nochmal)',   type: 'particle' },
         // ── Expansion: Grammar & Function Words (HSK 1-2) ──
-        { id: 'and',       hanzi: '和',   pinyin: 'hé',        de: 'und',         type: 'mod' },
-        { id: 'but',       hanzi: '但是', pinyin: 'dànshì',    de: 'aber',        type: 'mod' },
-        { id: 'because',   hanzi: '因为', pinyin: 'yīnwèi',    de: 'weil',        type: 'mod' },
-        { id: 'therefore', hanzi: '所以', pinyin: 'suǒyǐ',     de: 'deshalb',     type: 'mod' },
-        { id: 'if',        hanzi: '如果', pinyin: 'rúguǒ',     de: 'wenn/falls',  type: 'mod' },
-        { id: 'may',       hanzi: '可以', pinyin: 'kěyǐ',      de: 'duerfen',     type: 'mod' },
-        { id: 'will',      hanzi: '会',   pinyin: 'huì',       de: 'werden',      type: 'mod' },
-        { id: 'should',    hanzi: '应该', pinyin: 'yīnggāi',   de: 'sollen',      type: 'mod' },
-        { id: 'why',       hanzi: '为什么', pinyin: 'wèishénme', de: 'warum',      type: 'pronoun' },
-        { id: 'how',       hanzi: '怎么', pinyin: 'zěnme',     de: 'wie',         type: 'pronoun' },
-        { id: 'howmany',   hanzi: '多少', pinyin: 'duōshǎo',   de: 'wieviel',     type: 'pronoun' },
-        { id: 'howmany2',  hanzi: '几',   pinyin: 'jǐ',        de: 'wie viele',   type: 'pronoun' },
+        { id: 'and',       kanji: '和',   kana: 'hé',        de: 'und',         type: 'mod' },
+        { id: 'but',       kanji: '但是', kana: 'dànshì',    de: 'aber',        type: 'mod' },
+        { id: 'because',   kanji: '因为', kana: 'yīnwèi',    de: 'weil',        type: 'mod' },
+        { id: 'therefore', kanji: '所以', kana: 'suǒyǐ',     de: 'deshalb',     type: 'mod' },
+        { id: 'if',        kanji: '如果', kana: 'rúguǒ',     de: 'wenn/falls',  type: 'mod' },
+        { id: 'may',       kanji: '可以', kana: 'kěyǐ',      de: 'duerfen',     type: 'mod' },
+        { id: 'will',      kanji: '会',   kana: 'huì',       de: 'werden',      type: 'mod' },
+        { id: 'should',    kanji: '应该', kana: 'yīnggāi',   de: 'sollen',      type: 'mod' },
+        { id: 'why',       kanji: '为什么', kana: 'wèishénme', de: 'warum',      type: 'pronoun' },
+        { id: 'how',       kanji: '怎么', kana: 'zěnme',     de: 'wie',         type: 'pronoun' },
+        { id: 'howmany',   kanji: '多少', kana: 'duōshǎo',   de: 'wieviel',     type: 'pronoun' },
+        { id: 'howmany2',  kanji: '几',   kana: 'jǐ',        de: 'wie viele',   type: 'pronoun' },
         // ── Expansion: More Verbs (HSK 1-3) ──
-        { id: 'getup',     hanzi: '起床', pinyin: 'qǐchuáng',  de: 'aufstehen',   type: 'verb' },
-        { id: 'gotosleep', hanzi: '睡觉', pinyin: 'shuìjiào',  de: 'schlafen gehen', type: 'verb' },
-        { id: 'putdown',   hanzi: '放',   pinyin: 'fàng',      de: 'stellen',     type: 'verb' },
-        { id: 'pull',      hanzi: '拉',   pinyin: 'lā',        de: 'ziehen',      type: 'verb' },
-        { id: 'push',      hanzi: '推',   pinyin: 'tuī',       de: 'schieben',    type: 'verb' },
-        { id: 'haul',      hanzi: '搬',   pinyin: 'bān',       de: 'schleppen',   type: 'verb' },
-        { id: 'hangup',    hanzi: '挂',   pinyin: 'guà',       de: 'aufhaengen',  type: 'verb' },
-        { id: 'sundry',    hanzi: '晒',   pinyin: 'shài',      de: 'sonnentrocknen', type: 'verb' },
-        { id: 'burn',      hanzi: '烧',   pinyin: 'shāo',      de: 'verbrennen',  type: 'verb' },
-        { id: 'drop',      hanzi: '掉',   pinyin: 'diào',      de: 'fallen lassen', type: 'verb' },
-        { id: 'change',    hanzi: '变',   pinyin: 'biàn',      de: 'veraendern',  type: 'verb' },
-        { id: 'try',       hanzi: '试',   pinyin: 'shì',       de: 'versuchen',   type: 'verb' },
-        { id: 'borrow',    hanzi: '借',   pinyin: 'jiè',       de: 'leihen',      type: 'verb' },
-        { id: 'giveback',  hanzi: '还',   pinyin: 'huán',      de: 'zurueckgeben', type: 'verb' },
-        { id: 'meetknow',  hanzi: '认识', pinyin: 'rènshi',    de: 'kennenlernen', type: 'verb' },
-        { id: 'compete',   hanzi: '比赛', pinyin: 'bǐsài',     de: 'Wettbewerb',  type: 'verb' },
-        { id: 'belate',    hanzi: '迟到', pinyin: 'chídào',    de: 'zu spaet kommen', type: 'verb' },
-        { id: 'cleanup',   hanzi: '打扫', pinyin: 'dǎsǎo',     de: 'sauber machen', type: 'verb' },
+        { id: 'getup',     kanji: '起床', kana: 'qǐchuáng',  de: 'aufstehen',   type: 'verb' },
+        { id: 'gotosleep', kanji: '睡觉', kana: 'shuìjiào',  de: 'schlafen gehen', type: 'verb' },
+        { id: 'putdown',   kanji: '放',   kana: 'fàng',      de: 'stellen',     type: 'verb' },
+        { id: 'pull',      kanji: '拉',   kana: 'lā',        de: 'ziehen',      type: 'verb' },
+        { id: 'push',      kanji: '推',   kana: 'tuī',       de: 'schieben',    type: 'verb' },
+        { id: 'haul',      kanji: '搬',   kana: 'bān',       de: 'schleppen',   type: 'verb' },
+        { id: 'hangup',    kanji: '挂',   kana: 'guà',       de: 'aufhaengen',  type: 'verb' },
+        { id: 'sundry',    kanji: '晒',   kana: 'shài',      de: 'sonnentrocknen', type: 'verb' },
+        { id: 'burn',      kanji: '烧',   kana: 'shāo',      de: 'verbrennen',  type: 'verb' },
+        { id: 'drop',      kanji: '掉',   kana: 'diào',      de: 'fallen lassen', type: 'verb' },
+        { id: 'change',    kanji: '变',   kana: 'biàn',      de: 'veraendern',  type: 'verb' },
+        { id: 'try',       kanji: '试',   kana: 'shì',       de: 'versuchen',   type: 'verb' },
+        { id: 'borrow',    kanji: '借',   kana: 'jiè',       de: 'leihen',      type: 'verb' },
+        { id: 'giveback',  kanji: '还',   kana: 'huán',      de: 'zurueckgeben', type: 'verb' },
+        { id: 'meetknow',  kanji: '认识', kana: 'rènshi',    de: 'kennenlernen', type: 'verb' },
+        { id: 'compete',   kanji: '比赛', kana: 'bǐsài',     de: 'Wettbewerb',  type: 'verb' },
+        { id: 'belate',    kanji: '迟到', kana: 'chídào',    de: 'zu spaet kommen', type: 'verb' },
+        { id: 'cleanup',   kanji: '打扫', kana: 'dǎsǎo',     de: 'sauber machen', type: 'verb' },
         // ── Expansion: Emotions & States (HSK 1-3) ──
-        { id: 'angry',     hanzi: '生气', pinyin: 'shēngqì',   de: 'wuetend',     type: 'mod' },
-        { id: 'afraid',    hanzi: '害怕', pinyin: 'hàipà',     de: 'Angst haben', type: 'mod' },
-        { id: 'worried',   hanzi: '担心', pinyin: 'dānxīn',    de: 'sich sorgen', type: 'mod' },
-        { id: 'sad',       hanzi: '难过', pinyin: 'nánguò',    de: 'traurig',     type: 'mod' },
-        { id: 'anxious',   hanzi: '着急', pinyin: 'zháojí',    de: 'eilig',       type: 'mod' },
-        { id: 'bored',     hanzi: '无聊', pinyin: 'wúliáo',    de: 'langweilig',  type: 'mod' },
-        { id: 'comfy',     hanzi: '舒服', pinyin: 'shūfu',     de: 'bequem',      type: 'mod' },
-        { id: 'thirsty',   hanzi: '渴',   pinyin: 'kě',        de: 'durstig',     type: 'mod' },
-        { id: 'sleepy',    hanzi: '困',   pinyin: 'kùn',       de: 'schlaefrig',  type: 'mod' },
+        { id: 'angry',     kanji: '生气', kana: 'shēngqì',   de: 'wuetend',     type: 'mod' },
+        { id: 'afraid',    kanji: '害怕', kana: 'hàipà',     de: 'Angst haben', type: 'mod' },
+        { id: 'worried',   kanji: '担心', kana: 'dānxīn',    de: 'sich sorgen', type: 'mod' },
+        { id: 'sad',       kanji: '难过', kana: 'nánguò',    de: 'traurig',     type: 'mod' },
+        { id: 'anxious',   kanji: '着急', kana: 'zháojí',    de: 'eilig',       type: 'mod' },
+        { id: 'bored',     kanji: '无聊', kana: 'wúliáo',    de: 'langweilig',  type: 'mod' },
+        { id: 'comfy',     kanji: '舒服', kana: 'shūfu',     de: 'bequem',      type: 'mod' },
+        { id: 'thirsty',   kanji: '渴',   kana: 'kě',        de: 'durstig',     type: 'mod' },
+        { id: 'sleepy',    kanji: '困',   kana: 'kùn',       de: 'schlaefrig',  type: 'mod' },
         // ── Expansion: Senses & Properties (HSK 1-3) ──
-        { id: 'fragrant',  hanzi: '香',   pinyin: 'xiāng',     de: 'duftend',     type: 'mod' },
-        { id: 'stinky',    hanzi: '臭',   pinyin: 'chòu',      de: 'stinkend',    type: 'mod' },
-        { id: 'thick',     hanzi: '厚',   pinyin: 'hòu',       de: 'dick',        type: 'mod' },
-        { id: 'thin2',     hanzi: '薄',   pinyin: 'báo',       de: 'duenn',       type: 'mod' },
-        { id: 'wide',      hanzi: '宽',   pinyin: 'kuān',      de: 'breit',       type: 'mod' },
-        { id: 'narrow',    hanzi: '窄',   pinyin: 'zhǎi',      de: 'eng',         type: 'mod' },
-        { id: 'full2',     hanzi: '满',   pinyin: 'mǎn',       de: 'voll',        type: 'mod' },
-        { id: 'empty',     hanzi: '空',   pinyin: 'kōng',      de: 'leer',        type: 'mod' },
-        { id: 'warm',      hanzi: '暖',   pinyin: 'nuǎn',      de: 'warm',        type: 'mod' },
+        { id: 'fragrant',  kanji: '香',   kana: 'xiāng',     de: 'duftend',     type: 'mod' },
+        { id: 'stinky',    kanji: '臭',   kana: 'chòu',      de: 'stinkend',    type: 'mod' },
+        { id: 'thick',     kanji: '厚',   kana: 'hòu',       de: 'dick',        type: 'mod' },
+        { id: 'thin2',     kanji: '薄',   kana: 'báo',       de: 'duenn',       type: 'mod' },
+        { id: 'wide',      kanji: '宽',   kana: 'kuān',      de: 'breit',       type: 'mod' },
+        { id: 'narrow',    kanji: '窄',   kana: 'zhǎi',      de: 'eng',         type: 'mod' },
+        { id: 'full2',     kanji: '满',   kana: 'mǎn',       de: 'voll',        type: 'mod' },
+        { id: 'empty',     kanji: '空',   kana: 'kōng',      de: 'leer',        type: 'mod' },
+        { id: 'warm',      kanji: '暖',   kana: 'nuǎn',      de: 'warm',        type: 'mod' },
         // ── Expansion: Nature & Environment (HSK 1-3) ──
-        { id: 'insect',    hanzi: '虫',   pinyin: 'chóng',     de: 'Insekt',      type: 'noun' },
-        { id: 'snake',     hanzi: '蛇',   pinyin: 'shé',       de: 'Schlange',    type: 'noun' },
-        { id: 'ice',       hanzi: '冰',   pinyin: 'bīng',      de: 'Eis',         type: 'noun' },
-        { id: 'mist',      hanzi: '雾',   pinyin: 'wù',        de: 'Nebel',       type: 'noun' },
-        { id: 'pine',      hanzi: '松',   pinyin: 'sōng',      de: 'Kiefer',      type: 'noun' },
-        { id: 'shore',     hanzi: '岸',   pinyin: 'àn',        de: 'Ufer',        type: 'noun' },
-        { id: 'shadow',    hanzi: '影子', pinyin: 'yǐngzi',    de: 'Schatten',    type: 'noun' },
-        { id: 'sound',     hanzi: '声音', pinyin: 'shēngyīn',  de: 'Geraeusch',   type: 'noun' },
+        { id: 'insect',    kanji: '虫',   kana: 'chóng',     de: 'Insekt',      type: 'noun' },
+        { id: 'snake',     kanji: '蛇',   kana: 'shé',       de: 'Schlange',    type: 'noun' },
+        { id: 'ice',       kanji: '冰',   kana: 'bīng',      de: 'Eis',         type: 'noun' },
+        { id: 'mist',      kanji: '雾',   kana: 'wù',        de: 'Nebel',       type: 'noun' },
+        { id: 'pine',      kanji: '松',   kana: 'sōng',      de: 'Kiefer',      type: 'noun' },
+        { id: 'shore',     kanji: '岸',   kana: 'àn',        de: 'Ufer',        type: 'noun' },
+        { id: 'shadow',    kanji: '影子', kana: 'yǐngzi',    de: 'Schatten',    type: 'noun' },
+        { id: 'sound',     kanji: '声音', kana: 'shēngyīn',  de: 'Geraeusch',   type: 'noun' },
         // ── Expansion: Abstract Nouns (HSK 1-3) ──
-        { id: 'taste',     hanzi: '味道', pinyin: 'wèidào',    de: 'Geschmack',   type: 'noun' },
-        { id: 'dream',     hanzi: '梦',   pinyin: 'mèng',      de: 'Traum',       type: 'noun' },
-        { id: 'strength',  hanzi: '力气', pinyin: 'lìqi',      de: 'Kraft',       type: 'noun' },
-        { id: 'gift',      hanzi: '礼物', pinyin: 'lǐwù',      de: 'Geschenk',    type: 'noun' },
-        { id: 'news',      hanzi: '消息', pinyin: 'xiāoxi',    de: 'Nachricht',   type: 'noun' },
-        { id: 'method',    hanzi: '办法', pinyin: 'bànfǎ',     de: 'Methode',     type: 'noun' },
-        { id: 'secret',    hanzi: '秘密', pinyin: 'mìmì',      de: 'Geheimnis',   type: 'noun' },
-        { id: 'meaning',   hanzi: '意思', pinyin: 'yìsi',      de: 'Bedeutung',   type: 'noun' },
-        { id: 'habit',     hanzi: '习惯', pinyin: 'xíguàn',    de: 'Gewohnheit',  type: 'noun' },
+        { id: 'taste',     kanji: '味道', kana: 'wèidào',    de: 'Geschmack',   type: 'noun' },
+        { id: 'dream',     kanji: '梦',   kana: 'mèng',      de: 'Traum',       type: 'noun' },
+        { id: 'strength',  kanji: '力气', kana: 'lìqi',      de: 'Kraft',       type: 'noun' },
+        { id: 'gift',      kanji: '礼物', kana: 'lǐwù',      de: 'Geschenk',    type: 'noun' },
+        { id: 'news',      kanji: '消息', kana: 'xiāoxi',    de: 'Nachricht',   type: 'noun' },
+        { id: 'method',    kanji: '办法', kana: 'bànfǎ',     de: 'Methode',     type: 'noun' },
+        { id: 'secret',    kanji: '秘密', kana: 'mìmì',      de: 'Geheimnis',   type: 'noun' },
+        { id: 'meaning',   kanji: '意思', kana: 'yìsi',      de: 'Bedeutung',   type: 'noun' },
+        { id: 'habit',     kanji: '习惯', kana: 'xíguàn',    de: 'Gewohnheit',  type: 'noun' },
         // ── Expansion: Object-coverage vocab ──
-        { id: 'well2',     hanzi: '井',   pinyin: 'jǐng',      de: 'Brunnen',       type: 'noun' },
-        { id: 'wish',      hanzi: '愿',   pinyin: 'yuàn',      de: 'Wunsch',        type: 'noun' },
-        { id: 'god',       hanzi: '神',   pinyin: 'shén',      de: 'Gott',          type: 'noun' },
-        { id: 'incense',   hanzi: '香',   pinyin: 'xiāng',     de: 'Raeucherwerk',  type: 'noun' },
-        { id: 'bell',      hanzi: '钟',   pinyin: 'zhōng',     de: 'Glocke',        type: 'noun' },
-        { id: 'net',       hanzi: '网',   pinyin: 'wǎng',      de: 'Netz',          type: 'noun' },
-        { id: 'sail',      hanzi: '帆',   pinyin: 'fān',       de: 'Segel',         type: 'noun' },
-        { id: 'poem',      hanzi: '诗',   pinyin: 'shī',       de: 'Gedicht',       type: 'noun' },
-        { id: 'grain',     hanzi: '谷',   pinyin: 'gǔ',        de: 'Korn',          type: 'noun' },
-        { id: 'harvest',   hanzi: '收',   pinyin: 'shōu',      de: 'ernten',        type: 'verb' },
-        { id: 'hang',      hanzi: '挂',   pinyin: 'guà',       de: 'aufhaengen',    type: 'verb' },
-        { id: 'pray',      hanzi: '拜',   pinyin: 'bài',       de: 'beten',         type: 'verb' },
-        { id: 'float',     hanzi: '浮',   pinyin: 'fú',        de: 'schweben',      type: 'verb' },
-        { id: 'blow',      hanzi: '吹',   pinyin: 'chuī',      de: 'blasen',        type: 'verb' },
-        { id: 'wet',       hanzi: '湿',   pinyin: 'shī',       de: 'nass',          type: 'mod' },
+        { id: 'well2',     kanji: '井',   kana: 'jǐng',      de: 'Brunnen',       type: 'noun' },
+        { id: 'wish',      kanji: '愿',   kana: 'yuàn',      de: 'Wunsch',        type: 'noun' },
+        { id: 'god',       kanji: '神',   kana: 'shén',      de: 'Gott',          type: 'noun' },
+        { id: 'incense',   kanji: '香',   kana: 'xiāng',     de: 'Raeucherwerk',  type: 'noun' },
+        { id: 'bell',      kanji: '钟',   kana: 'zhōng',     de: 'Glocke',        type: 'noun' },
+        { id: 'net',       kanji: '网',   kana: 'wǎng',      de: 'Netz',          type: 'noun' },
+        { id: 'sail',      kanji: '帆',   kana: 'fān',       de: 'Segel',         type: 'noun' },
+        { id: 'poem',      kanji: '诗',   kana: 'shī',       de: 'Gedicht',       type: 'noun' },
+        { id: 'grain',     kanji: '谷',   kana: 'gǔ',        de: 'Korn',          type: 'noun' },
+        { id: 'harvest',   kanji: '收',   kana: 'shōu',      de: 'ernten',        type: 'verb' },
+        { id: 'hang',      kanji: '挂',   kana: 'guà',       de: 'aufhaengen',    type: 'verb' },
+        { id: 'pray',      kanji: '拜',   kana: 'bài',       de: 'beten',         type: 'verb' },
+        { id: 'float',     kanji: '浮',   kana: 'fú',        de: 'schweben',      type: 'verb' },
+        { id: 'blow',      kanji: '吹',   kana: 'chuī',      de: 'blasen',        type: 'verb' },
+        { id: 'wet',       kanji: '湿',   kana: 'shī',       de: 'nass',          type: 'mod' },
         // ── Festival vocab ──
-        { id: 'festival',  hanzi: '节',   pinyin: 'jié',       de: 'Fest',          type: 'noun' },
-        { id: 'dragon',    hanzi: '龙',   pinyin: 'lóng',      de: 'Drache',        type: 'noun' },
-        { id: 'mooncake',  hanzi: '月饼', pinyin: 'yuèbǐng',   de: 'Mondkuchen',    type: 'noun' },
-        { id: 'celebrate', hanzi: '庆祝', pinyin: 'qìngzhù',   de: 'feiern',        type: 'verb' },
-        { id: 'lucky',     hanzi: '福',   pinyin: 'fú',        de: 'Glueck',        type: 'noun' },
-        { id: 'together2', hanzi: '团圆', pinyin: 'tuányuán',   de: 'Wiedersehen',   type: 'noun' },
+        { id: 'festival',  kanji: '节',   kana: 'jié',       de: 'Fest',          type: 'noun' },
+        { id: 'dragon',    kanji: '龙',   kana: 'lóng',      de: 'Drache',        type: 'noun' },
+        { id: 'mooncake',  kanji: '月饼', kana: 'yuèbǐng',   de: 'Mondkuchen',    type: 'noun' },
+        { id: 'celebrate', kanji: '庆祝', kana: 'qìngzhù',   de: 'feiern',        type: 'verb' },
+        { id: 'lucky',     kanji: '福',   kana: 'fú',        de: 'Glueck',        type: 'noun' },
+        { id: 'together2', kanji: '团圆', kana: 'tuányuán',   de: 'Wiedersehen',   type: 'noun' },
     ];
 
     function buildVocab() {
         const v = {};
         for (const c of VOCABULARY) {
-            v[c.id] = { hanzi: c.hanzi, pinyin: c.pinyin, de: c.de, type: c.type };
+            v[c.id] = { kanji: c.kanji, kana: c.kana, de: c.de, type: c.type };
         }
         return v;
     }
@@ -2554,35 +2554,35 @@
     //  WORLD OBJECTS
     // ============================================================
     const OBJECT_DEFS = [
-        { id: 'house1',     type: 'house',       x: 180, y: 200, w: 80, h: 60, label: '房子',   pinyin: 'fángzi' },
-        { id: 'house2',     type: 'house',       x: 600, y: 180, w: 80, h: 60, label: '房子',   pinyin: 'fángzi' },
-        { id: 'teahouse1',  type: 'teahouse',    x: 400, y: 250, w: 90, h: 65, label: '茶馆',   pinyin: 'cháguǎn' },
-        { id: 'market1',    type: 'market',       x: 300, y: 340, w: 70, h: 50, label: '市场',   pinyin: 'shìchǎng' },
-        { id: 'well1',      type: 'well',         x: 480, y: 350, w: 35, h: 35, label: '井',     pinyin: 'jǐng' },
-        { id: 'bridge1',    type: 'bridge',       x: 750, y: 400, w: 90, h: 50, label: '桥',     pinyin: 'qiáo' },
-        { id: 'pagoda1',    type: 'pagoda',       x: 835, y: 140, w: 50, h: 80, label: '塔',     pinyin: 'tǎ' },
-        { id: 'gate1',      type: 'gate',         x: 100, y: 300, w: 50, h: 60, label: '门',     pinyin: 'mén' },
-        { id: 'bamboo1',    type: 'bamboo',       x: 60,  y: 200, w: 40, h: 70, label: '竹',     pinyin: 'zhú' },
-        { id: 'bamboo2',    type: 'bamboo',       x: 850, y: 450, w: 40, h: 70, label: '竹',     pinyin: 'zhú' },
-        { id: 'garden1',    type: 'garden',        x: 250, y: 450, w: 60, h: 45, label: '花园',   pinyin: 'huāyuán' },
-        { id: 'kitchen1',   type: 'kitchen',      x: 350, y: 180, w: 50, h: 40, label: '厨房',   pinyin: 'chúfáng' },
-        { id: 'workshop1',  type: 'workshop',     x: 500, y: 150, w: 55, h: 40, label: '书房',   pinyin: 'shūfáng' },
-        { id: 'fish_pond1', type: 'fish_pond',    x: 180, y: 520, w: 45, h: 35, label: '鱼塘',   pinyin: 'yútáng' },
-        { id: 'shrine1',    type: 'shrine',       x: 150, y: 450, w: 40, h: 50, label: '神龛',   pinyin: 'shénkān' },
-        { id: 'lantern1',   type: 'lantern_post', x: 440, y: 180, w: 15, h: 35, label: '灯',     pinyin: 'dēng' },
-        { id: 'rice1',      type: 'rice_paddy',   x: 560, y: 560, w: 60, h: 45, label: '稻田',   pinyin: 'dàotián' },
-        { id: 'river1',     type: 'river',        x: 420, y: 560, w: 70, h: 50, label: '河',     pinyin: 'hé' },
-        { id: 'dock1',      type: 'dock',         x: 720, y: 530, w: 40, h: 30, label: '码头',   pinyin: 'mǎtou' },
-        { id: 'lotus1',     type: 'lotus_pond',   x: 120, y: 530, w: 50, h: 35, label: '莲池',   pinyin: 'liánchí' },
-        { id: 'flower1',    type: 'flower',       x: 200, y: 380, w: 30, h: 30, label: '花',     pinyin: 'huā' },
-        { id: 'tree1',      type: 'willow',       x: 650, y: 350, w: 45, h: 65, label: '柳树',   pinyin: 'liǔshù' },
-        { id: 'tree2',      type: 'willow',       x: 130, y: 140, w: 45, h: 65, label: '柳树',   pinyin: 'liǔshù' },
+        { id: 'house1',     type: 'house',       x: 180, y: 200, w: 80, h: 60, label: '家',     romaji: 'ie' },
+        { id: 'house2',     type: 'house',       x: 600, y: 180, w: 80, h: 60, label: '家',     romaji: 'ie' },
+        { id: 'teahouse1',  type: 'teahouse',    x: 400, y: 250, w: 90, h: 65, label: '茶屋',   romaji: 'chaya' },
+        { id: 'market1',    type: 'market',       x: 300, y: 340, w: 70, h: 50, label: '市場',   romaji: 'ichiba' },
+        { id: 'well1',      type: 'well',         x: 480, y: 350, w: 35, h: 35, label: '井戸',   romaji: 'ido' },
+        { id: 'bridge1',    type: 'bridge',       x: 750, y: 400, w: 90, h: 50, label: '橋',     romaji: 'hashi' },
+        { id: 'pagoda1',    type: 'pagoda',       x: 835, y: 140, w: 50, h: 80, label: '五重塔', romaji: 'gojuunotou' },
+        { id: 'gate1',      type: 'torii',        x: 100, y: 300, w: 50, h: 60, label: '鳥居',   romaji: 'torii' },
+        { id: 'bamboo1',    type: 'bamboo',       x: 60,  y: 200, w: 40, h: 70, label: '竹',     romaji: 'take' },
+        { id: 'bamboo2',    type: 'bamboo',       x: 850, y: 450, w: 40, h: 70, label: '竹',     romaji: 'take' },
+        { id: 'garden1',    type: 'garden',        x: 250, y: 450, w: 60, h: 45, label: '庭園',   romaji: 'teien' },
+        { id: 'kitchen1',   type: 'kitchen',      x: 350, y: 180, w: 50, h: 40, label: '台所',   romaji: 'daidokoro' },
+        { id: 'workshop1',  type: 'workshop',     x: 500, y: 150, w: 55, h: 40, label: '書院',   romaji: 'shoin' },
+        { id: 'fish_pond1', type: 'fish_pond',    x: 180, y: 520, w: 45, h: 35, label: '池',     romaji: 'ike' },
+        { id: 'shrine1',    type: 'shrine',       x: 150, y: 450, w: 40, h: 50, label: '神社',   romaji: 'jinja' },
+        { id: 'lantern1',   type: 'lantern_post', x: 440, y: 180, w: 15, h: 35, label: '灯籠',   romaji: 'tourou' },
+        { id: 'rice1',      type: 'rice_paddy',   x: 560, y: 560, w: 60, h: 45, label: '田んぼ', romaji: 'tanbo' },
+        { id: 'river1',     type: 'river',        x: 420, y: 560, w: 70, h: 50, label: '川',     romaji: 'kawa' },
+        { id: 'dock1',      type: 'dock',         x: 720, y: 530, w: 40, h: 30, label: '船着場', romaji: 'funatsukiba' },
+        { id: 'lotus1',     type: 'lotus_pond',   x: 120, y: 530, w: 50, h: 35, label: '蓮池',   romaji: 'hasuchi' },
+        { id: 'flower1',    type: 'flower',       x: 200, y: 380, w: 30, h: 30, label: '花',     romaji: 'hana' },
+        { id: 'tree1',      type: 'willow',       x: 650, y: 350, w: 45, h: 65, label: '柳',     romaji: 'yanagi' },
+        { id: 'tree2',      type: 'willow',       x: 130, y: 140, w: 45, h: 65, label: '柳',     romaji: 'yanagi' },
         // ── East bank (right of bridge) ──
-        { id: 'school1',      type: 'school',       x: 920, y: 220, w: 60, h: 50, label: '学堂',   pinyin: 'xuétáng' },
-        { id: 'medicine1',    type: 'medicine_hut', x: 840, y: 300, w: 55, h: 45, label: '药房',   pinyin: 'yàofáng' },
-        { id: 'stable1',      type: 'stable',       x: 920, y: 380, w: 50, h: 40, label: '马厩',   pinyin: 'mǎjiù' },
-        { id: 'tea_terrace1', type: 'tea_terrace',  x: 920, y: 520, w: 50, h: 35, label: '晒茶台', pinyin: 'shàichátái' },
-        { id: 'viewpoint1',   type: 'viewpoint',    x: 855, y: 590, w: 40, h: 35, label: '观景台', pinyin: 'guānjǐngtái' },
+        { id: 'school1',      type: 'school',       x: 920, y: 220, w: 60, h: 50, label: '寺子屋', romaji: 'terakoya' },
+        { id: 'medicine1',    type: 'medicine_hut', x: 840, y: 300, w: 55, h: 45, label: '薬屋',   romaji: 'kusuriya' },
+        { id: 'stable1',      type: 'stable',       x: 920, y: 380, w: 50, h: 40, label: '厩',     romaji: 'umaya' },
+        { id: 'tea_terrace1', type: 'tea_terrace',  x: 920, y: 520, w: 50, h: 35, label: '茶畑',   romaji: 'chabatake' },
+        { id: 'viewpoint1',   type: 'viewpoint',    x: 855, y: 590, w: 40, h: 35, label: '展望台', romaji: 'tenboudai' },
     ];
 
     // ============================================================
@@ -3742,28 +3742,28 @@
     ];
 
     // ============================================================
-    //  CHENGYU (成语) SYSTEM — situational four-character idioms
+    //  YOJIJUKUGO (四字熟語) SYSTEM — situational four-character idioms
     // ============================================================
-    const CHENGYU_TRIGGERS = [
-        { id: 'friendship',  chars: '情同手足', pinyin: 'qíng tóng shǒu zú',     de: 'Freunde wie Brueder', check: () => { const r = persons[0].relationships[persons[1].name] || 0; return r >= 60; } },
-        { id: 'hardwork',    chars: '勤劳致富', pinyin: 'qín láo zhì fù',          de: 'Fleiss fuehrt zum Wohlstand', check: () => campMilestonesHit.size >= 5 },
-        { id: 'nature',      chars: '山清水秀', pinyin: 'shān qīng shuǐ xiù',     de: 'Klare Berge, schoenes Wasser', check: () => gameHour >= 6 && gameHour < 8 && currentWeather === 'clear' && Math.random() < 0.0001 },
-        { id: 'persevere',   chars: '锲而不舍', pinyin: 'qiè ér bù shě',          de: 'Beharrlich und unaufhoerlich', check: () => persons[1].knownWords.size >= 80 },
-        { id: 'harmony',     chars: '和气生财', pinyin: 'hé qì shēng cái',         de: 'Harmonie bringt Wohlstand', check: () => npcs.filter(n => (n.relationships[persons[0].name] || 0) > 30).length >= 3 },
-        { id: 'moonlight',   chars: '花好月圆', pinyin: 'huā hǎo yuè yuán',       de: 'Blumen bluehen, Mond ist voll', check: () => gameHour >= 21 && gameDay % 8 === 4 && currentWeather === 'clear' },
-        { id: 'rain',        chars: '风调雨顺', pinyin: 'fēng tiáo yǔ shùn',       de: 'Guter Wind, rechter Regen', check: () => currentWeather === 'rain' && weatherIntensity > 0.5 && Math.random() < 0.0002 },
-        { id: 'village',     chars: '安居乐业', pinyin: 'ān jū lè yè',             de: 'Friedlich wohnen, froh arbeiten', check: () => gameDay >= 15 && persons[1].knownWords.size >= 40 },
+    const YOJIJUKUGO_TRIGGERS = [
+        { id: 'friendship',  chars: '以心伝心', kana: 'いしんでんしん',     de: 'Herz-zu-Herz-Kommunikation', check: () => { const r = persons[0].relationships[persons[1].name] || 0; return r >= 60; } },
+        { id: 'hardwork',    chars: '一所懸命', kana: 'いっしょけんめい',   de: 'Mit aller Kraft arbeiten', check: () => campMilestonesHit.size >= 5 },
+        { id: 'nature',      chars: '花鳥風月', kana: 'かちょうふうげつ',   de: 'Blumen, Voegel, Wind und Mond', check: () => gameHour >= 6 && gameHour < 8 && currentWeather === 'clear' && Math.random() < 0.0001 },
+        { id: 'persevere',   chars: '七転八起', kana: 'ななころびやおき',   de: 'Sieben Mal fallen, acht Mal aufstehen', check: () => persons[1].knownWords.size >= 80 },
+        { id: 'harmony',     chars: '和気藹藹', kana: 'わきあいあい',       de: 'Harmonische Atmosphaere', check: () => npcs.filter(n => (n.relationships[persons[0].name] || 0) > 30).length >= 3 },
+        { id: 'moonlight',   chars: '風光明媚', kana: 'ふうこうめいび',     de: 'Wunderschoene Landschaft', check: () => gameHour >= 21 && gameDay % 8 === 4 && currentWeather === 'clear' },
+        { id: 'rain',        chars: '晴耕雨読', kana: 'せいこううどく',     de: 'Bei Sonne arbeiten, bei Regen lesen', check: () => currentWeather === 'rain' && weatherIntensity > 0.5 && Math.random() < 0.0002 },
+        { id: 'village',     chars: '一期一会', kana: 'いちごいちえ',       de: 'Einmalige Begegnung', check: () => gameDay >= 15 && persons[1].knownWords.size >= 40 },
     ];
-    let chengyuTriggered = new Set();
-    let chengyuOverlay = null;
+    let yojijukugoTriggered = new Set();
+    let yojijukugoOverlay = null;
 
     // ============================================================
-    //  SEASONAL FESTIVALS (节日)
+    //  SEASONAL FESTIVALS (祭り)
     // ============================================================
     const FESTIVALS = [
-        { id: 'lantern',    name: '元宵节', pinyin: 'Yuánxiāo Jié', de: 'Laternenfest',        dayInCycle: 5,  season: 'spring' },
-        { id: 'dragonboat', name: '端午节', pinyin: 'Duānwǔ Jié',   de: 'Drachenbootfest',     dayInCycle: 15, season: 'summer' },
-        { id: 'midautumn',  name: '中秋节', pinyin: 'Zhōngqiū Jié', de: 'Mondfest',            dayInCycle: 25, season: 'autumn' },
+        { id: 'hanami',   name: '花見',   kana: 'はなみ',     romaji: 'Hanami',   de: 'Kirschbluetenfest',  dayInCycle: 5,  season: 'spring' },
+        { id: 'tanabata', name: '七夕',   kana: 'たなばた',   romaji: 'Tanabata', de: 'Sternenfest',        dayInCycle: 15, season: 'summer' },
+        { id: 'tsukimi',  name: '月見',   kana: 'つきみ',     romaji: 'Tsukimi',  de: 'Mondschaufest',      dayInCycle: 25, season: 'autumn' },
     ];
 
     let activeFestival = null;
@@ -3774,7 +3774,7 @@
         const prev = activeFestival;
         activeFestival = FESTIVALS.find(f => f.dayInCycle === dayInCycle) || null;
         if (activeFestival && activeFestival !== prev) {
-            addLog(`🏮 ${activeFestival.name} (${activeFestival.de}) beginnt!`, 'speak');
+            addLog(`🎌 ${activeFestival.name} (${activeFestival.de}) beginnt!`, 'speak');
             festivalParticles = [];
         }
         if (!activeFestival) festivalParticles = [];
@@ -3785,22 +3785,25 @@
         const maxP = 20;
         // Spawn festival-specific particles
         if (festivalParticles.length < maxP && Math.random() < 0.03 * dt) {
-            if (activeFestival.id === 'lantern') {
-                // Floating sky lanterns
+            if (activeFestival.id === 'hanami') {
+                // Falling cherry blossom petals
                 festivalParticles.push({
-                    type: 'skylantern', x: randFloat(50, WORLD_W - 50), y: WORLD_H + 10,
-                    vx: randFloat(-0.1, 0.1), vy: randFloat(-0.5, -0.3),
-                    size: randFloat(4, 7), glow: randFloat(0.4, 0.8), life: randFloat(400, 700)
+                    type: 'sakura', x: randFloat(50, WORLD_W - 50), y: -10,
+                    vx: randFloat(-0.3, 0.3), vy: randFloat(0.2, 0.5),
+                    size: randFloat(2, 5), rot: randFloat(0, Math.PI * 2), rotSpeed: randFloat(-0.02, 0.02),
+                    life: randFloat(400, 700)
                 });
-            } else if (activeFestival.id === 'dragonboat') {
-                // Splashing water drops from dragon boats
+            } else if (activeFestival.id === 'tanabata') {
+                // Tanzaku paper strips swaying
                 festivalParticles.push({
-                    type: 'dbsplash', x: randFloat(710, 790), y: randFloat(200, 500),
-                    vx: randFloat(-1, 1), vy: randFloat(-2, -0.5),
-                    size: randFloat(1, 3), life: randFloat(30, 60)
+                    type: 'tanzaku', x: randFloat(50, WORLD_W - 50), y: randFloat(20, 60),
+                    phase: randFloat(0, Math.PI * 2), size: randFloat(3, 6),
+                    color: randEl(['#e84040','#4080e8','#40c040','#e8c040','#c040c0']),
+                    life: randFloat(300, 600), maxLife: 0
                 });
-            } else if (activeFestival.id === 'midautumn') {
-                // Floating mooncakes / glowing orbs
+                festivalParticles[festivalParticles.length - 1].maxLife = festivalParticles[festivalParticles.length - 1].life;
+            } else if (activeFestival.id === 'tsukimi') {
+                // Glowing moon orbs
                 festivalParticles.push({
                     type: 'moonorb', x: randFloat(50, WORLD_W - 50), y: randFloat(20, 80),
                     phase: randFloat(0, Math.PI * 2), size: randFloat(2, 4),
@@ -3814,8 +3817,8 @@
             p.life -= dt;
             p.x += (p.vx || 0) * dt;
             p.y += (p.vy || 0) * dt;
-            if (p.type === 'skylantern') p.vx += Math.sin(gameTick * 0.01 + p.x * 0.05) * 0.002 * dt;
-            if (p.type === 'dbsplash') p.vy += 0.05 * dt; // gravity
+            if (p.type === 'sakura') { p.vx += Math.sin(gameTick * 0.01 + p.x * 0.05) * 0.003 * dt; p.rot += p.rotSpeed * dt; }
+            if (p.type === 'tanzaku') p.vx = Math.sin(gameTick * 0.008 + p.phase) * 0.05;
         }
         festivalParticles = festivalParticles.filter(p => p.life > 0 && p.y > -30 && p.y < WORLD_H + 30);
     }
@@ -3825,30 +3828,32 @@
         const s = canvasScale;
         ctx.save();
         for (const p of festivalParticles) {
-            if (p.type === 'skylantern') {
-                // Warm glowing lantern
+            if (p.type === 'sakura') {
+                // Cherry blossom petal
                 const a = Math.min(1, p.life / 60);
-                const grad = ctx.createRadialGradient(p.x*s, p.y*s, 0, p.x*s, p.y*s, p.size*2*s);
-                grad.addColorStop(0, `rgba(255,140,40,${a * p.glow * 0.25})`);
-                grad.addColorStop(1, 'rgba(255,100,20,0)');
-                ctx.fillStyle = grad;
-                ctx.fillRect((p.x - p.size*2)*s, (p.y - p.size*2)*s, p.size*4*s, p.size*4*s);
-                // Lantern body
-                ctx.fillStyle = `rgba(220,80,30,${a * 0.7})`;
+                ctx.save();
+                ctx.translate(p.x*s, p.y*s);
+                ctx.rotate(p.rot);
+                ctx.globalAlpha = a * 0.8;
+                ctx.fillStyle = `rgba(255,180,200,0.9)`;
                 ctx.beginPath();
-                ctx.ellipse(p.x*s, p.y*s, p.size*0.8*s, p.size*s, 0, 0, Math.PI*2);
+                ctx.ellipse(0, 0, p.size*0.6*s, p.size*0.3*s, 0, 0, Math.PI*2);
                 ctx.fill();
-                // Inner glow
-                ctx.fillStyle = `rgba(255,200,100,${a * 0.5})`;
+                ctx.fillStyle = `rgba(255,220,230,0.6)`;
                 ctx.beginPath();
-                ctx.ellipse(p.x*s, p.y*s, p.size*0.4*s, p.size*0.5*s, 0, 0, Math.PI*2);
+                ctx.ellipse(p.size*0.2*s, 0, p.size*0.3*s, p.size*0.2*s, 0.3, 0, Math.PI*2);
                 ctx.fill();
-            } else if (p.type === 'dbsplash') {
-                ctx.globalAlpha = Math.min(1, p.life / 15);
-                ctx.fillStyle = 'rgba(150,200,240,0.6)';
-                ctx.beginPath();
-                ctx.arc(p.x*s, p.y*s, p.size*s, 0, Math.PI*2);
-                ctx.fill();
+                ctx.restore();
+                ctx.globalAlpha = 1;
+            } else if (p.type === 'tanzaku') {
+                // Tanabata paper strip
+                const fadeIn = Math.min(1, (p.maxLife - p.life) / 40);
+                const fadeOut = Math.min(1, p.life / 40);
+                const a = fadeIn * fadeOut;
+                ctx.globalAlpha = a * 0.7;
+                ctx.fillStyle = p.color;
+                const sway = Math.sin(gameTick * 0.01 + p.phase) * 3;
+                ctx.fillRect((p.x + sway)*s, p.y*s, p.size*0.3*s, p.size*2*s);
                 ctx.globalAlpha = 1;
             } else if (p.type === 'moonorb') {
                 const fadeIn = Math.min(1, (p.maxLife - p.life) / 40);
@@ -3866,20 +3871,20 @@
             const bannerAlpha = 0.6 + Math.sin(gameTick * 0.03) * 0.1;
             const cw = canvas.width / dpr;
             ctx.globalAlpha = bannerAlpha;
-            ctx.font = `bold ${Math.round(10*s)}px 'Microsoft YaHei','PingFang SC','Noto Sans SC',sans-serif`;
+            ctx.font = `bold ${Math.round(10*s)}px 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif`;
             ctx.fillStyle = '#d4a030';
             ctx.textAlign = 'right';
-            ctx.fillText(`${activeFestival.name} ${activeFestival.pinyin}`, cw - 10*s, 14*s);
+            ctx.fillText(`${activeFestival.name} ${activeFestival.romaji}`, cw - 10*s, 14*s);
             ctx.globalAlpha = 1;
         }
         ctx.restore();
     }
 
-    class ChengyuCloud {
-        constructor(chengyu) {
-            this.chars = chengyu.chars;
-            this.pinyin = chengyu.pinyin;
-            this.de = chengyu.de;
+    class YojijukugoCloud {
+        constructor(yoji) {
+            this.chars = yoji.chars;
+            this.kana = yoji.kana;
+            this.de = yoji.de;
             this.life = 300;
             this.maxLife = 300;
         }
@@ -3908,27 +3913,27 @@
             ctx.lineWidth = 1 * s;
             ctx.stroke();
             // Characters
-            ctx.font = `bold ${Math.round(16*s)}px 'Microsoft YaHei','PingFang SC','Noto Sans SC',sans-serif`;
+            ctx.font = `bold ${Math.round(16*s)}px 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif`;
             ctx.fillStyle = '#e8d080';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(this.chars, cx, cy - 3 * s);
-            // Pinyin + German
-            ctx.font = `${Math.round(8*s)}px 'Courier New','Microsoft YaHei',monospace`;
+            // Kana + German
+            ctx.font = `${Math.round(8*s)}px 'Courier New','Noto Sans JP',monospace`;
             ctx.fillStyle = '#a09070';
-            ctx.fillText(this.pinyin + ' — ' + this.de, cx, cy + 12 * s);
+            ctx.fillText(this.kana + ' — ' + this.de, cx, cy + 12 * s);
             ctx.restore();
         }
     }
 
-    function checkChengyuTriggers() {
-        if (chengyuOverlay) return; // one at a time
-        for (const c of CHENGYU_TRIGGERS) {
-            if (chengyuTriggered.has(c.id)) continue;
+    function checkYojijukugoTriggers() {
+        if (yojijukugoOverlay) return; // one at a time
+        for (const c of YOJIJUKUGO_TRIGGERS) {
+            if (yojijukugoTriggered.has(c.id)) continue;
             if (c.check()) {
-                chengyuTriggered.add(c.id);
-                chengyuOverlay = new ChengyuCloud(c);
-                addLog(`成语: ${c.chars} — ${c.de}`, 'learn');
+                yojijukugoTriggered.add(c.id);
+                yojijukugoOverlay = new YojijukugoCloud(c);
+                addLog(`四字熟語: ${c.chars} — ${c.de}`, 'learn');
                 break;
             }
         }
@@ -4018,16 +4023,16 @@
     ];
 
     const PROVERBS = [
-        { words: 25,  chars: '千里之行始于足下',     pinyin: 'qiānlǐ zhī xíng shǐ yú zúxià',           german: 'Jede lange Reise beginnt mit dem ersten Schritt' },
-        { words: 50,  chars: '学而时习之',           pinyin: 'xué ér shí xí zhī',                       german: 'Lernen und regelmaessig ueben' },
-        { words: 75,  chars: '温故知新',             pinyin: 'wēn gù zhī xīn',                          german: 'Altes wiederholen, Neues verstehen' },
-        { words: 100, chars: '水滴石穿',             pinyin: 'shuǐ dī shí chuān',                       german: 'Steter Tropfen hoehlt den Stein' },
-        { words: 125, chars: '熟能生巧',             pinyin: 'shú néng shēng qiǎo',                     german: 'Uebung macht den Meister' },
-        { words: 150, chars: '有志者事竟成',         pinyin: 'yǒu zhì zhě shì jìng chéng',              german: 'Wo ein Wille ist, ist ein Weg' },
-        { words: 175, chars: '书山有路勤为径',       pinyin: 'shū shān yǒu lù qín wéi jìng',            german: 'Der Berg des Wissens hat einen Pfad: Fleiss' },
-        { words: 200, chars: '活到老学到老',         pinyin: 'huó dào lǎo xué dào lǎo',                 german: 'Man lernt nie aus' },
-        { words: 225, chars: '不积跬步无以至千里',   pinyin: 'bù jī kuǐ bù wú yǐ zhì qiānlǐ',          german: 'Ohne kleine Schritte erreicht man keine tausend Meilen' },
-        { words: 250, chars: '功夫不负有心人',       pinyin: 'gōngfu bù fù yǒuxīn rén',                 german: 'Fleiss enttaeuscht den Entschlossenen nicht' },
+        { words: 25,  chars: '千里の道も一歩から',         kana: 'せんりのみちもいっぽから',               german: 'Auch eine Reise von tausend Meilen beginnt mit einem Schritt' },
+        { words: 50,  chars: '習うより慣れよ',             kana: 'ならうよりなれよ',                       german: 'Uebung macht den Meister' },
+        { words: 75,  chars: '継続は力なり',               kana: 'けいぞくはちからなり',                   german: 'Bestaendigkeit ist Kraft' },
+        { words: 100, chars: '猿も木から落ちる',           kana: 'さるもきからおちる',                     german: 'Selbst Affen fallen vom Baum' },
+        { words: 125, chars: '石の上にも三年',             kana: 'いしのうえにもさんねん',                 german: 'Drei Jahre auf dem Stein — Geduld fuehrt zum Erfolg' },
+        { words: 150, chars: '七転び八起き',               kana: 'ななころびやおき',                       german: 'Sieben Mal fallen, acht Mal aufstehen' },
+        { words: 175, chars: '塵も積もれば山となる',       kana: 'ちりもつもればやまとなる',               german: 'Auch Staub wird zum Berg, wenn er sich anhaeuft' },
+        { words: 200, chars: '百聞は一見に如かず',         kana: 'ひゃくぶんはいっけんにしかず',           german: 'Einmal sehen ist besser als hundertmal hoeren' },
+        { words: 225, chars: '花は桜木人は武士',           kana: 'はなはさくらぎひとはぶし',               german: 'Unter Blumen die Kirschbluete, unter Menschen der Samurai' },
+        { words: 250, chars: '初心忘るべからず',           kana: 'しょしんわするべからず',                 german: 'Vergiss niemals deinen Anfaengergeist' },
     ];
 
     function checkCampMilestones() {
@@ -4296,10 +4301,10 @@
             this.geselligkeit = randInt(1, 10);  // Sociability: social actions + staying close
             this.wahrnehmung = randInt(1, 10);   // Perception: hearing range + learn chance
 
-            // Appearance — Song Dynasty Chinese / German traveler
+            // Appearance — Edo period Japanese / German traveler
             const skinTones = ['#e8c8a0','#d4b088','#e0c098','#dab890','#e8d0a8','#d0a880'];
             const hairColors = ['#1a1008','#0a0a08','#1a1a10','#2a1a10'];
-            const clothColors_s = ['#4a6a8a','#6a3030','#3a5a3a','#8a6a30']; // Chinese robes
+            const clothColors_s = ['#4a6a8a','#6a3030','#3a5a3a','#8a6a30']; // Japanese robes
             const clothColors_l = ['#6a5a40','#5a4a30','#7a6a50']; // German traveler clothing
             this.skinTone = randEl(skinTones);
             this.hairColor = randEl(hairColors);
@@ -4415,7 +4420,7 @@
     // ============================================================
     //  GRAMMAR SYSTEM — role colors, tier, particle helpers
     // ============================================================
-    const CJK_FONT_GRAMMAR = "'Microsoft YaHei','PingFang SC','Noto Sans SC','Noto Sans CJK SC',sans-serif";
+    const CJK_FONT_GRAMMAR = "'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic','Noto Sans CJK JP',sans-serif";
     const ROLE_COLORS = {
         noun:     '#d4a030', // gold
         verb:     '#5aaa5a', // green
@@ -4447,91 +4452,91 @@
 
     function makeGrammarWord(id) {
         const v = vocab[id];
-        if (!v) return { conceptId: id, hanzi: id, pinyin: id, de: '', type: 'particle', role: 'particle' };
-        return { conceptId: id, hanzi: v.hanzi, pinyin: v.pinyin, de: v.de, type: v.type, role: v.type };
+        if (!v) return { conceptId: id, kanji: id, kana: id, de: '', type: 'particle', role: 'particle' };
+        return { conceptId: id, kanji: v.kanji, kana: v.kana, de: v.de, type: v.type, role: v.type };
     }
 
     // Measure words (量词) — noun → classifier mapping
     const MEASURE_WORDS = {
         // 个 gè — generic / people
-        _default: { hanzi: '个', pinyin: 'gè' },
-        friend: { hanzi: '个', pinyin: 'gè' }, person: { hanzi: '个', pinyin: 'gè' },
-        neighbor: { hanzi: '个', pinyin: 'gè' }, doctor: { hanzi: '个', pinyin: 'gè' },
-        student: { hanzi: '个', pinyin: 'gè' }, boy: { hanzi: '个', pinyin: 'gè' },
-        girl: { hanzi: '个', pinyin: 'gè' }, mother: { hanzi: '个', pinyin: 'gè' },
-        father: { hanzi: '个', pinyin: 'gè' }, brother: { hanzi: '个', pinyin: 'gè' },
-        sister: { hanzi: '个', pinyin: 'gè' }, son: { hanzi: '个', pinyin: 'gè' },
-        daughter: { hanzi: '个', pinyin: 'gè' }, apple: { hanzi: '个', pinyin: 'gè' },
-        gift: { hanzi: '个', pinyin: 'gè' }, dream: { hanzi: '个', pinyin: 'gè' },
-        question: { hanzi: '个', pinyin: 'gè' }, secret: { hanzi: '个', pinyin: 'gè' },
+        _default: { kanji: '个', kana: 'gè' },
+        friend: { kanji: '个', kana: 'gè' }, person: { kanji: '个', kana: 'gè' },
+        neighbor: { kanji: '个', kana: 'gè' }, doctor: { kanji: '个', kana: 'gè' },
+        student: { kanji: '个', kana: 'gè' }, boy: { kanji: '个', kana: 'gè' },
+        girl: { kanji: '个', kana: 'gè' }, mother: { kanji: '个', kana: 'gè' },
+        father: { kanji: '个', kana: 'gè' }, brother: { kanji: '个', kana: 'gè' },
+        sister: { kanji: '个', kana: 'gè' }, son: { kanji: '个', kana: 'gè' },
+        daughter: { kanji: '个', kana: 'gè' }, apple: { kanji: '个', kana: 'gè' },
+        gift: { kanji: '个', kana: 'gè' }, dream: { kanji: '个', kana: 'gè' },
+        question: { kanji: '个', kana: 'gè' }, secret: { kanji: '个', kana: 'gè' },
         // 杯 bēi — cups / drinks
-        tea: { hanzi: '杯', pinyin: 'bēi' }, water: { hanzi: '杯', pinyin: 'bēi' },
-        wine: { hanzi: '杯', pinyin: 'bēi' }, milk: { hanzi: '杯', pinyin: 'bēi' },
-        soup: { hanzi: '碗', pinyin: 'wǎn' },
+        tea: { kanji: '杯', kana: 'bēi' }, water: { kanji: '杯', kana: 'bēi' },
+        wine: { kanji: '杯', kana: 'bēi' }, milk: { kanji: '杯', kana: 'bēi' },
+        soup: { kanji: '碗', kana: 'wǎn' },
         // 碗 wǎn — bowls
-        food: { hanzi: '碗', pinyin: 'wǎn' }, rice: { hanzi: '碗', pinyin: 'wǎn' },
-        noodle: { hanzi: '碗', pinyin: 'wǎn' },
+        food: { kanji: '碗', kana: 'wǎn' }, rice: { kanji: '碗', kana: 'wǎn' },
+        noodle: { kanji: '碗', kana: 'wǎn' },
         // 本 běn — books
-        book: { hanzi: '本', pinyin: 'běn' },
+        book: { kanji: '本', kana: 'běn' },
         // 支 zhī — pens/brushes
-        brush: { hanzi: '支', pinyin: 'zhī' }, candle: { hanzi: '支', pinyin: 'zhī' },
+        brush: { kanji: '支', kana: 'zhī' }, candle: { kanji: '支', kana: 'zhī' },
         // 张 zhāng — flat things
-        paper: { hanzi: '张', pinyin: 'zhāng' }, picture: { hanzi: '张', pinyin: 'zhāng' },
-        table: { hanzi: '张', pinyin: 'zhāng' }, bed: { hanzi: '张', pinyin: 'zhāng' },
+        paper: { kanji: '张', kana: 'zhāng' }, picture: { kanji: '张', kana: 'zhāng' },
+        table: { kanji: '张', kana: 'zhāng' }, bed: { kanji: '张', kana: 'zhāng' },
         // 条 tiáo — long/thin things, rivers, fish, roads
-        river: { hanzi: '条', pinyin: 'tiáo' }, fish: { hanzi: '条', pinyin: 'tiáo' },
-        snake: { hanzi: '条', pinyin: 'tiáo' }, rope: { hanzi: '条', pinyin: 'tiáo' },
-        road: { hanzi: '条', pinyin: 'tiáo' },
+        river: { kanji: '条', kana: 'tiáo' }, fish: { kanji: '条', kana: 'tiáo' },
+        snake: { kanji: '条', kana: 'tiáo' }, rope: { kanji: '条', kana: 'tiáo' },
+        road: { kanji: '条', kana: 'tiáo' },
         // 棵 kē — trees/plants
-        bamboo: { hanzi: '棵', pinyin: 'kē' }, pine: { hanzi: '棵', pinyin: 'kē' },
-        tree: { hanzi: '棵', pinyin: 'kē' },
+        bamboo: { kanji: '棵', kana: 'kē' }, pine: { kanji: '棵', kana: 'kē' },
+        tree: { kanji: '棵', kana: 'kē' },
         // 朵 duǒ — flowers, clouds
-        flower: { hanzi: '朵', pinyin: 'duǒ' }, cloud: { hanzi: '朵', pinyin: 'duǒ' },
+        flower: { kanji: '朵', kana: 'duǒ' }, cloud: { kanji: '朵', kana: 'duǒ' },
         // 只 zhī — animals (generic), one of a pair
-        bird: { hanzi: '只', pinyin: 'zhī' }, cat: { hanzi: '只', pinyin: 'zhī' },
-        chicken: { hanzi: '只', pinyin: 'zhī' }, rabbit: { hanzi: '只', pinyin: 'zhī' },
-        frog: { hanzi: '只', pinyin: 'zhī' }, butterfly: { hanzi: '只', pinyin: 'zhī' },
-        insect: { hanzi: '只', pinyin: 'zhī' }, sheep: { hanzi: '只', pinyin: 'zhī' },
+        bird: { kanji: '只', kana: 'zhī' }, cat: { kanji: '只', kana: 'zhī' },
+        chicken: { kanji: '只', kana: 'zhī' }, rabbit: { kanji: '只', kana: 'zhī' },
+        frog: { kanji: '只', kana: 'zhī' }, butterfly: { kanji: '只', kana: 'zhī' },
+        insect: { kanji: '只', kana: 'zhī' }, sheep: { kanji: '只', kana: 'zhī' },
         // 匹 pǐ — horses
-        horse: { hanzi: '匹', pinyin: 'pǐ' },
+        horse: { kanji: '匹', kana: 'pǐ' },
         // 头 tóu — cattle
-        cow: { hanzi: '头', pinyin: 'tóu' },
+        cow: { kanji: '头', kana: 'tóu' },
         // 把 bǎ — handled things
-        chair: { hanzi: '把', pinyin: 'bǎ' }, broom: { hanzi: '把', pinyin: 'bǎ' },
+        chair: { kanji: '把', kana: 'bǎ' }, broom: { kanji: '把', kana: 'bǎ' },
         // 座 zuò — mountains, buildings
-        mountain: { hanzi: '座', pinyin: 'zuò' }, bridge: { hanzi: '座', pinyin: 'zuò' },
-        house: { hanzi: '座', pinyin: 'zuò' },
+        mountain: { kanji: '座', kana: 'zuò' }, bridge: { kanji: '座', kana: 'zuò' },
+        house: { kanji: '座', kana: 'zuò' },
         // 件 jiàn — clothes, matters
-        clothes: { hanzi: '件', pinyin: 'jiàn' },
+        clothes: { kanji: '件', kana: 'jiàn' },
         // 块 kuài — pieces, stones
-        stone: { hanzi: '块', pinyin: 'kuài' }, mooncake: { hanzi: '块', pinyin: 'kuài' },
+        stone: { kanji: '块', kana: 'kuài' }, mooncake: { kanji: '块', kana: 'kuài' },
         // 颗 kē — small round things
-        star: { hanzi: '颗', pinyin: 'kē' },
+        star: { kanji: '颗', kana: 'kē' },
         // 双 shuāng — pairs
-        shoes: { hanzi: '双', pinyin: 'shuāng' },
+        shoes: { kanji: '双', kana: 'shuāng' },
         // 顶 dǐng — hats
-        hat: { hanzi: '顶', pinyin: 'dǐng' },
+        hat: { kanji: '顶', kana: 'dǐng' },
         // 首 shǒu — poems/songs
-        poem: { hanzi: '首', pinyin: 'shǒu' }, song: { hanzi: '首', pinyin: 'shǒu' },
+        poem: { kanji: '首', kana: 'shǒu' }, song: { kanji: '首', kana: 'shǒu' },
         // 盏 zhǎn — lanterns/lamps
-        lantern: { hanzi: '盏', pinyin: 'zhǎn' },
+        lantern: { kanji: '盏', kana: 'zhǎn' },
     };
 
     // Resultative complements — verb → possible complements
     const RESULTATIVES = {
-        eat:   [{ hanzi: '完', pinyin: 'wán', de: 'aufgegessen' }, { hanzi: '饱', pinyin: 'bǎo', de: 'satt gegessen' }],
-        drink: [{ hanzi: '完', pinyin: 'wán', de: 'ausgetrunken' }],
-        cook:  [{ hanzi: '好', pinyin: 'hǎo', de: 'fertig gekocht' }],
-        make:  [{ hanzi: '好', pinyin: 'hǎo', de: 'fertig gemacht' }, { hanzi: '完', pinyin: 'wán', de: 'fertig' }],
-        write: [{ hanzi: '好', pinyin: 'hǎo', de: 'fertig geschrieben' }, { hanzi: '完', pinyin: 'wán', de: 'fertig' }],
-        learn: [{ hanzi: '会', pinyin: 'huì', de: 'gelernt/kann' }],
-        look:  [{ hanzi: '到', pinyin: 'dào', de: 'erblickt' }, { hanzi: '见', pinyin: 'jiàn', de: 'gesehen' }],
-        listen:[{ hanzi: '到', pinyin: 'dào', de: 'gehoert' }, { hanzi: '见', pinyin: 'jiàn', de: 'gehoert' }],
-        find:  [{ hanzi: '到', pinyin: 'dào', de: 'gefunden' }],
-        wash:  [{ hanzi: '干净', pinyin: 'gānjìng', de: 'sauber gewaschen' }],
-        repair:[{ hanzi: '好', pinyin: 'hǎo', de: 'repariert' }],
-        open:  [{ hanzi: '开', pinyin: 'kāi', de: 'geoeffnet' }],
-        paint: [{ hanzi: '好', pinyin: 'hǎo', de: 'fertig gemalt' }],
+        eat:   [{ kanji: '完', kana: 'wán', de: 'aufgegessen' }, { kanji: '饱', kana: 'bǎo', de: 'satt gegessen' }],
+        drink: [{ kanji: '完', kana: 'wán', de: 'ausgetrunken' }],
+        cook:  [{ kanji: '好', kana: 'hǎo', de: 'fertig gekocht' }],
+        make:  [{ kanji: '好', kana: 'hǎo', de: 'fertig gemacht' }, { kanji: '完', kana: 'wán', de: 'fertig' }],
+        write: [{ kanji: '好', kana: 'hǎo', de: 'fertig geschrieben' }, { kanji: '完', kana: 'wán', de: 'fertig' }],
+        learn: [{ kanji: '会', kana: 'huì', de: 'gelernt/kann' }],
+        look:  [{ kanji: '到', kana: 'dào', de: 'erblickt' }, { kanji: '见', kana: 'jiàn', de: 'gesehen' }],
+        listen:[{ kanji: '到', kana: 'dào', de: 'gehoert' }, { kanji: '见', kana: 'jiàn', de: 'gehoert' }],
+        find:  [{ kanji: '到', kana: 'dào', de: 'gefunden' }],
+        wash:  [{ kanji: '干净', kana: 'gānjìng', de: 'sauber gewaschen' }],
+        repair:[{ kanji: '好', kana: 'hǎo', de: 'repariert' }],
+        open:  [{ kanji: '开', kana: 'kāi', de: 'geoeffnet' }],
+        paint: [{ kanji: '好', kana: 'hǎo', de: 'fertig gemalt' }],
     };
 
     // Time-word IDs (should be placed sentence-initially in Chinese)
@@ -4570,7 +4575,7 @@
         //  STRUCTURAL REORDERING (before particle insertion)
         // =============================================
 
-        // Tier 1+: Move time words to sentence-initial position (Chinese rule)
+        // Tier 1+: Move time words to sentence-initial position (Japanese rule)
         if (tier >= 1) {
             for (let i = 1; i < result.length; i++) {
                 if (TIME_WORD_IDS.has(result[i].conceptId)) {
@@ -4637,7 +4642,7 @@
             const nIdx = result.findIndex(w => w.type === 'noun' && MEASURE_WORDS[w.conceptId]);
             if (nIdx >= 0 && Math.random() < 0.25) {
                 const mw = MEASURE_WORDS[result[nIdx].conceptId];
-                const mwWord = { conceptId: '_mw', hanzi: '一' + mw.hanzi, pinyin: 'yī ' + mw.pinyin, de: '', type: 'particle', role: 'particle' };
+                const mwWord = { conceptId: '_mw', kanji: '一' + mw.kanji, kana: 'yī ' + mw.kana, de: '', type: 'particle', role: 'particle' };
                 result.splice(nIdx, 0, mwWord);
             }
         }
@@ -4675,7 +4680,7 @@
             const rc = RESULTATIVES[verbId];
             if (rc) {
                 const comp = randEl(rc);
-                const rcWord = { conceptId: '_rc', hanzi: comp.hanzi, pinyin: comp.pinyin, de: comp.de, type: 'particle', role: 'particle' };
+                const rcWord = { conceptId: '_rc', kanji: comp.kanji, kana: comp.kana, de: comp.de, type: 'particle', role: 'particle' };
                 result.splice(s.vIdx + 1, 0, rcWord);
                 majorApplied = true;
             }
@@ -4698,7 +4703,7 @@
             if (locId && vocab[locId]) {
                 s = scan();
                 if (s.hasVerb && s.vIdx >= 0) {
-                    const locWord = { conceptId: locId, hanzi: vocab[locId].hanzi, pinyin: vocab[locId].pinyin, de: vocab[locId].de, type: 'noun', role: 'noun' };
+                    const locWord = { conceptId: locId, kanji: vocab[locId].kanji, kana: vocab[locId].kana, de: vocab[locId].de, type: 'noun', role: 'noun' };
                     const zaiWord = makeGrammarWord('zai_prog'); // 在 doubles as locative
                     // Insert 在+place before verb
                     result.splice(s.vIdx, 0, zaiWord, locWord);
@@ -4773,8 +4778,8 @@
         return result;
     }
 
-    // Shared helper: draw color-coded hanzi characters
-    function _drawColorCodedHanzi(ctx, words, cx, cy, fontSize, lightBg) {
+    // Shared helper: draw color-coded kanji characters
+    function _drawColorCodedKanji(ctx, words, cx, cy, fontSize, lightBg) {
         if (!words || words.length === 0) return;
         const colors = lightBg ? ROLE_COLORS_LIGHT : ROLE_COLORS;
         ctx.font = `bold ${fontSize}px ${CJK_FONT_GRAMMAR}`;
@@ -4782,17 +4787,17 @@
         // Measure total width
         let totalW = 0;
         const segs = words.map(w => {
-            const hw = w.hanzi || '';
+            const hw = w.kanji || '';
             const width = ctx.measureText(hw).width;
             totalW += width;
-            return { hanzi: hw, width, color: colors[w.type] || colors.unknown };
+            return { kanji: hw, width, color: colors[w.type] || colors.unknown };
         });
         // Draw left-to-right
         ctx.textAlign = 'left';
         let drawX = cx - totalW / 2;
         for (const seg of segs) {
             ctx.fillStyle = seg.color;
-            ctx.fillText(seg.hanzi, drawX, cy);
+            ctx.fillText(seg.kanji, drawX, cy);
             drawX += seg.width;
         }
         ctx.textAlign = 'center'; // restore
@@ -4805,8 +4810,8 @@
         constructor(person, text, conceptWords, isResponse) {
             this.person = person;
             this.text = text;
-            this.hanziText = text; // may be overridden
-            this.pinyinText = '';  // may be set
+            this.kanjiText = text; // may be overridden
+            this.kanaText = '';  // may be set
             this.conceptWords = conceptWords || [];
             this.isResponse = isResponse || false;
             this.life = 240;
@@ -4829,14 +4834,14 @@
             const x = this.person.x * canvasScale;
             const yOff = this.isResponse ? -60 : -48;
             const y = (this.person.y + yOff) * canvasScale;
-            const CJK_FONT = "'Microsoft YaHei','PingFang SC','Noto Sans SC',sans-serif";
+            const CJK_FONT = "'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif";
             ctx.save();
             ctx.globalAlpha = this.alpha;
 
             // Measure widths for both lines
-            const hasPinyin = this.pinyinText && !this.isResponse;
-            const hanziFontSize = Math.round(13 * canvasScale);
-            const pinyinFontSize = Math.round(9 * canvasScale);
+            const hasPinyin = this.kanaText && !this.isResponse;
+            const kanjiFontSize = Math.round(13 * canvasScale);
+            const kanaFontSize = Math.round(9 * canvasScale);
             const responseFontSize = Math.round(11 * canvasScale);
 
             let textW;
@@ -4845,14 +4850,14 @@
                 ctx.font = `bold ${responseFontSize}px 'Courier New',${CJK_FONT}`;
                 textW = ctx.measureText(this.text).width;
             } else {
-                ctx.font = `bold ${hanziFontSize}px ${CJK_FONT}`;
-                const hanziW = ctx.measureText(this.hanziText).width;
-                let pinyinW = 0;
+                ctx.font = `bold ${kanjiFontSize}px ${CJK_FONT}`;
+                const kanjiW = ctx.measureText(this.kanjiText).width;
+                let kanaW = 0;
                 if (hasPinyin) {
-                    ctx.font = `${pinyinFontSize}px 'Courier New',${CJK_FONT}`;
-                    pinyinW = ctx.measureText(this.pinyinText).width;
+                    ctx.font = `${kanaFontSize}px 'Courier New',${CJK_FONT}`;
+                    kanaW = ctx.measureText(this.kanaText).width;
                 }
-                textW = Math.max(hanziW, pinyinW);
+                textW = Math.max(kanjiW, kanaW);
             }
 
             const pad = 8 * canvasScale;
@@ -4879,19 +4884,19 @@
 
             ctx.textAlign = 'center';
             if (hasPinyin) {
-                // Color-coded hanzi line (top, larger)
+                // Color-coded kanji line (top, larger)
                 if (this.conceptWords && this.conceptWords.length > 0) {
-                    _drawColorCodedHanzi(ctx, this.conceptWords, x, by + bh * 0.35, hanziFontSize, true);
+                    _drawColorCodedKanji(ctx, this.conceptWords, x, by + bh * 0.35, kanjiFontSize, true);
                 } else {
-                    ctx.font = `bold ${hanziFontSize}px ${CJK_FONT}`;
+                    ctx.font = `bold ${kanjiFontSize}px ${CJK_FONT}`;
                     ctx.fillStyle = '#2a2010';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(this.hanziText, x, by + bh * 0.35);
+                    ctx.fillText(this.kanjiText, x, by + bh * 0.35);
                 }
                 // Pinyin line (bottom, smaller, grey)
-                ctx.font = `${pinyinFontSize}px 'Courier New',${CJK_FONT}`;
+                ctx.font = `${kanaFontSize}px 'Courier New',${CJK_FONT}`;
                 ctx.fillStyle = '#8a7e6a';
-                ctx.fillText(this.pinyinText, x, by + bh * 0.72);
+                ctx.fillText(this.kanaText, x, by + bh * 0.72);
             } else {
                 // Single line (response bubble or fallback)
                 ctx.font = `bold ${Math.round(11 * canvasScale)}px 'Courier New',${CJK_FONT}`;
@@ -4937,7 +4942,7 @@
             const alpha = Math.min(1, this.life / 40);
             ctx.save();
             ctx.globalAlpha = alpha;
-            ctx.font = `bold ${Math.round(10 * canvasScale)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
+            ctx.font = `bold ${Math.round(10 * canvasScale)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
             ctx.fillStyle = '#4ade4a';
             ctx.textAlign = 'center';
             ctx.fillText('+ ' + this.word, this.x * canvasScale, this.y * canvasScale);
@@ -4948,15 +4953,15 @@
     // ============================================================
     //  CALLIGRAPHY OVERLAY (书法 shūfǎ — brush stroke animation)
     // ============================================================
-    const CJK_FONT = "'Microsoft YaHei','PingFang SC','Noto Sans SC','Noto Sans CJK SC',sans-serif";
+    const CJK_FONT = "'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic','Noto Sans CJK JP',sans-serif";
     const INK_COLOR = '#1a0a00';
     const PARCHMENT_BG = '#f5e6c8';
     const PARCHMENT_BORDER = '#c4a46a';
 
     class CalligraphyOverlay {
-        constructor(hanzi, pinyin, german) {
-            this.hanzi = hanzi;
-            this.pinyin = pinyin;
+        constructor(kanji, kana, german) {
+            this.kanji = kanji;
+            this.kana = kana;
             this.german = german;
             this.life = 300; // ~5 seconds at 60fps
             this.maxLife = 300;
@@ -4992,11 +4997,11 @@
             c.textAlign = 'center';
             c.textBaseline = 'middle';
             // Auto-scale font size based on character count
-            const len = this.hanzi.length;
+            const len = this.kanji.length;
             let fontSize = len <= 1 ? 130 : len === 2 ? 85 : len === 3 ? 65 : Math.max(38, Math.floor(160 / len));
             // Measure and shrink further if needed
             c.font = `bold ${fontSize}px ${CJK_FONT}`;
-            const measured = c.measureText(this.hanzi).width;
+            const measured = c.measureText(this.kanji).width;
             if (measured > s * 0.9) {
                 fontSize = Math.floor(fontSize * (s * 0.9) / measured);
                 c.font = `bold ${fontSize}px ${CJK_FONT}`;
@@ -5004,9 +5009,9 @@
             // Ink bleed: draw twice with offset
             c.fillStyle = INK_COLOR;
             c.globalAlpha = 0.25;
-            c.fillText(this.hanzi, s / 2 + 1, s / 2 + 1);
+            c.fillText(this.kanji, s / 2 + 1, s / 2 + 1);
             c.globalAlpha = 1.0;
-            c.fillText(this.hanzi, s / 2, s / 2);
+            c.fillText(this.kanji, s / 2, s / 2);
         }
 
         update(dt) {
@@ -5126,7 +5131,7 @@
             ctx.font = `${Math.round(11 * s)}px ${CJK_FONT}`;
             ctx.fillStyle = '#4a3520';
             ctx.textAlign = 'center';
-            ctx.fillText(this.pinyin, x + w / 2, y + 132 * s);
+            ctx.fillText(this.kana, x + w / 2, y + 132 * s);
 
             // German translation
             ctx.font = `${Math.round(9 * s)}px ${CJK_FONT}`;
@@ -5171,7 +5176,7 @@
     class ProverbOverlay {
         constructor(proverb) {
             this.chars = [...proverb.chars]; // Array of individual characters
-            this.pinyin = proverb.pinyin;
+            this.kana = proverb.kana;
             this.german = proverb.german;
             this.milestone = proverb.words;
             this.charCount = this.chars.length;
@@ -5308,7 +5313,7 @@
                 ctx.font = `${Math.round(9 * s)}px ${CJK_FONT}`;
                 ctx.fillStyle = '#5a4530';
                 ctx.textAlign = 'center';
-                ctx.fillText(this.pinyin, cw / 2, bannerY + 88 * s);
+                ctx.fillText(this.kana, cw / 2, bannerY + 88 * s);
 
                 // German translation
                 ctx.font = `${Math.round(8 * s)}px ${CJK_FONT}`;
@@ -5326,7 +5331,7 @@
                 // Source attribution
                 ctx.font = `italic ${Math.round(6.5 * s)}px ${CJK_FONT}`;
                 ctx.fillStyle = '#a09080';
-                ctx.fillText('— Chinesisches Sprichwort', cw / 2, bannerY + 132 * s);
+                ctx.fillText('— Japanisches Sprichwort', cw / 2, bannerY + 132 * s);
             }
 
             ctx.restore();
@@ -5334,9 +5339,9 @@
     }
 
     // --- Calligraphy trigger functions ---
-    function triggerCalligraphy(hanzi, pinyin, german) {
+    function triggerCalligraphy(kanji, kana, german) {
         // Queue words for sequential display (one at a time)
-        calligraphyQueue.push({ hanzi, pinyin, german });
+        calligraphyQueue.push({ kanji, kana, german });
         // If nothing is currently showing, start immediately
         if (calligraphyOverlays.length === 0) {
             _advanceCalligraphyQueue();
@@ -5346,7 +5351,7 @@
     function _advanceCalligraphyQueue() {
         if (calligraphyQueue.length === 0) return;
         const next = calligraphyQueue.shift();
-        calligraphyOverlays = [new CalligraphyOverlay(next.hanzi, next.pinyin, next.german)];
+        calligraphyOverlays = [new CalligraphyOverlay(next.kanji, next.kana, next.german)];
     }
 
     function checkProverbMilestone(wordCount) {
@@ -5371,10 +5376,10 @@
         sfx('learn');
         learnFlashes.push(new LearnFlash(
             learner.x + randFloat(-10, 10), learner.y - 25,
-            w.hanzi + ' (' + w.pinyin + ')'
+            w.kanji + ' (' + w.kana + ')'
         ));
-        addLog(`${learner.name} lernt: ${w.hanzi} [${w.pinyin}] (${w.de})`, 'learn');
-        triggerCalligraphy(w.hanzi, w.pinyin, w.de);
+        addLog(`${learner.name} lernt: ${w.kanji} [${w.kana}] (${w.de})`, 'learn');
+        triggerCalligraphy(w.kanji, w.kana, w.de);
         checkProverbMilestone(learner.knownWords.size);
     }
 
@@ -6800,22 +6805,22 @@
             const pulseAlpha = glowAlpha * (0.7 + Math.sin(gameTick * 0.08) * 0.3);
             // Glow halo
             ctx.save();
-            ctx.font = `bold ${Math.round(12*canvasScale)}px 'Microsoft YaHei','PingFang SC','Noto Sans SC',sans-serif`;
+            ctx.font = `bold ${Math.round(12*canvasScale)}px 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif`;
             ctx.fillStyle = `rgba(212,160,48,${pulseAlpha * 0.3})`;
             ctx.fillText(obj.label, x, labelY);
             ctx.fillText(obj.label, x + canvasScale * 0.5, labelY + canvasScale * 0.5);
             // Sharp label
             ctx.fillStyle = `rgba(255,220,120,${pulseAlpha})`;
             ctx.fillText(obj.label, x, labelY);
-            // Pinyin below
-            if (obj.pinyin) {
-                ctx.font = `${Math.round(9*canvasScale)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
+            // Romaji below
+            if (obj.romaji) {
+                ctx.font = `${Math.round(9*canvasScale)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro',monospace`;
                 ctx.fillStyle = `rgba(220,200,160,${pulseAlpha * 0.8})`;
-                ctx.fillText(obj.pinyin, x, labelY + 12 * canvasScale);
+                ctx.fillText(obj.romaji, x, labelY + 12 * canvasScale);
             }
             ctx.restore();
         } else {
-            ctx.font = `${Math.round(9*canvasScale)}px 'Microsoft YaHei','PingFang SC','Noto Sans SC',sans-serif`;
+            ctx.font = `${Math.round(9*canvasScale)}px 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif`;
             ctx.fillStyle = 'rgba(200,190,160,0.6)';
             ctx.fillText(obj.label, x, labelY);
         }
@@ -7005,7 +7010,7 @@
             ctx.arc(0, -5*s, 5*s, Math.PI, 0);
             ctx.fill();
         } else {
-            // Chinese: black hair with topknot
+            // Japanese: black hair
             ctx.beginPath();
             ctx.arc(0, -2*s, 6.5*s, Math.PI, 0);
             ctx.fill();
@@ -7055,7 +7060,7 @@
         // Sleeping indicator
         if (isSleeping) {
             const zt = gameTick * 0.04;
-            ctx.font = `bold ${Math.round(12*s)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
+            ctx.font = `bold ${Math.round(12*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
             ctx.fillStyle = `rgba(150,180,220,${0.5+Math.sin(zt)*0.3})`;
             ctx.textAlign = 'center';
             ctx.fillText('z Z', 14*s, (-24 + Math.sin(zt)*4)*s);
@@ -7094,7 +7099,7 @@
         ctx.restore();
 
         // Name label
-        ctx.font = `bold ${Math.round(10*s)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
+        ctx.font = `bold ${Math.round(10*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
         ctx.fillStyle = '#e0d8c0';
         ctx.textAlign = 'center';
         ctx.fillText(person.name, x, y + 20*s);
@@ -7208,8 +7213,8 @@
         const template = randEl(action.templates);
         const words = template.map(conceptId => ({
             conceptId,
-            hanzi: vocab[conceptId] ? vocab[conceptId].hanzi : conceptId,
-            pinyin: vocab[conceptId] ? vocab[conceptId].pinyin : conceptId,
+            kanji: vocab[conceptId] ? vocab[conceptId].kanji : conceptId,
+            kana: vocab[conceptId] ? vocab[conceptId].kana : conceptId,
             de: vocab[conceptId] ? vocab[conceptId].de : conceptId,
             type: vocab[conceptId] ? vocab[conceptId].type : 'unknown',
             role: vocab[conceptId] ? vocab[conceptId].type : 'unknown'
@@ -7221,20 +7226,20 @@
         const lastId = enhanced.length > 0 ? enhanced[enhanced.length - 1].conceptId : '';
         const punct = (lastId === 'ma_q' || lastId === 'ne_q') ? '?'
                      : (lastId === 'a_mood' || lastId === 'la_mood' || lastId === 'ba_sug') ? '' : '!';
-        const hanziText = enhanced.map(w => w.hanzi).join('') + punct;
-        const pinyinText = enhanced.map(w => w.pinyin).join(' ') + punct;
-        const text = hanziText;
-        return { words: enhanced, text, hanziText, pinyinText };
+        const kanjiText = enhanced.map(w => w.kanji).join('') + punct;
+        const kanaText = enhanced.map(w => w.kana).join(' ') + punct;
+        const text = kanjiText;
+        return { words: enhanced, text, kanjiText, kanaText };
     }
 
     function speakerSpeak(action) {
         const sentence = buildSentence(action);
-        const bubble = new SpeechBubble(persons[0], sentence.hanziText, sentence.words, false);
-        bubble.hanziText = sentence.hanziText;
-        bubble.pinyinText = sentence.pinyinText;
+        const bubble = new SpeechBubble(persons[0], sentence.kanjiText, sentence.words, false);
+        bubble.kanjiText = sentence.kanjiText;
+        bubble.kanaText = sentence.kanaText;
         speechBubbles.push(bubble);
         sfx('speak');
-        addLog(`${persons[0].name}: "${sentence.hanziText}" (${sentence.pinyinText})`, 'speak');
+        addLog(`${persons[0].name}: "${sentence.kanjiText}" (${sentence.kanaText})`, 'speak');
 
         // Learner tries to learn (perception determines hearing range)
         const learner = persons[1];
@@ -7533,8 +7538,8 @@
                 const template = randEl(actionDef.templates);
                 const baseWords = template.map(conceptId => ({
                     conceptId,
-                    hanzi: vocab[conceptId] ? vocab[conceptId].hanzi : conceptId,
-                    pinyin: vocab[conceptId] ? vocab[conceptId].pinyin : conceptId,
+                    kanji: vocab[conceptId] ? vocab[conceptId].kanji : conceptId,
+                    kana: vocab[conceptId] ? vocab[conceptId].kana : conceptId,
                     de: vocab[conceptId] ? vocab[conceptId].de : conceptId,
                     type: vocab[conceptId] ? vocab[conceptId].type : 'unknown',
                     role: vocab[conceptId] ? vocab[conceptId].type : 'unknown'
@@ -7543,9 +7548,9 @@
                 const lastId = words.length > 0 ? words[words.length - 1].conceptId : '';
                 const sPunct = (lastId === 'ma_q' || lastId === 'ne_q') ? '?'
                              : (lastId === 'a_mood' || lastId === 'la_mood' || lastId === 'ba_sug') ? '' : '。';
-                const hanziText = words.map(w => w.hanzi).join('') + sPunct;
-                const pinyinText = words.map(w => w.pinyin).join(' ') + (sPunct === '?' ? '?' : '.');
-                storytelling.sentences.push({ text: hanziText, hanziText, pinyinText, words });
+                const kanjiText = words.map(w => w.kanji).join('') + sPunct;
+                const kanaText = words.map(w => w.kana).join(' ') + (sPunct === '?' ? '?' : '.');
+                storytelling.sentences.push({ text: kanjiText, kanjiText, kanaText, words });
             }
         }
 
@@ -7581,12 +7586,12 @@
 
         if (storytelling.currentIdx < storytelling.sentences.length) {
             const sentence = storytelling.sentences[storytelling.currentIdx];
-            const stBubble = new SpeechBubble(speaker, sentence.hanziText || sentence.text, sentence.words, false);
-            stBubble.hanziText = sentence.hanziText || sentence.text;
-            stBubble.pinyinText = sentence.pinyinText || '';
+            const stBubble = new SpeechBubble(speaker, sentence.kanjiText || sentence.text, sentence.words, false);
+            stBubble.kanjiText = sentence.kanjiText || sentence.text;
+            stBubble.kanaText = sentence.kanaText || '';
             speechBubbles.push(stBubble);
             sfx('speak');
-            addLog(`${speaker.name}: "${sentence.hanziText || sentence.text}"`, 'speak');
+            addLog(`${speaker.name}: "${sentence.kanjiText || sentence.text}"`, 'speak');
 
             // Learner tries to learn from story
             const learner = persons[1];
@@ -7702,22 +7707,22 @@
         const template = randEl(disc.speech);
         const words = template.map(conceptId => ({
             conceptId,
-            hanzi: vocab[conceptId] ? vocab[conceptId].hanzi : conceptId,
-            pinyin: vocab[conceptId] ? vocab[conceptId].pinyin : conceptId,
+            kanji: vocab[conceptId] ? vocab[conceptId].kanji : conceptId,
+            kana: vocab[conceptId] ? vocab[conceptId].kana : conceptId,
             de: vocab[conceptId] ? vocab[conceptId].de : conceptId,
             type: vocab[conceptId] ? vocab[conceptId].type : 'unknown',
             role: vocab[conceptId] ? vocab[conceptId].type : 'unknown'
         })).filter(w => vocab[w.conceptId]);
 
         if (words.length > 0) {
-            const hanziText = words.map(w => w.hanzi).join('') + '!';
-            const pinyinText = words.map(w => w.pinyin).join(' ') + '!';
-            const discBubble = new SpeechBubble(speaker, hanziText, words, false);
-            discBubble.hanziText = hanziText;
-            discBubble.pinyinText = pinyinText;
+            const kanjiText = words.map(w => w.kanji).join('') + '!';
+            const kanaText = words.map(w => w.kana).join(' ') + '!';
+            const discBubble = new SpeechBubble(speaker, kanjiText, words, false);
+            discBubble.kanjiText = kanjiText;
+            discBubble.kanaText = kanaText;
             speechBubbles.push(discBubble);
             sfx('speak');
-            addLog(`${speaker.name} entdeckt ${disc.desc}: "${hanziText}"`, 'speak');
+            addLog(`${speaker.name} entdeckt ${disc.desc}: "${kanjiText}"`, 'speak');
 
             // Learner can learn
             const learner = persons[1];
@@ -7799,7 +7804,7 @@
                     ctx.globalAlpha = 1;
                     break;
                 case 'old_coins':
-                    // Chinese coins with square holes
+                    // Japanese coins
                     ctx.fillStyle = '#b0a060';
                     for (let i = 0; i < 4; i++) {
                         const cx = x + (i - 1.5) * 4*s;
@@ -8277,14 +8282,12 @@
             const v = vocab[cid];
             if (!v) continue;
             if (query) {
-                const matchPinyin = v.pinyin.toLowerCase().replace(/[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/g, c => {
-                    return 'āáǎà'.includes(c) ? 'a' : 'ēéěè'.includes(c) ? 'e' : 'īíǐì'.includes(c) ? 'i' : 'ōóǒò'.includes(c) ? 'o' : 'ūúǔù'.includes(c) ? 'u' : 'ǖǘǚǜ'.includes(c) ? 'v' : c;
-                }).includes(query) || v.pinyin.toLowerCase().includes(query);
+                const matchKana = v.kana.includes(query) || (v.romaji || '').toLowerCase().includes(query);
                 const matchDe = v.de.toLowerCase().includes(query);
-                const matchHanzi = v.hanzi.includes(query);
-                if (!matchPinyin && !matchDe && !matchHanzi) continue;
+                const matchKanji = v.kanji.includes(query);
+                if (!matchKana && !matchDe && !matchKanji) continue;
             }
-            html += `<div class="vocab-word" data-cid="${cid}" style="cursor:pointer;" title="Klicken für Kalligraphie"><span class="pseudo">${v.hanzi}</span><span class="pinyin">${v.pinyin}</span><span class="meaning">${v.de}</span></div>`;
+            html += `<div class="vocab-word" data-cid="${cid}" style="cursor:pointer;" title="Klicken für Kalligraphie"><span class="pseudo">${v.kanji}</span><span class="kana">${v.kana}</span><span class="meaning">${v.de}</span></div>`;
         }
         if (known === 0) {
             html = '<div style="color:#5a5a4a;font-style:italic;">Noch keine Woerter gelernt</div>';
@@ -8316,7 +8319,7 @@
         const v = vocab[cid];
         if (!v) return;
         // Priority display: push to front of queue so it shows next
-        calligraphyQueue.unshift({ hanzi: v.hanzi, pinyin: v.pinyin, german: v.de });
+        calligraphyQueue.unshift({ kanji: v.kanji, kana: v.kana, german: v.de });
         // If nothing currently showing, start immediately
         if (calligraphyOverlays.length === 0) {
             _advanceCalligraphyQueue();
@@ -8658,15 +8661,15 @@
         const concepts = (conceptMap[animalType] || ['look']).filter(c => vocab[c]);
         if (concepts.length === 0) return;
         const chosen = concepts.slice(0, randInt(1, 2));
-        const words = chosen.map(c => ({ conceptId: c, hanzi: vocab[c].hanzi, pinyin: vocab[c].pinyin, de: vocab[c].de, type: vocab[c].type, role: vocab[c].type }));
-        const hanziText = words.map(w => w.hanzi).join('') + '!';
-        const pinyinText = words.map(w => w.pinyin).join(' ') + '!';
-        const anBubble = new SpeechBubble(persons[0], hanziText, words, false);
-        anBubble.hanziText = hanziText;
-        anBubble.pinyinText = pinyinText;
+        const words = chosen.map(c => ({ conceptId: c, kanji: vocab[c].kanji, kana: vocab[c].kana, de: vocab[c].de, type: vocab[c].type, role: vocab[c].type }));
+        const kanjiText = words.map(w => w.kanji).join('') + '!';
+        const kanaText = words.map(w => w.kana).join(' ') + '!';
+        const anBubble = new SpeechBubble(persons[0], kanjiText, words, false);
+        anBubble.kanjiText = kanjiText;
+        anBubble.kanaText = kanaText;
         speechBubbles.push(anBubble);
         sfx('speak');
-        addLog(`${persons[0].name}: "${hanziText}" (${animalType})`, 'speak');
+        addLog(`${persons[0].name}: "${kanjiText}" (${animalType})`, 'speak');
 
         const learner = persons[1];
         if (learner.distTo(persons[0].x, persons[0].y) <= learner.hearingRange) {
@@ -9008,7 +9011,7 @@
         if (valid.length >= 2) {
             const len = randInt(1, 3);
             const words = [];
-            for (let i = 0; i < len; i++) words.push(vocab[randEl(valid)].hanzi);
+            for (let i = 0; i < len; i++) words.push(vocab[randEl(valid)].kanji);
             return words.join('') + randEl(['！','。','？','~','……']);
         }
         // Fallback — sensible generic phrases
@@ -9396,15 +9399,15 @@
             const validConcepts = weatherConcepts.filter(c => vocab[c]);
             if (validConcepts.length >= 1) {
                 const chosen = validConcepts.slice(0, randInt(1, 2));
-                const words = chosen.map(c => ({ conceptId: c, hanzi: vocab[c].hanzi, pinyin: vocab[c].pinyin, de: vocab[c].de, type: vocab[c].type, role: vocab[c].type }));
-                const hanziText = words.map(w => w.hanzi).join('') + '!';
-                const pinyinText = words.map(w => w.pinyin).join(' ') + '!';
-                const wBubble = new SpeechBubble(persons[0], hanziText, words, false);
-                wBubble.hanziText = hanziText;
-                wBubble.pinyinText = pinyinText;
+                const words = chosen.map(c => ({ conceptId: c, kanji: vocab[c].kanji, kana: vocab[c].kana, de: vocab[c].de, type: vocab[c].type, role: vocab[c].type }));
+                const kanjiText = words.map(w => w.kanji).join('') + '!';
+                const kanaText = words.map(w => w.kana).join(' ') + '!';
+                const wBubble = new SpeechBubble(persons[0], kanjiText, words, false);
+                wBubble.kanjiText = kanjiText;
+                wBubble.kanaText = kanaText;
                 speechBubbles.push(wBubble);
                 sfx('speak');
-                addLog(`${persons[0].name}: "${hanziText}" (Wetter)`, 'speak');
+                addLog(`${persons[0].name}: "${kanjiText}" (Wetter)`, 'speak');
 
                 const learner = persons[1];
                 if (learner.distTo(persons[0].x, persons[0].y) <= learner.hearingRange) {
@@ -10416,7 +10419,7 @@
         if (vocabEntry) {
             objectTooltip = {
                 obj: obj,
-                chineseWord: vocabEntry.hanzi + ' (' + vocabEntry.pinyin + ')',
+                japaneseWord: vocabEntry.kanji + ' (' + vocabEntry.kana + ')',
                 germanWord: obj.label,
                 timer: 180,
                 maxTimer: 180
@@ -10425,7 +10428,7 @@
         } else {
             objectTooltip = {
                 obj: obj,
-                chineseWord: '???',
+                japaneseWord: '???',
                 germanWord: obj.label,
                 timer: 180,
                 maxTimer: 180
@@ -10461,11 +10464,11 @@
         ctx.stroke();
 
         // Text
-        const chineseText = objectTooltip.chineseWord.charAt(0).toUpperCase() + objectTooltip.chineseWord.slice(1);
+        const japaneseText = objectTooltip.japaneseWord.charAt(0).toUpperCase() + objectTooltip.japaneseWord.slice(1);
         const germanText = `(${objectTooltip.germanWord})`;
-        ctx.font = `bold ${Math.round(12 * s)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
-        const tw1 = ctx.measureText(chineseText).width;
-        ctx.font = `${Math.round(10 * s)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
+        ctx.font = `bold ${Math.round(12 * s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
+        const tw1 = ctx.measureText(japaneseText).width;
+        ctx.font = `${Math.round(10 * s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
         const tw2 = ctx.measureText(germanText).width;
         const totalW = Math.max(tw1, tw2);
         const pad = 8 * s;
@@ -10492,14 +10495,14 @@
         ctx.fill();
 
         // Chinese word
-        ctx.font = `bold ${Math.round(12 * s)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
+        ctx.font = `bold ${Math.round(12 * s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
         ctx.fillStyle = '#d4a030';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(chineseText, x, by + 10 * s);
+        ctx.fillText(japaneseText, x, by + 10 * s);
 
         // German
-        ctx.font = `${Math.round(10 * s)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
+        ctx.font = `${Math.round(10 * s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
         ctx.fillStyle = '#8a7e6a';
         ctx.fillText(germanText, x, by + 23 * s);
 
@@ -10525,12 +10528,12 @@
         const targetVocab = vocab[targetId];
 
         // 1 correct + 2 wrong
-        const options = [{ word: targetVocab.hanzi + ' (' + targetVocab.pinyin + ')', correct: true }];
+        const options = [{ word: targetVocab.kanji + ' (' + targetVocab.kana + ')', correct: true }];
         const otherIds = Object.keys(vocab).filter(id => id !== targetId);
         for (let i = 0; i < 2 && otherIds.length > 0; i++) {
             const idx = randInt(0, otherIds.length - 1);
             const wrongId = otherIds.splice(idx, 1)[0];
-            options.push({ word: vocab[wrongId].hanzi + ' (' + vocab[wrongId].pinyin + ')', correct: false });
+            options.push({ word: vocab[wrongId].kanji + ' (' + vocab[wrongId].kana + ')', correct: false });
         }
         // Shuffle
         for (let i = options.length - 1; i > 0; i--) {
@@ -10616,7 +10619,7 @@
         }
 
         // Measure option text to determine panel width
-        const optFont = `${Math.round(11*s)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
+        const optFont = `${Math.round(11*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
         ctx.save();
         ctx.font = optFont;
         const optCount = quizData.options.length;
@@ -10653,7 +10656,7 @@
         const cx = panelX + panelW / 2;
 
         if (quizResult) {
-            ctx.font = `bold ${Math.round(14*s)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
+            ctx.font = `bold ${Math.round(14*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = quizResult === 'correct' ? '#6aee6a' : '#ee6a6a';
@@ -10675,7 +10678,7 @@
             }
 
             // Question
-            ctx.font = `bold ${Math.round(13*s)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
+            ctx.font = `bold ${Math.round(13*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#e0d8c0';
@@ -10720,7 +10723,7 @@
 
         ctx.save();
         ctx.fillStyle = '#e8d040';
-        ctx.font = `bold ${Math.round(10*s)}px 'Courier New','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace`;
+        ctx.font = `bold ${Math.round(10*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
         ctx.textAlign = 'center';
         for (let i = 0; i < 3; i++) {
             const angle = t + i * (Math.PI * 2 / 3);
@@ -10767,11 +10770,14 @@
     // ============================================================
     let commandFeedbackTimer = 0;
 
-    // Strip tone marks for fuzzy pinyin matching
-    function stripTones(str) {
-        return str.toLowerCase().replace(/[āáǎà]/g,'a').replace(/[ēéěè]/g,'e')
-            .replace(/[īíǐì]/g,'i').replace(/[ōóǒò]/g,'o')
-            .replace(/[ūúǔù]/g,'u').replace(/[ǖǘǚǜ]/g,'v');
+    // Normalize romaji for fuzzy matching (long vowels, macrons)
+    function normalizeRomaji(str) {
+        return str.toLowerCase()
+            .replace(/ō/g,'ou').replace(/ū/g,'uu').replace(/ā/g,'aa')
+            .replace(/ē/g,'ee').replace(/ī/g,'ii')
+            .replace(/ou/g,'o').replace(/uu/g,'u') // also collapse for matching
+            .replace(/shi/g,'si').replace(/chi/g,'ti').replace(/tsu/g,'tu')
+            .replace(/fu/g,'hu').replace(/ji/g,'zi');
     }
 
     // Parse input into matching vocab concept IDs
@@ -10780,19 +10786,21 @@
         const raw = input.trim();
         if (!raw) return [];
         const lower = raw.toLowerCase();
-        const stripped = stripTones(raw);
+        const normalized = normalizeRomaji(raw);
 
         const matched = [];
         // Try matching each known word against input
         for (const cid of learner.knownWords) {
             const v = vocab[cid];
             if (!v || v.type === 'particle') continue;
-            // Match by hanzi substring
-            if (raw.includes(v.hanzi)) { matched.push({ cid, score: 3 }); continue; }
-            // Match by pinyin (with and without tones)
-            const vPinyin = v.pinyin.toLowerCase();
-            const vStripped = stripTones(v.pinyin);
-            if (lower.includes(vPinyin) || stripped.includes(vStripped)) { matched.push({ cid, score: 2 }); continue; }
+            // Match by kanji substring
+            if (raw.includes(v.kanji)) { matched.push({ cid, score: 3 }); continue; }
+            // Match by kana (hiragana) substring
+            if (raw.includes(v.kana)) { matched.push({ cid, score: 3 }); continue; }
+            // Match by romaji
+            const vRomaji = (v.romaji || '').toLowerCase();
+            const vNorm = normalizeRomaji(vRomaji);
+            if (lower.includes(vRomaji) || normalized.includes(vNorm)) { matched.push({ cid, score: 2 }); continue; }
             // Match by German
             if (lower.includes(v.de.toLowerCase())) { matched.push({ cid, score: 1 }); continue; }
         }
@@ -10864,7 +10872,7 @@
         const action = findActionForConcepts(conceptIds);
         if (!action) {
             // Show what was understood but no action found
-            const understood = conceptIds.slice(0, 3).map(c => vocab[c] ? vocab[c].hanzi : c).join('');
+            const understood = conceptIds.slice(0, 3).map(c => vocab[c] ? vocab[c].kanji : c).join('');
             showCommandFeedback(`Verstanden: "${understood}" — aber was soll ich tun?`);
             // Learner shows confused response
             const confBubble = new SpeechBubble(learner, '...?', [], true);
@@ -10908,7 +10916,7 @@
         }, 300);
 
         // Show feedback
-        const cmdHanzi = conceptIds.slice(0, 4).map(c => vocab[c] ? vocab[c].hanzi : '').join('');
+        const cmdHanzi = conceptIds.slice(0, 4).map(c => vocab[c] ? vocab[c].kanji : '').join('');
         showCommandFeedback(`→ ${cmdHanzi} → ${action.activityDe}`);
         inputEl.value = '';
     }
@@ -10940,7 +10948,7 @@
 
         // Show action speech bubble (using the action's template, with grammar)
         const sentence = buildSentence(action);
-        const actBubble = new SpeechBubble(learner, sentence.hanziText, sentence.words, true);
+        const actBubble = new SpeechBubble(learner, sentence.kanjiText, sentence.words, true);
         speechBubbles.push(actBubble);
         sfxForAction(action.id);
 
@@ -10962,7 +10970,7 @@
     // ============================================================
     //  SAVE / LOAD SYSTEM (localStorage)
     // ============================================================
-    const SAVE_KEY = 'longmen_save';
+    const SAVE_KEY = 'nihongomura_save';
     const AUTOSAVE_INTERVAL = 60000; // 60 seconds
 
     function buildSaveData() {
@@ -10996,7 +11004,7 @@
             storytellingCooldownDay: storytelling.cooldownDay,
             eventLog: eventLog.slice(0, 50),
             vocabHistory: vocabHistory,
-            chengyuTriggered: [...chengyuTriggered],
+            yojijukugoTriggered: [...yojijukugoTriggered],
         };
     }
 
@@ -11109,7 +11117,7 @@
         // Event log
         eventLog = Array.isArray(data.eventLog) ? data.eventLog : [];
         vocabHistory = Array.isArray(data.vocabHistory) ? data.vocabHistory : [];
-        chengyuTriggered = new Set(data.chengyuTriggered || []);
+        yojijukugoTriggered = new Set(data.yojijukugoTriggered || []);
     }
 
     function deleteSave() {
@@ -11326,8 +11334,8 @@
             updateNpcInteractions(dt);
 
             // Check chengyu triggers (every ~100 ticks)
-            if (Math.floor(gameTick) % 100 === 0) { checkChengyuTriggers(); checkFestival(); }
-            if (chengyuOverlay && !chengyuOverlay.update(dt)) chengyuOverlay = null;
+            if (Math.floor(gameTick) % 100 === 0) { checkYojijukugoTriggers(); checkFestival(); }
+            if (yojijukugoOverlay && !yojijukugoOverlay.update(dt)) yojijukugoOverlay = null;
             updateFestivalParticles(dt);
 
             // Update object tooltip
@@ -11403,7 +11411,7 @@
         // Calligraphy overlays (on top of weather/scene)
         for (const c of calligraphyOverlays) c.draw(ctx);
         if (proverbOverlay) proverbOverlay.draw(ctx);
-        if (chengyuOverlay) chengyuOverlay.draw(ctx);
+        if (yojijukugoOverlay) yojijukugoOverlay.draw(ctx);
 
         // Object tooltip (UI layer, always visible)
         drawObjectTooltip(ctx);
