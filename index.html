@@ -547,9 +547,9 @@
         musicGainNode = null;
         droneOsc1 = null; droneOsc2 = null; droneFilt = null; droneGainNode = null; droneLfo = null;
         ambNoiseNode = null; ambFiltNode = null; ambGainNode = null; ambLfo = null; ambLfoGain = null;
-        diziGainNode = null;
-        guzhengGainNode = null;
-        erhuGainNode = null;
+        shakuhachiGainNode = null;
+        kotoGainNode = null;
+        shamisenGainNode = null;
     }
 
     // --- Utility: create noise buffer (cached by duration) ---
@@ -566,102 +566,126 @@
         return buf;
     }
 
-    // --- ADAPTIVE MOOD-BASED CHINESE MUSIC ENGINE ---
+    // --- ADAPTIVE MOOD-BASED JAPANESE MUSIC ENGINE ---
     // Detects time-of-day + weather and smoothly transitions between musical moods
-    // Uses authentic Chinese pentatonic modes and instrument simulations
+    // Uses authentic Japanese scales and instrument simulations:
+    //   尺八 shakuhachi, 琴 koto, 三味線 shamisen
+
+    // Japanese scale definitions:
+    // In scale (陰音階 miyako-bushi): semitones 0,1,5,7,8 — e.g. C Db F G Ab
+    // Yo scale (陽音階): semitones 0,2,5,7,10 — e.g. C D F G Bb
+    // Hirajoshi scale: semitones 0,2,3,7,8 — e.g. C D Eb G Ab
+
+    // Helper: build scale from root frequency and semitone pattern across 2 octaves
+    function buildJapaneseScale(rootFreq, semitones) {
+        const notes = [];
+        for (let octave = 0; octave < 2; octave++) {
+            for (const s of semitones) {
+                notes.push(rootFreq * Math.pow(2, (s + octave * 12) / 12));
+            }
+        }
+        return notes;
+    }
+
+    // Pre-built scales for each mood
+    const IN_SCALE_C4    = buildJapaneseScale(261.6, [0, 1, 5, 7, 8]);   // C4 root
+    const IN_SCALE_A3    = buildJapaneseScale(220,   [0, 1, 5, 7, 8]);   // A3 root (low register)
+    const IN_SCALE_E4    = buildJapaneseScale(329.6, [0, 1, 5, 7, 8]);   // E4 root (higher register)
+    const YO_SCALE_C4    = buildJapaneseScale(261.6, [0, 2, 5, 7, 10]);  // C4 root
+    const YO_SCALE_G3    = buildJapaneseScale(196,   [0, 2, 5, 7, 10]);  // G3 root (low register)
+    const HIRAJOSHI_C4   = buildJapaneseScale(261.6, [0, 2, 3, 7, 8]);   // C4 root
+    const HIRAJOSHI_C5   = buildJapaneseScale(523.3, [0, 2, 3, 7, 8]);   // C5 root (high crystalline)
 
     // Mood definitions: each mood configures all music layers
-    // Chinese pentatonic modes: 宫 gōng (C D E G A), 商 shāng (D E G A C),
-    // 角 jué (E G A C D), 徵 zhǐ (G A C D E), 羽 yǔ (A C D E G)
     const MUSIC_MOODS = {
         day: {
             bpm: 52, droneFreq: 65.4, droneDetune: 0.15, droneVol: 0.06, droneFilter: 200,
-            // 宫 gōng mode — bright, pastoral, like a village marketplace
-            scale: [261.6, 293.7, 329.6, 392, 440, 523.3, 587.3],
-            diziVol: 0.22, diziInterval: [5, 10], noteDur: [0.3, 1.2], noteCount: [3, 6],
-            guzhengVol: 0.18, guzhengInterval: [3, 7], guzhengNotes: [3, 6],
-            erhuVol: 0.0, erhuInterval: [20, 40], erhuDur: [0, 0],
-            percVol: 0.20, percPattern: 'village', bangziVol: 0.08,
+            // Yo scale (陽音階) — bright, positive, lively village
+            scale: YO_SCALE_C4,
+            shakuhachiVol: 0.22, shakuhachiInterval: [5, 10], noteDur: [0.3, 1.2], noteCount: [3, 6],
+            kotoVol: 0.18, kotoInterval: [3, 7], kotoNotes: [3, 6],
+            shamisenVol: 0.0, shamisenInterval: [20, 40], shamisenDur: [0, 0],
+            percVol: 0.20, percPattern: 'village', hyoushigiVol: 0.08,
             ambVol: 0.04, ambFreq: 400, ambQ: 0.3, ambLfoRate: 0.10, ambLfoDepth: 0.02,
         },
         dawn: {
             bpm: 40, droneFreq: 82.4, droneDetune: 0.1, droneVol: 0.05, droneFilter: 160,
-            // 角 jué mode — serene, like morning mist over mountains
-            scale: [329.6, 392, 440, 523.3, 587.3, 659.3],
-            diziVol: 0.26, diziInterval: [8, 16], noteDur: [0.8, 2.0], noteCount: [2, 4],
-            guzhengVol: 0.14, guzhengInterval: [6, 14], guzhengNotes: [2, 4],
-            erhuVol: 0.0, erhuInterval: [30, 50], erhuDur: [0, 0],
-            percVol: 0.0, percPattern: 'none', bangziVol: 0.0,
+            // In scale (陰音階) higher register — serene morning
+            scale: IN_SCALE_E4,
+            shakuhachiVol: 0.26, shakuhachiInterval: [8, 16], noteDur: [0.8, 2.0], noteCount: [2, 4],
+            kotoVol: 0.14, kotoInterval: [6, 14], kotoNotes: [2, 4],
+            shamisenVol: 0.0, shamisenInterval: [30, 50], shamisenDur: [0, 0],
+            percVol: 0.0, percPattern: 'none', hyoushigiVol: 0.0,
             ambVol: 0.06, ambFreq: 500, ambQ: 0.2, ambLfoRate: 0.05, ambLfoDepth: 0.02,
         },
         dusk: {
             bpm: 44, droneFreq: 55, droneDetune: 0.25, droneVol: 0.08, droneFilter: 140,
-            // 羽 yǔ mode — melancholic, contemplative evening
-            scale: [220, 261.6, 293.7, 329.6, 392, 440],
-            diziVol: 0.20, diziInterval: [7, 15], noteDur: [0.8, 2.0], noteCount: [2, 4],
-            guzhengVol: 0.16, guzhengInterval: [5, 10], guzhengNotes: [2, 5],
-            erhuVol: 0.16, erhuInterval: [10, 20], erhuDur: [2.0, 4.5],
-            percVol: 0.08, percPattern: 'temple', bangziVol: 0.0,
+            // Hirajoshi scale — melancholic evening
+            scale: HIRAJOSHI_C4,
+            shakuhachiVol: 0.20, shakuhachiInterval: [7, 15], noteDur: [0.8, 2.0], noteCount: [2, 4],
+            kotoVol: 0.16, kotoInterval: [5, 10], kotoNotes: [2, 5],
+            shamisenVol: 0.16, shamisenInterval: [10, 20], shamisenDur: [2.0, 4.5],
+            percVol: 0.08, percPattern: 'temple', hyoushigiVol: 0.0,
             ambVol: 0.05, ambFreq: 300, ambQ: 0.4, ambLfoRate: 0.07, ambLfoDepth: 0.02,
         },
         night: {
             bpm: 32, droneFreq: 55, droneDetune: 0.15, droneVol: 0.08, droneFilter: 100,
-            // 羽 yǔ mode sparse — guqin-like contemplative night
-            scale: [220, 261.6, 329.6, 392, 440],
-            diziVol: 0.0, diziInterval: [20, 40], noteDur: [1.5, 3.0], noteCount: [1, 2],
-            guzhengVol: 0.12, guzhengInterval: [8, 18], guzhengNotes: [1, 3],
-            erhuVol: 0.14, erhuInterval: [12, 25], erhuDur: [3.0, 6.0],
-            percVol: 0.0, percPattern: 'none', bangziVol: 0.0,
+            // Sparse In scale low register — contemplative night
+            scale: IN_SCALE_A3,
+            shakuhachiVol: 0.0, shakuhachiInterval: [20, 40], noteDur: [1.5, 3.0], noteCount: [1, 2],
+            kotoVol: 0.12, kotoInterval: [8, 18], kotoNotes: [1, 3],
+            shamisenVol: 0.14, shamisenInterval: [12, 25], shamisenDur: [3.0, 6.0],
+            percVol: 0.0, percPattern: 'none', hyoushigiVol: 0.0,
             ambVol: 0.05, ambFreq: 200, ambQ: 0.5, ambLfoRate: 0.03, ambLfoDepth: 0.03,
         },
         rain: {
             bpm: 46, droneFreq: 61.7, droneDetune: 0.35, droneVol: 0.07, droneFilter: 130,
-            // 商 shāng mode — wistful rain on bamboo leaves
-            scale: [293.7, 329.6, 392, 440, 523.3],
-            diziVol: 0.16, diziInterval: [8, 18], noteDur: [0.6, 1.8], noteCount: [2, 4],
-            guzhengVol: 0.20, guzhengInterval: [4, 8], guzhengNotes: [3, 6],
-            erhuVol: 0.12, erhuInterval: [14, 28], erhuDur: [2.0, 4.0],
-            percVol: 0.06, percPattern: 'rain', bangziVol: 0.12,
+            // In scale (陰音階) — wistful rain
+            scale: IN_SCALE_C4,
+            shakuhachiVol: 0.16, shakuhachiInterval: [8, 18], noteDur: [0.6, 1.8], noteCount: [2, 4],
+            kotoVol: 0.20, kotoInterval: [4, 8], kotoNotes: [3, 6],
+            shamisenVol: 0.12, shamisenInterval: [14, 28], shamisenDur: [2.0, 4.0],
+            percVol: 0.06, percPattern: 'rain', hyoushigiVol: 0.12,
             ambVol: 0.035, ambFreq: 700, ambQ: 0.2, ambLfoRate: 0.20, ambLfoDepth: 0.025,
         },
         snow: {
             bpm: 30, droneFreq: 82.4, droneDetune: 0.1, droneVol: 0.06, droneFilter: 90,
-            // High crystalline pentatonic — jade bells in snowfall
-            scale: [523.3, 587.3, 659.3, 784, 880],
-            diziVol: 0.14, diziInterval: [14, 28], noteDur: [1.5, 3.5], noteCount: [1, 2],
-            guzhengVol: 0.16, guzhengInterval: [10, 22], guzhengNotes: [1, 3],
-            erhuVol: 0.10, erhuInterval: [18, 35], erhuDur: [3.0, 5.0],
-            percVol: 0.0, percPattern: 'none', bangziVol: 0.0,
+            // High crystalline Hirajoshi — snowfall
+            scale: HIRAJOSHI_C5,
+            shakuhachiVol: 0.14, shakuhachiInterval: [14, 28], noteDur: [1.5, 3.5], noteCount: [1, 2],
+            kotoVol: 0.16, kotoInterval: [10, 22], kotoNotes: [1, 3],
+            shamisenVol: 0.10, shamisenInterval: [18, 35], shamisenDur: [3.0, 5.0],
+            percVol: 0.0, percPattern: 'none', hyoushigiVol: 0.0,
             ambVol: 0.02, ambFreq: 280, ambQ: 0.6, ambLfoRate: 0.03, ambLfoDepth: 0.01,
         },
         fog: {
             bpm: 36, droneFreq: 55, droneDetune: 0.4, droneVol: 0.10, droneFilter: 100,
-            // Sparse, mysterious — like a Daoist temple in mist
-            scale: [220, 261.6, 329.6, 392, 440],
-            diziVol: 0.10, diziInterval: [16, 30], noteDur: [2.0, 4.0], noteCount: [1, 2],
-            guzhengVol: 0.10, guzhengInterval: [12, 24], guzhengNotes: [1, 2],
-            erhuVol: 0.12, erhuInterval: [15, 30], erhuDur: [3.0, 6.0],
-            percVol: 0.04, percPattern: 'temple', bangziVol: 0.0,
+            // Sparse In scale — mysterious, like a Zen temple in mist
+            scale: IN_SCALE_A3,
+            shakuhachiVol: 0.10, shakuhachiInterval: [16, 30], noteDur: [2.0, 4.0], noteCount: [1, 2],
+            kotoVol: 0.10, kotoInterval: [12, 24], kotoNotes: [1, 2],
+            shamisenVol: 0.12, shamisenInterval: [15, 30], shamisenDur: [3.0, 6.0],
+            percVol: 0.04, percPattern: 'temple', hyoushigiVol: 0.0,
             ambVol: 0.035, ambFreq: 180, ambQ: 0.8, ambLfoRate: 0.04, ambLfoDepth: 0.025,
         },
         wind: {
             bpm: 50, droneFreq: 65.4, droneDetune: 0.35, droneVol: 0.04, droneFilter: 160,
-            // 徵 zhǐ mode — windswept, energetic
-            scale: [392, 440, 523.3, 587.3, 659.3],
-            diziVol: 0.12, diziInterval: [6, 14], noteDur: [0.2, 0.6], noteCount: [3, 5],
-            guzhengVol: 0.14, guzhengInterval: [4, 9], guzhengNotes: [3, 5],
-            erhuVol: 0.0, erhuInterval: [20, 40], erhuDur: [0, 0],
-            percVol: 0.10, percPattern: 'wind', bangziVol: 0.10,
+            // Yo scale (陽音階) — energetic, windswept
+            scale: YO_SCALE_C4,
+            shakuhachiVol: 0.12, shakuhachiInterval: [6, 14], noteDur: [0.2, 0.6], noteCount: [3, 5],
+            kotoVol: 0.14, kotoInterval: [4, 9], kotoNotes: [3, 5],
+            shamisenVol: 0.0, shamisenInterval: [20, 40], shamisenDur: [0, 0],
+            percVol: 0.10, percPattern: 'wind', hyoushigiVol: 0.10,
             ambVol: 0.025, ambFreq: 450, ambQ: 0.15, ambLfoRate: 0.30, ambLfoDepth: 0.035,
         },
         storm: {
             bpm: 60, droneFreq: 49, droneDetune: 0.7, droneVol: 0.12, droneFilter: 220,
-            // Low intense — thunderous, dramatic like Beijing opera percussion
-            scale: [196, 220, 261.6, 293.7, 392],
-            diziVol: 0.06, diziInterval: [5, 10], noteDur: [0.15, 0.4], noteCount: [3, 6],
-            guzhengVol: 0.10, guzhengInterval: [3, 6], guzhengNotes: [4, 8],
-            erhuVol: 0.0, erhuInterval: [20, 40], erhuDur: [0, 0],
-            percVol: 0.45, percPattern: 'opera', bangziVol: 0.15,
+            // Low Yo scale — dramatic, thunderous matsuri drumming
+            scale: YO_SCALE_G3,
+            shakuhachiVol: 0.06, shakuhachiInterval: [5, 10], noteDur: [0.15, 0.4], noteCount: [3, 6],
+            kotoVol: 0.10, kotoInterval: [3, 6], kotoNotes: [4, 8],
+            shamisenVol: 0.0, shamisenInterval: [20, 40], shamisenDur: [0, 0],
+            percVol: 0.45, percPattern: 'matsuri', hyoushigiVol: 0.15,
             ambVol: 0.04, ambFreq: 550, ambQ: 0.1, ambLfoRate: 0.45, ambLfoDepth: 0.045,
         },
     };
@@ -671,9 +695,9 @@
     // Adaptive nodes we can tweak at runtime
     let droneOsc1 = null, droneOsc2 = null, droneFilt = null, droneGainNode = null, droneLfo = null;
     let ambNoiseNode = null, ambFiltNode = null, ambGainNode = null, ambLfo = null, ambLfoGain = null;
-    let diziGainNode = null;
-    let guzhengGainNode = null;
-    let erhuGainNode = null;
+    let shakuhachiGainNode = null;
+    let kotoGainNode = null;
+    let shamisenGainNode = null;
     let activeMoodParams = null;
 
     function getMusicMood() {
@@ -707,12 +731,12 @@
         musicGainNode.connect(audioMaster);
         musicNodes.push(musicGainNode);
 
-        // Start all Chinese instrument layers
+        // Start all Japanese instrument layers
         startAdaptiveDrone(musicGainNode);
-        startChinesePercussion(musicGainNode);
-        startDizi(musicGainNode);
-        startGuzheng(musicGainNode);
-        startErhu(musicGainNode);
+        startJapanesePercussion(musicGainNode);
+        startShakuhachi(musicGainNode);
+        startKoto(musicGainNode);
+        startShamisen(musicGainNode);
         startAdaptiveAmbient(musicGainNode);
 
         // Mood check loop
@@ -742,7 +766,7 @@
         seasonalAmbientNodes.push(gain);
 
         if (season === 'spring') {
-            // Bird chirps — high-freq filtered noise bursts
+            // Bird chirps — high-freq filtered noise bursts (uguisu / Japanese bush warbler)
             const birdGain = audioCtx.createGain();
             birdGain.gain.value = 0.4;
             birdGain.connect(gain);
@@ -767,30 +791,93 @@
                 setTimeout(scheduleBirdChirp, 2000 + Math.random() * 5000);
             })();
         } else if (season === 'summer') {
-            // Cicadas — sustained high-freq buzz
-            const cicada = audioCtx.createOscillator();
-            cicada.type = 'sawtooth';
-            cicada.frequency.value = 4200;
-            const cicadaFilt = audioCtx.createBiquadFilter();
-            cicadaFilt.type = 'bandpass';
-            cicadaFilt.frequency.value = 4500;
-            cicadaFilt.Q.value = 8;
-            const cicadaGain = audioCtx.createGain();
-            cicadaGain.gain.value = 0.08;
-            cicada.connect(cicadaFilt);
-            cicadaFilt.connect(cicadaGain);
-            cicadaGain.connect(gain);
+            // === Enhanced Japanese summer: prominent cicadas (蝉 semi) ===
+            // Primary cicada layer — loud sustained high-freq buzz (minminzemi)
+            const cicada1 = audioCtx.createOscillator();
+            cicada1.type = 'sawtooth';
+            cicada1.frequency.value = 4200;
+            const cicada1Filt = audioCtx.createBiquadFilter();
+            cicada1Filt.type = 'bandpass';
+            cicada1Filt.frequency.value = 4500;
+            cicada1Filt.Q.value = 8;
+            const cicada1Gain = audioCtx.createGain();
+            cicada1Gain.gain.value = 0.14; // louder than before
+            cicada1.connect(cicada1Filt);
+            cicada1Filt.connect(cicada1Gain);
+            cicada1Gain.connect(gain);
             // Pulsing LFO for cicada rhythm
-            const lfo = audioCtx.createOscillator();
-            lfo.type = 'sine';
-            lfo.frequency.value = 0.3;
-            const lfoG = audioCtx.createGain();
-            lfoG.gain.value = 0.04;
-            lfo.connect(lfoG);
-            lfoG.connect(cicadaGain.gain);
-            cicada.start();
-            lfo.start();
-            seasonalAmbientNodes.push(cicada, cicadaFilt, cicadaGain, lfo, lfoG);
+            const lfo1 = audioCtx.createOscillator();
+            lfo1.type = 'sine';
+            lfo1.frequency.value = 0.3;
+            const lfo1G = audioCtx.createGain();
+            lfo1G.gain.value = 0.07;
+            lfo1.connect(lfo1G);
+            lfo1G.connect(cicada1Gain.gain);
+            cicada1.start();
+            lfo1.start();
+            seasonalAmbientNodes.push(cicada1, cicada1Filt, cicada1Gain, lfo1, lfo1G);
+
+            // Second cicada layer — slightly different frequency for realism (aburazemi)
+            const cicada2 = audioCtx.createOscillator();
+            cicada2.type = 'sawtooth';
+            cicada2.frequency.value = 5800; // higher, different species
+            const cicada2Filt = audioCtx.createBiquadFilter();
+            cicada2Filt.type = 'bandpass';
+            cicada2Filt.frequency.value = 6000;
+            cicada2Filt.Q.value = 10;
+            const cicada2Gain = audioCtx.createGain();
+            cicada2Gain.gain.value = 0.10;
+            cicada2.connect(cicada2Filt);
+            cicada2Filt.connect(cicada2Gain);
+            cicada2Gain.connect(gain);
+            // Different pulse rate for this cicada species
+            const lfo2 = audioCtx.createOscillator();
+            lfo2.type = 'sine';
+            lfo2.frequency.value = 0.18; // slower pulse
+            const lfo2G = audioCtx.createGain();
+            lfo2G.gain.value = 0.05;
+            lfo2.connect(lfo2G);
+            lfo2G.connect(cicada2Gain.gain);
+            cicada2.start();
+            lfo2.start();
+            seasonalAmbientNodes.push(cicada2, cicada2Filt, cicada2Gain, lfo2, lfo2G);
+
+            // 風鈴 fuurin (wind chime) — periodic high metallic ring
+            const fuurinGain = audioCtx.createGain();
+            fuurinGain.gain.value = 0.5;
+            fuurinGain.connect(gain);
+            seasonalAmbientNodes.push(fuurinGain);
+            (function scheduleFuurin() {
+                if (!musicPlaying || currentAmbientSeason !== 'summer') return;
+                const t = audioCtx.currentTime;
+                // High metallic sine with overtones
+                const baseFreq = 2400 + Math.random() * 400;
+                const osc = audioCtx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.value = baseFreq;
+                const g = audioCtx.createGain();
+                g.gain.setValueAtTime(0, t);
+                g.gain.linearRampToValueAtTime(0.3, t + 0.005);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
+                osc.connect(g);
+                g.connect(fuurinGain);
+                osc.start(t);
+                osc.stop(t + 1.5);
+                // Metallic overtone
+                const osc2 = audioCtx.createOscillator();
+                osc2.type = 'sine';
+                osc2.frequency.value = baseFreq * 2.7;
+                const g2 = audioCtx.createGain();
+                g2.gain.setValueAtTime(0, t);
+                g2.gain.linearRampToValueAtTime(0.12, t + 0.005);
+                g2.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+                osc2.connect(g2);
+                g2.connect(fuurinGain);
+                osc2.start(t);
+                osc2.stop(t + 0.8);
+                // Schedule next fuurin ring (wind-driven, irregular)
+                setTimeout(scheduleFuurin, 4000 + Math.random() * 10000);
+            })();
         } else if (season === 'autumn') {
             // Wind through dry leaves — filtered noise
             const windNoise = audioCtx.createBufferSource();
@@ -816,6 +903,34 @@
             windNoise.start();
             sweepLfo.start();
             seasonalAmbientNodes.push(windNoise, windFilt, windGain, sweepLfo, sweepG);
+
+            // 鈴虫 suzumushi (bell cricket) — very high sine tone pulse
+            const cricketGain = audioCtx.createGain();
+            cricketGain.gain.value = 0.3;
+            cricketGain.connect(gain);
+            seasonalAmbientNodes.push(cricketGain);
+            (function scheduleSuzumushi() {
+                if (!musicPlaying || currentAmbientSeason !== 'autumn') return;
+                const t = audioCtx.currentTime;
+                // Bell cricket: rapid high-frequency pulse train (rin-rin-rin)
+                const pulseCount = randInt(3, 6);
+                for (let i = 0; i < pulseCount; i++) {
+                    const pt = t + i * 0.12;
+                    const freq = 4800 + Math.random() * 400; // very high sine
+                    const osc = audioCtx.createOscillator();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    const pg = audioCtx.createGain();
+                    pg.gain.setValueAtTime(0, pt);
+                    pg.gain.linearRampToValueAtTime(0.2, pt + 0.01);
+                    pg.gain.exponentialRampToValueAtTime(0.001, pt + 0.08);
+                    osc.connect(pg);
+                    pg.connect(cricketGain);
+                    osc.start(pt);
+                    osc.stop(pt + 0.08);
+                }
+                setTimeout(scheduleSuzumushi, 3000 + Math.random() * 7000);
+            })();
         }
         // Winter: intentional near-silence — just the existing music, no added ambient
     }
@@ -862,29 +977,29 @@
             if (ambLfoGain) ambLfoGain.gain.linearRampToValueAtTime(m.ambLfoDepth, t + fade);
         }
 
-        // Dizi volume
-        if (diziGainNode) {
-            diziGainNode.gain.linearRampToValueAtTime(m.diziVol, t + fade);
+        // Shakuhachi volume
+        if (shakuhachiGainNode) {
+            shakuhachiGainNode.gain.linearRampToValueAtTime(m.shakuhachiVol, t + fade);
         }
-        // Guzheng volume
-        if (guzhengGainNode) {
-            guzhengGainNode.gain.linearRampToValueAtTime(m.guzhengVol, t + fade);
+        // Koto volume
+        if (kotoGainNode) {
+            kotoGainNode.gain.linearRampToValueAtTime(m.kotoVol, t + fade);
         }
-        // Erhu volume
-        if (erhuGainNode) {
-            erhuGainNode.gain.linearRampToValueAtTime(m.erhuVol, t + fade);
+        // Shamisen volume
+        if (shamisenGainNode) {
+            shamisenGainNode.gain.linearRampToValueAtTime(m.shamisenVol, t + fade);
         }
     }
 
-    // === ADAPTIVE DRONE (古琴 guqin-style open strings) ===
-    // Uses perfect 5th intervals characteristic of Chinese music
+    // === ADAPTIVE DRONE (ichigenkin-style open string resonance) ===
+    // Uses perfect 5th intervals, foundational Japanese tonal center
     function startAdaptiveDrone(dest) {
         const m = activeMoodParams;
         droneGainNode = audioCtx.createGain();
         droneGainNode.gain.value = m.droneVol;
         droneGainNode.connect(dest);
 
-        // Root tone — warm sine, like an open guqin string
+        // Root tone — warm sine, like an open string resonance
         droneOsc1 = audioCtx.createOscillator();
         droneOsc1.type = 'sine';
         droneOsc1.frequency.value = m.droneFreq;
@@ -897,7 +1012,7 @@
         droneOsc1.start();
         musicNodes.push(droneOsc1);
 
-        // Perfect 5th above — characteristic Chinese interval
+        // Perfect 5th above
         droneOsc2 = audioCtx.createOscillator();
         droneOsc2.type = 'triangle';
         droneOsc2.frequency.value = m.droneFreq * 1.5; // perfect 5th
@@ -913,7 +1028,7 @@
         droneOsc2.start();
         musicNodes.push(droneOsc2);
 
-        // Slow LFO for breathing quality (like guqin vibrato 吟)
+        // Slow LFO for breathing quality (like shakuhachi long tone breath)
         droneLfo = audioCtx.createOscillator();
         droneLfo.type = 'sine';
         droneLfo.frequency.value = 0.06; // very slow breathing
@@ -925,8 +1040,8 @@
         musicNodes.push(droneLfo);
     }
 
-    // === CHINESE PERCUSSION (木鱼 muyu, 锣 luo, 磬 qing, 梆子 bangzi, 鼓 gu) ===
-    function startChinesePercussion(dest) {
+    // === JAPANESE PERCUSSION (木魚 mokugyo, 拍子木 hyoushigi, 鉦 kane, 鈴 suzu, 太鼓 taiko) ===
+    function startJapanesePercussion(dest) {
         const percDest = audioCtx.createGain();
         percDest.gain.value = 1.0;
         percDest.connect(dest);
@@ -951,63 +1066,63 @@
             if (m.percPattern === 'none') continue;
 
             if (m.percPattern === 'village') {
-                // Lively village: muyu on beats, bangzi accents, occasional small gong
-                playMuyu(bs, dest, m.percVol);
-                playMuyu(bs + beat * 2, dest, m.percVol);
-                if (Math.random() < 0.4) playMuyu(bs + beat, dest, m.percVol * 0.5);
-                if (Math.random() < 0.3) playMuyu(bs + beat * 3, dest, m.percVol * 0.5);
-                playBangzi(bs + beat, dest, m.bangziVol);
-                playBangzi(bs + beat * 3, dest, m.bangziVol);
-                // Occasional small gong on downbeat
-                if (Math.random() < 0.15) playLuo(bs, dest, m.percVol * 0.3, 'small');
-                // Gu (drum) on 1 and 3 softly
-                playGu(bs, dest, m.percVol * 0.4);
-                if (Math.random() < 0.6) playGu(bs + beat * 2, dest, m.percVol * 0.3);
+                // Lively village: mokugyo on beats, hyoushigi accents, occasional kane
+                playMokugyo(bs, dest, m.percVol);
+                playMokugyo(bs + beat * 2, dest, m.percVol);
+                if (Math.random() < 0.4) playMokugyo(bs + beat, dest, m.percVol * 0.5);
+                if (Math.random() < 0.3) playMokugyo(bs + beat * 3, dest, m.percVol * 0.5);
+                playHyoushigi(bs + beat, dest, m.hyoushigiVol);
+                playHyoushigi(bs + beat * 3, dest, m.hyoushigiVol);
+                // Occasional kane on downbeat
+                if (Math.random() < 0.15) playKane(bs, dest, m.percVol * 0.3);
+                // Taiko on 1 and 3 softly
+                playTaiko(bs, dest, m.percVol * 0.4);
+                if (Math.random() < 0.6) playTaiko(bs + beat * 2, dest, m.percVol * 0.3);
                 // Fill every 4th bar
                 if (bar % 4 === 3 && Math.random() < 0.4) {
-                    playBangzi(bs + beat * 3.5, dest, m.bangziVol * 0.7);
-                    playMuyu(bs + beat * 3.25, dest, m.percVol * 0.4);
-                    playMuyu(bs + beat * 3.75, dest, m.percVol * 0.4);
+                    playHyoushigi(bs + beat * 3.5, dest, m.hyoushigiVol * 0.7);
+                    playMokugyo(bs + beat * 3.25, dest, m.percVol * 0.4);
+                    playMokugyo(bs + beat * 3.75, dest, m.percVol * 0.4);
                 }
             } else if (m.percPattern === 'temple') {
-                // Contemplative: sparse muyu, occasional qing (temple bell)
-                if (Math.random() < 0.5) playMuyu(bs, dest, m.percVol);
-                if (Math.random() < 0.2) playMuyu(bs + beat * 2, dest, m.percVol * 0.4);
-                // Temple bell (qing) every few bars
-                if (bar % 4 === 0 && Math.random() < 0.4) playQing(bs, dest, m.percVol * 0.5);
+                // Contemplative: sparse mokugyo, occasional suzu (temple bell)
+                if (Math.random() < 0.5) playMokugyo(bs, dest, m.percVol);
+                if (Math.random() < 0.2) playMokugyo(bs + beat * 2, dest, m.percVol * 0.4);
+                // Temple bell (suzu) every few bars
+                if (bar % 4 === 0 && Math.random() < 0.4) playSuzu(bs, dest, m.percVol * 0.5);
             } else if (m.percPattern === 'rain') {
-                // Rain on bamboo: gentle bangzi like raindrops, sparse muyu
-                if (Math.random() < 0.4) playMuyu(bs, dest, m.percVol * 0.5);
+                // Rain on bamboo: gentle hyoushigi like raindrops, sparse mokugyo
+                if (Math.random() < 0.4) playMokugyo(bs, dest, m.percVol * 0.5);
                 for (let i = 0; i < 8; i++) {
-                    if (Math.random() < 0.35) playBangzi(bs + i * beat * 0.5, dest, m.bangziVol * randFloat(0.3, 1.0));
+                    if (Math.random() < 0.35) playHyoushigi(bs + i * beat * 0.5, dest, m.hyoushigiVol * randFloat(0.3, 1.0));
                 }
-                if (bar % 4 === 0 && Math.random() < 0.3) playQing(bs, dest, m.percVol * 0.3);
+                if (bar % 4 === 0 && Math.random() < 0.3) playSuzu(bs, dest, m.percVol * 0.3);
             } else if (m.percPattern === 'wind') {
-                // Driving wind: faster bangzi, energetic gu
-                playGu(bs, dest, m.percVol * 0.5);
-                playGu(bs + beat * 2, dest, m.percVol * 0.4);
-                if (Math.random() < 0.4) playGu(bs + beat * 1.5, dest, m.percVol * 0.25);
-                playBangzi(bs + beat, dest, m.bangziVol);
-                playBangzi(bs + beat * 3, dest, m.bangziVol);
+                // Driving wind: faster hyoushigi, energetic taiko
+                playTaiko(bs, dest, m.percVol * 0.5);
+                playTaiko(bs + beat * 2, dest, m.percVol * 0.4);
+                if (Math.random() < 0.4) playTaiko(bs + beat * 1.5, dest, m.percVol * 0.25);
+                playHyoushigi(bs + beat, dest, m.hyoushigiVol);
+                playHyoushigi(bs + beat * 3, dest, m.hyoushigiVol);
                 for (let i = 0; i < 4; i++) {
-                    if (Math.random() < 0.3) playBangzi(bs + i * beat + beat * 0.5, dest, m.bangziVol * 0.5);
+                    if (Math.random() < 0.3) playHyoushigi(bs + i * beat + beat * 0.5, dest, m.hyoushigiVol * 0.5);
                 }
-            } else if (m.percPattern === 'opera') {
-                // Beijing opera style: dramatic gong, rapid bangzi, heavy gu
-                playGu(bs, dest, m.percVol);
-                playGu(bs + beat, dest, m.percVol * 0.7);
-                playGu(bs + beat * 2, dest, m.percVol * 0.9);
-                playGu(bs + beat * 3, dest, m.percVol * 0.6);
-                playLuo(bs, dest, m.percVol * 0.5, 'large');
-                if (Math.random() < 0.5) playLuo(bs + beat * 2, dest, m.percVol * 0.3, 'small');
-                for (let i = 0; i < 8; i++) playBangzi(bs + i * beat * 0.5, dest, m.bangziVol * (i % 2 === 0 ? 1.0 : 0.6));
-                // Dramatic gong crash
+            } else if (m.percPattern === 'matsuri') {
+                // 祭り matsuri style: dramatic kane, rapid hyoushigi, heavy taiko
+                playTaiko(bs, dest, m.percVol);
+                playTaiko(bs + beat, dest, m.percVol * 0.7);
+                playTaiko(bs + beat * 2, dest, m.percVol * 0.9);
+                playTaiko(bs + beat * 3, dest, m.percVol * 0.6);
+                playKane(bs, dest, m.percVol * 0.5);
+                if (Math.random() < 0.5) playKane(bs + beat * 2, dest, m.percVol * 0.3);
+                for (let i = 0; i < 8; i++) playHyoushigi(bs + i * beat * 0.5, dest, m.hyoushigiVol * (i % 2 === 0 ? 1.0 : 0.6));
+                // Dramatic kane crash
                 if (Math.random() < 0.2) {
-                    playLuo(bs + beat * 3.5, dest, m.percVol * 0.7, 'large');
+                    playKane(bs + beat * 3.5, dest, m.percVol * 0.7);
                 }
-                // Rapid fill
+                // Rapid taiko fill (連打 renda)
                 if (bar % 4 === 3 && Math.random() < 0.5) {
-                    for (let j = 0; j < 6; j++) playGu(bs + beat * 3 + j * 0.08, dest, m.percVol * (0.4 + j * 0.1));
+                    for (let j = 0; j < 6; j++) playTaiko(bs + beat * 3 + j * 0.08, dest, m.percVol * (0.4 + j * 0.1));
                 }
             }
         }
@@ -1015,8 +1130,8 @@
         setTimeout(() => schedulePercLoop(dest, gen), (barLen * bars - 0.2) * 1000);
     }
 
-    // 木鱼 Muyu — wooden fish block (hollow, warm click)
-    function playMuyu(time, dest, vol) {
+    // 木魚 Mokugyo — wooden fish block (hollow, warm click — same instrument as muyu)
+    function playMokugyo(time, dest, vol) {
         const g = audioCtx.createGain();
         g.gain.setValueAtTime(vol || 0.3, time);
         g.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
@@ -1053,8 +1168,8 @@
         ns.onended = () => { ns.disconnect(); nf.disconnect(); ng.disconnect(); };
     }
 
-    // 梆子 Bangzi — wooden clapper (bright, sharp)
-    function playBangzi(time, dest, vol) {
+    // 拍子木 Hyoushigi — wooden clappers (bright, sharp crack)
+    function playHyoushigi(time, dest, vol) {
         const g = audioCtx.createGain();
         g.gain.setValueAtTime(vol || 0.15, time);
         g.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
@@ -1074,58 +1189,56 @@
         osc.onended = () => { osc.disconnect(); filt.disconnect(); g.disconnect(); };
     }
 
-    // 锣 Luo — gong (metallic shimmer with pitch bend)
-    function playLuo(time, dest, vol, size) {
-        const isLarge = size === 'large';
-        const baseFreq = isLarge ? 120 : 380;
-        const dur = isLarge ? 1.5 : 0.8;
+    // 鉦 Kane — hand bell (higher pitch than gong, brighter metallic ring)
+    function playKane(time, dest, vol) {
+        const baseFreq = 580; // higher than Chinese gong, brighter
+        const dur = 0.9;
         const g = audioCtx.createGain();
         g.gain.setValueAtTime(vol || 0.4, time);
         g.gain.exponentialRampToValueAtTime(0.001, time + dur);
         g.connect(dest);
-        // Main tone with characteristic pitch bend (锣 bends down)
+        // Main tone — kane has less pitch bend than luo, brighter attack
         const osc = audioCtx.createOscillator();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(baseFreq * 1.15, time);
-        osc.frequency.exponentialRampToValueAtTime(baseFreq, time + 0.3);
+        osc.frequency.setValueAtTime(baseFreq * 1.05, time);
+        osc.frequency.exponentialRampToValueAtTime(baseFreq, time + 0.1);
         osc.connect(g);
         osc.start(time);
         osc.stop(time + dur);
-        // Metallic overtones
+        // Bright metallic overtones (higher and more prominent than gong)
         const osc2 = audioCtx.createOscillator();
         osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(baseFreq * 2.76, time);
-        osc2.frequency.exponentialRampToValueAtTime(baseFreq * 2.4, time + 0.2);
+        osc2.frequency.setValueAtTime(baseFreq * 3.2, time);
+        osc2.frequency.exponentialRampToValueAtTime(baseFreq * 3.0, time + 0.1);
         const g2 = audioCtx.createGain();
-        g2.gain.setValueAtTime((vol || 0.4) * 0.3, time);
-        g2.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.7);
+        g2.gain.setValueAtTime((vol || 0.4) * 0.35, time);
+        g2.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.6);
         osc2.connect(g2);
         g2.connect(dest);
         osc2.start(time);
-        osc2.stop(time + dur * 0.7);
-        // Shimmer noise
+        osc2.stop(time + dur * 0.6);
+        // High shimmer
         const ng = audioCtx.createGain();
-        ng.gain.setValueAtTime((vol || 0.4) * 0.15, time);
-        ng.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.4);
+        ng.gain.setValueAtTime((vol || 0.4) * 0.12, time);
+        ng.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.3);
         const nf = audioCtx.createBiquadFilter();
         nf.type = 'bandpass';
-        nf.frequency.value = baseFreq * 4;
-        nf.Q.value = 2;
+        nf.frequency.value = baseFreq * 5;
+        nf.Q.value = 3;
         nf.connect(ng);
         ng.connect(dest);
         const ns = audioCtx.createBufferSource();
-        ns.buffer = createNoiseBuffer(dur * 0.4);
+        ns.buffer = createNoiseBuffer(dur * 0.3);
         ns.connect(nf);
         ns.start(time);
-        ns.stop(time + dur * 0.4);
-        // Cleanup: longest node is osc (dur), osc2 (dur*0.7), ns (dur*0.4)
+        ns.stop(time + dur * 0.3);
         osc.onended = () => { osc.disconnect(); g.disconnect(); osc2.disconnect(); g2.disconnect(); ns.disconnect(); nf.disconnect(); ng.disconnect(); };
     }
 
-    // 磬 Qing — temple bell/chime (pure, resonant, long decay)
-    function playQing(time, dest, vol) {
-        const freq = 1046.5 + Math.random() * 200; // high C area
-        const dur = 3.0;
+    // 鈴 Suzu — bright jingle bell (high, shimmering, quick decay)
+    function playSuzu(time, dest, vol) {
+        const freq = 1800 + Math.random() * 400; // high, bright
+        const dur = 1.8;
         const g = audioCtx.createGain();
         g.gain.setValueAtTime(vol || 0.3, time);
         g.gain.setValueAtTime((vol || 0.3) * 0.8, time + 0.01);
@@ -1137,74 +1250,97 @@
         osc.connect(g);
         osc.start(time);
         osc.stop(time + dur);
-        // Overtone
+        // Bright overtone (jingle shimmer)
         const osc2 = audioCtx.createOscillator();
         osc2.type = 'sine';
-        osc2.frequency.value = freq * 2.5;
+        osc2.frequency.value = freq * 2.8;
         const g2 = audioCtx.createGain();
-        g2.gain.setValueAtTime((vol || 0.3) * 0.15, time);
-        g2.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.5);
+        g2.gain.setValueAtTime((vol || 0.3) * 0.2, time);
+        g2.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.4);
         osc2.connect(g2);
         g2.connect(dest);
         osc2.start(time);
-        osc2.stop(time + dur * 0.5);
-        osc.onended = () => { osc.disconnect(); g.disconnect(); osc2.disconnect(); g2.disconnect(); };
+        osc2.stop(time + dur * 0.4);
+        // Third overtone for bell character
+        const osc3 = audioCtx.createOscillator();
+        osc3.type = 'sine';
+        osc3.frequency.value = freq * 4.2;
+        const g3 = audioCtx.createGain();
+        g3.gain.setValueAtTime((vol || 0.3) * 0.08, time);
+        g3.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.2);
+        osc3.connect(g3);
+        g3.connect(dest);
+        osc3.start(time);
+        osc3.stop(time + dur * 0.2);
+        osc.onended = () => { osc.disconnect(); g.disconnect(); osc2.disconnect(); g2.disconnect(); osc3.disconnect(); g3.disconnect(); };
     }
 
-    // 鼓 Gu — Chinese drum (deeper, warmer than Western kick)
-    function playGu(time, dest, vol) {
+    // 太鼓 Taiko — Japanese drum (deep boom, longer sustain, characteristic "don" attack)
+    function playTaiko(time, dest, vol) {
         const g = audioCtx.createGain();
         g.gain.setValueAtTime(vol || 0.5, time);
-        g.gain.exponentialRampToValueAtTime(0.001, time + 0.35);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.55); // longer sustain than gu
         g.connect(dest);
         const osc = audioCtx.createOscillator();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(100, time);
-        osc.frequency.exponentialRampToValueAtTime(50, time + 0.2);
+        osc.frequency.setValueAtTime(80, time); // deeper than Chinese gu
+        osc.frequency.exponentialRampToValueAtTime(40, time + 0.35);
         osc.connect(g);
         osc.start(time);
-        osc.stop(time + 0.35);
-        // Skin slap
+        osc.stop(time + 0.55);
+        // "Don" attack — characteristic taiko strike transient (louder, wider band)
         const ng = audioCtx.createGain();
-        ng.gain.setValueAtTime(0.25 * (vol || 0.5), time);
-        ng.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+        ng.gain.setValueAtTime(0.35 * (vol || 0.5), time);
+        ng.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
         const filt = audioCtx.createBiquadFilter();
         filt.type = 'bandpass';
-        filt.frequency.value = 400;
-        filt.Q.value = 1;
+        filt.frequency.value = 300; // lower center for "don" character
+        filt.Q.value = 0.8;
         filt.connect(ng);
         ng.connect(dest);
         const ns = audioCtx.createBufferSource();
-        ns.buffer = createNoiseBuffer(0.04);
+        ns.buffer = createNoiseBuffer(0.06);
         ns.connect(filt);
         ns.start(time);
-        ns.stop(time + 0.04);
-        osc.onended = () => { osc.disconnect(); g.disconnect(); ns.disconnect(); filt.disconnect(); ng.disconnect(); };
+        ns.stop(time + 0.06);
+        // Secondary body resonance (taiko has a deeper body hum)
+        const bodyOsc = audioCtx.createOscillator();
+        bodyOsc.type = 'sine';
+        bodyOsc.frequency.setValueAtTime(60, time);
+        bodyOsc.frequency.exponentialRampToValueAtTime(35, time + 0.4);
+        const bodyG = audioCtx.createGain();
+        bodyG.gain.setValueAtTime((vol || 0.5) * 0.3, time);
+        bodyG.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
+        bodyOsc.connect(bodyG);
+        bodyG.connect(dest);
+        bodyOsc.start(time);
+        bodyOsc.stop(time + 0.5);
+        osc.onended = () => { osc.disconnect(); g.disconnect(); ns.disconnect(); filt.disconnect(); ng.disconnect(); bodyOsc.disconnect(); bodyG.disconnect(); };
     }
 
-    // === 竹笛 DIZI (Chinese bamboo flute) ===
-    // Characterized by bright tone, wide vibrato, ornamental grace notes,
-    // and buzzing membrane (膜 mó) resonance
-    function startDizi(dest) {
-        diziGainNode = audioCtx.createGain();
-        diziGainNode.gain.value = activeMoodParams.diziVol;
-        diziGainNode.connect(dest);
-        musicNodes.push(diziGainNode);
+    // === 尺八 SHAKUHACHI (Japanese bamboo flute) ===
+    // Characterized by breathy tone, slow vibrato, wide pitch bends (meri/kari technique),
+    // and prominent breath/air noise component
+    function startShakuhachi(dest) {
+        shakuhachiGainNode = audioCtx.createGain();
+        shakuhachiGainNode.gain.value = activeMoodParams.shakuhachiVol;
+        shakuhachiGainNode.connect(dest);
+        musicNodes.push(shakuhachiGainNode);
 
         let lastNoteIdx = -1;
         const gen = musicGeneration;
 
-        function playDiziPhrase() {
+        function playShakuhachiPhrase() {
             if (gen !== musicGeneration) return;
             if (!audioCtx || !musicPlaying) return;
             const m = activeMoodParams;
-            if (m.diziVol <= 0) { setTimeout(playDiziPhrase, 5000); return; }
+            if (m.shakuhachiVol <= 0) { setTimeout(playShakuhachiPhrase, 5000); return; }
             const scale = m.scale;
             const now = audioCtx.currentTime;
             const noteCount = randInt(m.noteCount[0], m.noteCount[1]);
             let t = now + randFloat(0.1, 0.4);
 
-            // Chinese melodic contours: often start high and descend, or ascend to a peak
+            // Shakuhachi melodic contours: contemplative, with space between notes
             const contours = ['asc', 'desc', 'arch', 'valley', 'step_down', 'random'];
             const contour = randEl(contours);
 
@@ -1221,7 +1357,7 @@
                     const pos = i / (noteCount - 1 || 1);
                     noteIdx = Math.floor(Math.abs(pos * 2 - 1) * (scale.length - 1));
                 } else if (contour === 'step_down') {
-                    // Characteristic Chinese descending pattern with repeated notes
+                    // Descending pattern with repeated notes
                     noteIdx = Math.max(0, scale.length - 1 - Math.floor(i / 2));
                 } else {
                     do { noteIdx = randInt(0, scale.length - 1); } while (noteIdx === lastNoteIdx && scale.length > 2);
@@ -1232,90 +1368,91 @@
                 const freq = scale[noteIdx];
                 const dur = randFloat(m.noteDur[0], m.noteDur[1]);
 
-                // 倚音 yǐyīn — grace note (very common in dizi playing)
-                if (i > 0 && Math.random() < 0.35) {
+                // Grace note (less frequent than dizi — shakuhachi is more contemplative)
+                if (i > 0 && Math.random() < 0.25) {
                     const graceIdx = Math.max(0, noteIdx + randEl([-1, 1, -2]));
                     const graceFreq = scale[Math.min(scale.length - 1, Math.max(0, graceIdx))];
-                    playDiziNote(t, graceFreq, 0.06, diziGainNode, 0.3);
-                    t += 0.07;
+                    playShakuhachiNote(t, graceFreq, 0.08, shakuhachiGainNode, 0.25);
+                    t += 0.09;
                 }
 
-                // 滑音 huáyīn — pitch slide between notes (30% chance)
-                const slideFrom = (i > 0 && Math.random() < 0.3) ? freq * randFloat(0.92, 1.08) : freq;
-                playDiziNote(t, freq, dur, diziGainNode, 0.5, slideFrom);
+                // メリ/カリ meri/kari — wide pitch bend (characteristic shakuhachi technique, 40% chance)
+                const slideFrom = (i > 0 && Math.random() < 0.4) ? freq * randFloat(0.85, 1.15) : freq;
+                playShakuhachiNote(t, freq, dur, shakuhachiGainNode, 0.5, slideFrom);
                 t += dur + randFloat(0.05, 0.2);
             }
 
-            // Long sustained note with wide vibrato (历音 lìyīn)
+            // Long sustained note with wide vibrato (ロビキ robiki — sustained tone)
             if (Math.random() < 0.3) {
                 const holdFreq = scale[randInt(0, 2)];
                 const holdDur = randFloat(2.0, 4.0);
                 t += randFloat(0.3, 0.6);
-                playDiziNote(t, holdFreq, holdDur, diziGainNode, 0.35, null, true);
+                playShakuhachiNote(t, holdFreq, holdDur, shakuhachiGainNode, 0.35, null, true);
             }
 
-            const nextDelay = randFloat(m.diziInterval[0], m.diziInterval[1]) * 1000;
-            setTimeout(playDiziPhrase, nextDelay);
+            const nextDelay = randFloat(m.shakuhachiInterval[0], m.shakuhachiInterval[1]) * 1000;
+            setTimeout(playShakuhachiPhrase, nextDelay);
         }
 
-        setTimeout(playDiziPhrase, 3000);
+        setTimeout(playShakuhachiPhrase, 3000);
     }
 
-    function playDiziNote(t, freq, dur, dest, vol, slideFrom, wideVibrato) {
+    function playShakuhachiNote(t, freq, dur, dest, vol, slideFrom, wideVibrato) {
         const noteGain = audioCtx.createGain();
         noteGain.gain.setValueAtTime(0, t);
-        noteGain.gain.linearRampToValueAtTime(vol, t + 0.03);
-        noteGain.gain.setValueAtTime(vol * 0.9, t + dur * 0.5);
+        noteGain.gain.linearRampToValueAtTime(vol, t + 0.06); // slower attack than dizi (breathy onset)
+        noteGain.gain.setValueAtTime(vol * 0.85, t + dur * 0.5);
         noteGain.gain.linearRampToValueAtTime(0, t + dur);
         noteGain.connect(dest);
 
-        // Main tone — brighter than a Western flute
+        // Main tone — purer than dizi, more fundamental-heavy
         const osc = audioCtx.createOscillator();
         osc.type = 'sine';
         if (slideFrom && slideFrom !== freq) {
+            // Wider, slower pitch bend than dizi (meri/kari technique)
             osc.frequency.setValueAtTime(slideFrom, t);
-            osc.frequency.linearRampToValueAtTime(freq, t + 0.08);
+            osc.frequency.linearRampToValueAtTime(freq, t + 0.18); // slower slide
         } else {
             osc.frequency.value = freq;
         }
 
-        // 膜振动 mó zhèndòng — membrane buzzing (characteristic dizi sound)
-        // Simulated with a slightly detuned overtone
-        const buzzOsc = audioCtx.createOscillator();
-        buzzOsc.type = 'sine';
-        buzzOsc.frequency.value = freq * 2.01; // slightly detuned 2nd harmonic
-        const buzzGain = audioCtx.createGain();
-        buzzGain.gain.setValueAtTime(0, t);
-        buzzGain.gain.linearRampToValueAtTime(vol * 0.12, t + 0.03);
-        buzzGain.gain.linearRampToValueAtTime(0, t + dur);
-        buzzOsc.connect(buzzGain);
-        buzzGain.connect(dest);
-        buzzOsc.start(t);
-        buzzOsc.stop(t + dur + 0.05);
+        // Subtle overtone (shakuhachi has a more hollow tone than dizi, less membrane buzz)
+        const overtoneOsc = audioCtx.createOscillator();
+        overtoneOsc.type = 'sine';
+        overtoneOsc.frequency.value = freq * 2.003; // very slightly detuned 2nd harmonic
+        const overtoneGain = audioCtx.createGain();
+        overtoneGain.gain.setValueAtTime(0, t);
+        overtoneGain.gain.linearRampToValueAtTime(vol * 0.06, t + 0.06); // less overtone than dizi
+        overtoneGain.gain.linearRampToValueAtTime(0, t + dur);
+        overtoneOsc.connect(overtoneGain);
+        overtoneGain.connect(dest);
+        overtoneOsc.start(t);
+        overtoneOsc.stop(t + dur + 0.05);
 
-        // Vibrato — wider and faster than Western flute (Chinese style 揉音 róuyīn)
+        // Vibrato — slower and wider than dizi (shakuhachi yuri ユリ vibrato)
         const vib = audioCtx.createOscillator();
         vib.type = 'sine';
-        vib.frequency.value = wideVibrato ? 5.5 + Math.random() * 1.5 : 5.0 + Math.random() * 2;
+        vib.frequency.value = wideVibrato ? 3.5 + Math.random() * 1.0 : 4.0 + Math.random() * 1.0; // slower than dizi
         const vibG = audioCtx.createGain();
-        vibG.gain.value = freq * (wideVibrato ? 0.015 : 0.009);
-        // Vibrato fades in (doesn't start immediately — Chinese style)
+        vibG.gain.value = freq * (wideVibrato ? 0.025 : 0.012); // wider bends
+        // Vibrato fades in gradually
         vibG.gain.setValueAtTime(0, t);
-        vibG.gain.linearRampToValueAtTime(freq * (wideVibrato ? 0.015 : 0.009), t + dur * 0.3);
+        vibG.gain.linearRampToValueAtTime(freq * (wideVibrato ? 0.025 : 0.012), t + dur * 0.35);
         vib.connect(vibG);
         vibG.connect(osc.frequency);
         vib.start(t);
         vib.stop(t + dur + 0.1);
 
-        // Breath/air noise (softer than Western flute)
+        // Breath/air noise — MORE prominent than dizi (shakuhachi's defining quality)
         const breathGain = audioCtx.createGain();
         breathGain.gain.setValueAtTime(0, t);
-        breathGain.gain.linearRampToValueAtTime(0.08, t + 0.03);
+        breathGain.gain.linearRampToValueAtTime(0.16, t + 0.04); // higher noise component
+        breathGain.gain.setValueAtTime(0.12, t + dur * 0.3);
         breathGain.gain.linearRampToValueAtTime(0, t + dur);
         const breathFilt = audioCtx.createBiquadFilter();
         breathFilt.type = 'bandpass';
-        breathFilt.frequency.value = freq * 2;
-        breathFilt.Q.value = 1.5;
+        breathFilt.frequency.value = freq * 1.5; // lower center than dizi for warmer breath
+        breathFilt.Q.value = 0.8; // wider band for more diffuse breath sound
         breathFilt.connect(breathGain);
         breathGain.connect(dest);
         const breathSrc = audioCtx.createBufferSource();
@@ -1327,47 +1464,48 @@
         osc.connect(noteGain);
         osc.start(t);
         osc.stop(t + dur + 0.05);
-        osc.onended = () => { osc.disconnect(); noteGain.disconnect(); buzzOsc.disconnect(); buzzGain.disconnect(); vib.disconnect(); vibG.disconnect(); breathSrc.disconnect(); breathFilt.disconnect(); breathGain.disconnect(); };
+        osc.onended = () => { osc.disconnect(); noteGain.disconnect(); overtoneOsc.disconnect(); overtoneGain.disconnect(); vib.disconnect(); vibG.disconnect(); breathSrc.disconnect(); breathFilt.disconnect(); breathGain.disconnect(); };
     }
 
-    // === 古筝 GUZHENG (plucked zither — 21 strings) ===
-    // Bright, shimmering plucked tones with characteristic bends and tremolos
-    function startGuzheng(dest) {
-        guzhengGainNode = audioCtx.createGain();
-        guzhengGainNode.gain.value = activeMoodParams.guzhengVol;
-        guzhengGainNode.connect(dest);
-        musicNodes.push(guzhengGainNode);
+    // === 琴 KOTO (13-string plucked zither) ===
+    // Harder pluck attack than guzheng, slightly less sustain,
+    // deliberate spacing in arpeggios
+    function startKoto(dest) {
+        kotoGainNode = audioCtx.createGain();
+        kotoGainNode.gain.value = activeMoodParams.kotoVol;
+        kotoGainNode.connect(dest);
+        musicNodes.push(kotoGainNode);
 
         const gen = musicGeneration;
 
-        function playGuzhengPhrase() {
+        function playKotoPhrase() {
             if (gen !== musicGeneration) return;
             if (!audioCtx || !musicPlaying) return;
             const m = activeMoodParams;
-            if (m.guzhengVol <= 0) { setTimeout(playGuzhengPhrase, 5000); return; }
+            if (m.kotoVol <= 0) { setTimeout(playKotoPhrase, 5000); return; }
             const scale = m.scale;
             const now = audioCtx.currentTime;
-            const noteCount = randInt(m.guzhengNotes[0], m.guzhengNotes[1]);
+            const noteCount = randInt(m.kotoNotes[0], m.kotoNotes[1]);
             let t = now + randFloat(0.1, 0.3);
 
-            // Guzheng often plays rapid arpeggios (刮奏 guāzòu) or single plucks
+            // Koto plays arpeggios, single plucks, tremolo, or glissando
             const style = randEl(['arpeggio', 'melody', 'tremolo', 'gliss']);
 
             if (style === 'gliss' && noteCount >= 3) {
-                // 刮奏 guāzòu — rapid glissando across strings
+                // 流し nagashi — glissando across strings (more deliberate spacing than guzheng)
                 const ascending = Math.random() < 0.5;
                 for (let i = 0; i < Math.min(noteCount, scale.length); i++) {
                     const idx = ascending ? i : (scale.length - 1 - i);
                     const safeIdx = Math.max(0, Math.min(scale.length - 1, idx));
-                    playGuzhengPluck(t, scale[safeIdx], guzhengGainNode, 0.35);
-                    t += randFloat(0.06, 0.12); // rapid cascade
+                    playKotoPluck(t, scale[safeIdx], kotoGainNode, 0.35);
+                    t += randFloat(0.08, 0.16); // slightly more deliberate than guzheng
                 }
             } else if (style === 'tremolo') {
-                // 摇指 yáozhǐ — tremolo on single note
+                // 連 ren — tremolo on single note
                 const freq = scale[randInt(0, scale.length - 1)];
                 const repeats = randInt(6, 12);
                 for (let i = 0; i < repeats; i++) {
-                    playGuzhengPluck(t, freq, guzhengGainNode, 0.25 * (1 - i * 0.03));
+                    playKotoPluck(t, freq, kotoGainNode, 0.25 * (1 - i * 0.03));
                     t += randFloat(0.08, 0.12);
                 }
             } else if (style === 'arpeggio') {
@@ -1375,43 +1513,43 @@
                 const startIdx = randInt(0, Math.max(0, scale.length - 3));
                 for (let i = 0; i < Math.min(noteCount, 4); i++) {
                     const idx = Math.min(scale.length - 1, startIdx + i);
-                    playGuzhengPluck(t, scale[idx], guzhengGainNode, 0.4);
-                    t += randFloat(0.15, 0.35);
+                    playKotoPluck(t, scale[idx], kotoGainNode, 0.4);
+                    t += randFloat(0.18, 0.40); // more deliberate spacing
                 }
             } else {
                 // Melodic single plucks
                 for (let i = 0; i < noteCount; i++) {
                     const idx = randInt(0, scale.length - 1);
                     const freq = scale[idx];
-                    const bend = Math.random() < 0.25; // 按音 ànyīn — press bend
-                    playGuzhengPluck(t, freq, guzhengGainNode, 0.4, bend);
+                    const bend = Math.random() < 0.25; // 押し手 oshide — press bend
+                    playKotoPluck(t, freq, kotoGainNode, 0.4, bend);
                     t += randFloat(0.3, 0.8);
                 }
             }
 
-            const nextDelay = randFloat(m.guzhengInterval[0], m.guzhengInterval[1]) * 1000;
-            setTimeout(playGuzhengPhrase, nextDelay);
+            const nextDelay = randFloat(m.kotoInterval[0], m.kotoInterval[1]) * 1000;
+            setTimeout(playKotoPhrase, nextDelay);
         }
 
-        setTimeout(playGuzhengPhrase, 4000);
+        setTimeout(playKotoPhrase, 4000);
     }
 
-    function playGuzhengPluck(t, freq, dest, vol, bend) {
-        const dur = randFloat(0.8, 1.8);
+    function playKotoPluck(t, freq, dest, vol, bend) {
+        const dur = randFloat(0.6, 1.4); // slightly less sustain than guzheng
         const noteGain = audioCtx.createGain();
-        // Sharp attack, natural decay (plucked string)
+        // Harder attack than guzheng, sharper transient
         noteGain.gain.setValueAtTime(0, t);
-        noteGain.gain.linearRampToValueAtTime(vol, t + 0.005);
-        noteGain.gain.exponentialRampToValueAtTime(vol * 0.4, t + 0.15);
+        noteGain.gain.linearRampToValueAtTime(vol, t + 0.003); // faster attack
+        noteGain.gain.exponentialRampToValueAtTime(vol * 0.35, t + 0.12);
         noteGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
         noteGain.connect(dest);
 
         // Fundamental
         const osc = audioCtx.createOscillator();
-        osc.type = 'triangle'; // triangle gives guzheng-like softness
+        osc.type = 'triangle';
         osc.frequency.setValueAtTime(freq, t);
         if (bend) {
-            // 按音 ànyīn — characteristic guzheng pitch bend (up then back)
+            // 押し手 oshide — characteristic koto pitch bend (up then back)
             osc.frequency.linearRampToValueAtTime(freq * 1.06, t + 0.2);
             osc.frequency.linearRampToValueAtTime(freq, t + 0.5);
         }
@@ -1419,18 +1557,18 @@
         osc.start(t);
         osc.stop(t + dur + 0.05);
 
-        // 2nd harmonic (brighter guzheng character)
+        // 2nd harmonic (bright koto character)
         const osc2 = audioCtx.createOscillator();
         osc2.type = 'sine';
         osc2.frequency.value = freq * 2;
         const g2 = audioCtx.createGain();
         g2.gain.setValueAtTime(0, t);
-        g2.gain.linearRampToValueAtTime(vol * 0.25, t + 0.005);
-        g2.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.5);
+        g2.gain.linearRampToValueAtTime(vol * 0.28, t + 0.003); // stronger 2nd harmonic
+        g2.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.45);
         osc2.connect(g2);
         g2.connect(dest);
         osc2.start(t);
-        osc2.stop(t + dur * 0.5);
+        osc2.stop(t + dur * 0.45);
 
         // 3rd harmonic (shimmer)
         const osc3 = audioCtx.createOscillator();
@@ -1438,17 +1576,17 @@
         osc3.frequency.value = freq * 3;
         const g3 = audioCtx.createGain();
         g3.gain.setValueAtTime(0, t);
-        g3.gain.linearRampToValueAtTime(vol * 0.08, t + 0.005);
-        g3.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.3);
+        g3.gain.linearRampToValueAtTime(vol * 0.10, t + 0.003);
+        g3.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.25);
         osc3.connect(g3);
         g3.connect(dest);
         osc3.start(t);
-        osc3.stop(t + dur * 0.3);
+        osc3.stop(t + dur * 0.25);
 
-        // String noise (pluck transient)
+        // String noise (pluck transient — sharper than guzheng)
         const ng = audioCtx.createGain();
-        ng.gain.setValueAtTime(vol * 0.2, t);
-        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+        ng.gain.setValueAtTime(vol * 0.25, t); // louder transient
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
         const nf = audioCtx.createBiquadFilter();
         nf.type = 'bandpass';
         nf.frequency.value = freq * 3;
@@ -1456,121 +1594,133 @@
         nf.connect(ng);
         ng.connect(dest);
         const ns = audioCtx.createBufferSource();
-        ns.buffer = createNoiseBuffer(0.03);
+        ns.buffer = createNoiseBuffer(0.025);
         ns.connect(nf);
         ns.start(t);
-        ns.stop(t + 0.03);
+        ns.stop(t + 0.025);
         osc.onended = () => { osc.disconnect(); noteGain.disconnect(); osc2.disconnect(); g2.disconnect(); osc3.disconnect(); g3.disconnect(); ns.disconnect(); nf.disconnect(); ng.disconnect(); };
     }
 
-    // === 二胡 ERHU (bowed 2-string fiddle) ===
-    // Expressive, vocal quality with heavy vibrato and portamento
-    function startErhu(dest) {
-        erhuGainNode = audioCtx.createGain();
-        erhuGainNode.gain.value = activeMoodParams.erhuVol;
-        erhuGainNode.connect(dest);
-        musicNodes.push(erhuGainNode);
+    // === 三味線 SHAMISEN (3-string plucked lute with bachi pick) ===
+    // Sharp percussive bachi strike, short sustain, characteristic sawari buzz (distortion)
+    // Unlike erhu (bowed/sustained), shamisen is plucked with sharp transients
+    function startShamisen(dest) {
+        shamisenGainNode = audioCtx.createGain();
+        shamisenGainNode.gain.value = activeMoodParams.shamisenVol;
+        shamisenGainNode.connect(dest);
+        musicNodes.push(shamisenGainNode);
 
         const gen = musicGeneration;
 
-        function playErhuPhrase() {
+        function playShamisenPhrase() {
             if (gen !== musicGeneration) return;
             if (!audioCtx || !musicPlaying) return;
             const m = activeMoodParams;
-            if (m.erhuVol <= 0 || m.erhuDur[1] <= 0) { setTimeout(playErhuPhrase, 8000); return; }
+            if (m.shamisenVol <= 0 || m.shamisenDur[1] <= 0) { setTimeout(playShamisenPhrase, 8000); return; }
             const scale = m.scale;
             const now = audioCtx.currentTime;
             let t = now + randFloat(0.2, 0.6);
 
-            // Erhu plays long, expressive melodic lines (1-3 notes per phrase)
-            const noteCount = randInt(1, 3);
+            // Shamisen plays percussive melodic lines (1-4 notes per phrase)
+            const noteCount = randInt(1, 4);
             let prevFreq = null;
 
             for (let i = 0; i < noteCount; i++) {
                 const idx = randInt(0, scale.length - 1);
                 const freq = scale[idx];
-                const dur = randFloat(m.erhuDur[0], m.erhuDur[1]);
-                playErhuNote(t, freq, dur, erhuGainNode, 0.45, prevFreq);
+                const dur = randFloat(m.shamisenDur[0], m.shamisenDur[1]);
+                playShamisenNote(t, freq, dur, shamisenGainNode, 0.45, prevFreq);
                 prevFreq = freq;
-                t += dur + randFloat(0.1, 0.4);
+                t += dur * 0.7 + randFloat(0.1, 0.3); // notes overlap less — percussive style
             }
 
-            const nextDelay = randFloat(m.erhuInterval[0], m.erhuInterval[1]) * 1000;
-            setTimeout(playErhuPhrase, nextDelay);
+            const nextDelay = randFloat(m.shamisenInterval[0], m.shamisenInterval[1]) * 1000;
+            setTimeout(playShamisenPhrase, nextDelay);
         }
 
-        setTimeout(playErhuPhrase, 6000);
+        setTimeout(playShamisenPhrase, 6000);
     }
 
-    function playErhuNote(t, freq, dur, dest, vol, slideFrom) {
+    function playShamisenNote(t, freq, dur, dest, vol, slideFrom) {
         const noteGain = audioCtx.createGain();
-        // Bow attack — slower than plucked, with swell
+        // Sharp bachi strike attack — much faster than erhu's bow attack
         noteGain.gain.setValueAtTime(0, t);
-        noteGain.gain.linearRampToValueAtTime(vol * 0.7, t + 0.08);
-        noteGain.gain.linearRampToValueAtTime(vol, t + dur * 0.3);
-        noteGain.gain.linearRampToValueAtTime(vol * 0.6, t + dur * 0.8);
-        noteGain.gain.linearRampToValueAtTime(0, t + dur);
+        noteGain.gain.linearRampToValueAtTime(vol, t + 0.008); // very fast attack
+        noteGain.gain.exponentialRampToValueAtTime(vol * 0.4, t + 0.15);
+        noteGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
         noteGain.connect(dest);
 
-        // Main tone — sawtooth gives bowed string quality
+        // Main tone — sawtooth for string character
         const osc = audioCtx.createOscillator();
         osc.type = 'sawtooth';
         if (slideFrom) {
-            // 滑音 huáyīn — portamento between notes (very characteristic of erhu)
+            // Quick slide between notes (shamisen slides are shorter than erhu portamento)
             osc.frequency.setValueAtTime(slideFrom, t);
-            osc.frequency.linearRampToValueAtTime(freq, t + 0.15);
+            osc.frequency.linearRampToValueAtTime(freq, t + 0.06);
         } else {
             osc.frequency.value = freq;
         }
 
-        // Filter to tame harshness and create nasal erhu quality
+        // Filter to shape shamisen tone
         const filt = audioCtx.createBiquadFilter();
         filt.type = 'lowpass';
-        filt.frequency.value = freq * 3;
-        filt.Q.value = 2;
+        filt.frequency.value = freq * 4;
+        filt.Q.value = 1.5;
         osc.connect(filt);
 
-        // Nasal resonance (characteristic 鼻音 bíyīn of erhu)
-        const nasalFilt = audioCtx.createBiquadFilter();
-        nasalFilt.type = 'peaking';
-        nasalFilt.frequency.value = freq * 2.5;
-        nasalFilt.Q.value = 5;
-        nasalFilt.gain.value = 6;
-        filt.connect(nasalFilt);
-        nasalFilt.connect(noteGain);
+        // さわり sawari buzz — characteristic shamisen resonance/distortion
+        // Simulated with waveshaper (slight distortion on the signal)
+        const waveshaper = audioCtx.createWaveShaper();
+        const curve = new Float32Array(256);
+        for (let i = 0; i < 256; i++) {
+            const x = (i / 128) - 1;
+            // Soft clipping with asymmetry for sawari character
+            curve[i] = Math.tanh(x * 1.8) + 0.05 * Math.sin(x * 12);
+        }
+        waveshaper.curve = curve;
+        waveshaper.oversample = '2x';
+        filt.connect(waveshaper);
 
-        // Heavy vibrato (揉弦 róuxián) — erhu vibrato is wider and more expressive
+        // Resonance peak (sawari buzz emphasis)
+        const sawariResonance = audioCtx.createBiquadFilter();
+        sawariResonance.type = 'peaking';
+        sawariResonance.frequency.value = freq * 1.02; // very close to fundamental
+        sawariResonance.Q.value = 8;
+        sawariResonance.gain.value = 4;
+        waveshaper.connect(sawariResonance);
+        sawariResonance.connect(noteGain);
+
+        // Light vibrato (shamisen vibrato is subtle compared to erhu)
         const vib = audioCtx.createOscillator();
         vib.type = 'sine';
         vib.frequency.value = 5.0 + Math.random() * 1.5;
         const vibG = audioCtx.createGain();
         vibG.gain.setValueAtTime(0, t);
-        vibG.gain.linearRampToValueAtTime(freq * 0.018, t + dur * 0.25);
+        vibG.gain.linearRampToValueAtTime(freq * 0.008, t + dur * 0.3); // subtle vibrato
         vib.connect(vibG);
         vibG.connect(osc.frequency);
         vib.start(t);
         vib.stop(t + dur + 0.1);
 
-        // Bow noise (subtle scratchy quality)
-        const bowGain = audioCtx.createGain();
-        bowGain.gain.setValueAtTime(0, t);
-        bowGain.gain.linearRampToValueAtTime(0.04, t + 0.05);
-        bowGain.gain.linearRampToValueAtTime(0, t + dur);
-        const bowFilt = audioCtx.createBiquadFilter();
-        bowFilt.type = 'bandpass';
-        bowFilt.frequency.value = freq * 4;
-        bowFilt.Q.value = 0.5;
-        bowFilt.connect(bowGain);
-        bowGain.connect(dest);
-        const bowSrc = audioCtx.createBufferSource();
-        bowSrc.buffer = createNoiseBuffer(dur + 0.1);
-        bowSrc.connect(bowFilt);
-        bowSrc.start(t);
-        bowSrc.stop(t + dur);
+        // Bachi strike noise (percussive pluck transient — louder and sharper than bow noise)
+        const strikeGain = audioCtx.createGain();
+        strikeGain.gain.setValueAtTime(vol * 0.3, t); // loud strike
+        strikeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+        const strikeFilt = audioCtx.createBiquadFilter();
+        strikeFilt.type = 'bandpass';
+        strikeFilt.frequency.value = freq * 3;
+        strikeFilt.Q.value = 0.8;
+        strikeFilt.connect(strikeGain);
+        strikeGain.connect(dest);
+        const strikeSrc = audioCtx.createBufferSource();
+        strikeSrc.buffer = createNoiseBuffer(0.04);
+        strikeSrc.connect(strikeFilt);
+        strikeSrc.start(t);
+        strikeSrc.stop(t + 0.04);
 
         osc.start(t);
         osc.stop(t + dur + 0.05);
-        osc.onended = () => { osc.disconnect(); filt.disconnect(); nasalFilt.disconnect(); noteGain.disconnect(); vib.disconnect(); vibG.disconnect(); bowSrc.disconnect(); bowFilt.disconnect(); bowGain.disconnect(); };
+        osc.onended = () => { osc.disconnect(); filt.disconnect(); waveshaper.disconnect(); sawariResonance.disconnect(); noteGain.disconnect(); vib.disconnect(); vibG.disconnect(); strikeSrc.disconnect(); strikeFilt.disconnect(); strikeGain.disconnect(); };
     }
 
     // === ADAPTIVE AMBIENT (nature sounds — wind through bamboo, distant water) ===
@@ -1632,7 +1782,7 @@
         musicNodes.push(waterLfo);
     }
 
-    // --- SOUND EFFECTS (Chinese-themed) ---
+    // --- SOUND EFFECTS (Japanese-themed) ---
     function sfx(type) {
         if (!audioCtx || !soundEnabled || !audioStarted) return;
         try {
@@ -1654,7 +1804,7 @@
     }
 
     function sfxSpeak() {
-        // Tonal Mandarin-like vocal with characteristic rising/falling tones
+        // Tonal Japanese-like vocal
         const t = audioCtx.currentTime;
         const g = audioCtx.createGain();
         g.gain.setValueAtTime(0.25, t);
@@ -1662,7 +1812,7 @@
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
         g.connect(audioMaster);
 
-        // Mandarin has 4 tones — simulate one randomly
+        // Japanese pitch accent — simulate rising/falling patterns
         const baseF = randFloat(130, 180);
         const tone = randInt(1, 4);
         const osc = audioCtx.createOscillator();
@@ -1700,7 +1850,7 @@
     }
 
     function sfxRespond() {
-        // Rising tone (like Mandarin 2nd tone — questioning/acknowledging)
+        // Rising tone (acknowledging)
         const t = audioCtx.currentTime;
         const g = audioCtx.createGain();
         g.gain.setValueAtTime(0.2, t);
@@ -1722,7 +1872,7 @@
         osc.start(t);
         osc.stop(t + 0.3);
 
-        // Small guzheng pluck accent
+        // Small koto pluck accent
         const pluckOsc = audioCtx.createOscillator();
         pluckOsc.type = 'triangle';
         pluckOsc.frequency.value = randEl([523.3, 587.3, 392]);
@@ -1736,15 +1886,15 @@
     }
 
     function sfxLearn() {
-        // Pentatonic ascending chime — like temple bells (磬 qing)
+        // Ascending chime — like temple bells (鈴 suzu)
         const t = audioCtx.currentTime;
         const g = audioCtx.createGain();
         g.gain.setValueAtTime(0.3, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
         g.connect(audioMaster);
 
-        // C-D-E-G-A pentatonic ascending — 宫商角徵羽
-        [523.3, 587.3, 659.3, 784, 880].forEach((freq, i) => {
+        // In scale ascending chime
+        [523.3, 554.4, 698.5, 784, 830.6].forEach((freq, i) => {
             if (i > 2) return; // just first 3 for brevity
             const osc = audioCtx.createOscillator();
             osc.type = 'sine';
@@ -1773,7 +1923,7 @@
     }
 
     function sfxEat() {
-        // Chopstick clicks + chewing (筷子 kuàizi)
+        // Chopstick clicks + chewing (箸 hashi)
         const t = audioCtx.currentTime;
         // Chopstick click first
         const cg = audioCtx.createGain();
@@ -1808,7 +1958,7 @@
     }
 
     function sfxDrink() {
-        // Tea sipping (品茶 pǐnchá) — gentler, ceramic cup clink + sip
+        // Tea sipping (お茶 ocha) — ceramic cup clink + sip
         const t = audioCtx.currentTime;
         // Ceramic cup clink
         const clinkG = audioCtx.createGain();
@@ -1854,14 +2004,14 @@
     }
 
     function sfxSleep() {
-        // Soft descending pentatonic lullaby tone + gentle guqin-like note
+        // Soft descending lullaby tone
         const t = audioCtx.currentTime;
         const g = audioCtx.createGain();
         g.gain.setValueAtTime(0.12, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
         g.connect(audioMaster);
-        // Descending pentatonic: G → E → C
-        [392, 329.6, 261.6].forEach((freq, i) => {
+        // Descending In scale: G → F → Db
+        [392, 349.2, 277.2].forEach((freq, i) => {
             const osc = audioCtx.createOscillator();
             osc.type = 'sine';
             osc.frequency.value = freq;
@@ -1877,7 +2027,7 @@
     }
 
     function sfxCraft() {
-        // Ink grinding / calligraphy brush (研墨 yánmò) — soft circular grinding
+        // Calligraphy brush / crafting (書道 shodou) — soft circular grinding
         const t = audioCtx.currentTime;
         // Grinding sound
         const g = audioCtx.createGain();
@@ -1910,7 +2060,7 @@
     }
 
     function sfxChop() {
-        // Bamboo chopping (砍竹 kǎnzhú) — hollow bamboo impact
+        // Bamboo chopping (竹割り takezawari) — hollow bamboo impact
         const t = audioCtx.currentTime;
         // Bamboo resonance (hollow, higher than wood)
         const g = audioCtx.createGain();
@@ -1946,7 +2096,7 @@
     }
 
     function sfxFire() {
-        // Wok cooking / charcoal crackling (炒菜 chǎocài)
+        // Cooking / charcoal crackling (料理 ryouri)
         const t = audioCtx.currentTime;
         // Sizzle
         const g = audioCtx.createGain();
@@ -1978,7 +2128,7 @@
     }
 
     function sfxGather() {
-        // Bamboo leaves rustling / picking herbs (采药 cǎiyào)
+        // Leaf rustling / picking herbs (薬草摘み yakusou tsumi)
         const t = audioCtx.currentTime;
         // Leaf rustle
         const g = audioCtx.createGain();
@@ -2011,7 +2161,7 @@
     }
 
     function sfxFish() {
-        // Fishing splash + line (钓鱼 diàoyú)
+        // Fishing splash + line (釣り tsuri)
         const t = audioCtx.currentTime;
         // Line cast whoosh
         const wg = audioCtx.createGain();
@@ -2048,7 +2198,7 @@
     }
 
     function sfxStep() {
-        // Soft footstep on stone/gravel path (石路 shílù)
+        // Soft footstep on stone/gravel path (石畳 ishidatami)
         const t = audioCtx.currentTime;
         const g = audioCtx.createGain();
         g.gain.setValueAtTime(0.07, t);
@@ -2093,7 +2243,6 @@
         else if (actionId === 'carry_water') sfx('craft');
         else if (actionId.startsWith('write') || actionId.startsWith('paint') || actionId.startsWith('read')) sfx('craft');
     }
-
     // ============================================================
     //  JAPANESE VOCABULARY (static — no random generation)
     // ============================================================
@@ -2101,455 +2250,284 @@
     function randInt(a,b) { return Math.floor(Math.random()*(b-a+1))+a; }
     function randFloat(a,b) { return Math.random()*(b-a)+a; }
 
+
     const VOCABULARY = [
-        // Nouns — Nature & Landscape (HSK 1-2)
-        { id: 'water',     kanji: '水',   kana: 'shuǐ',      de: 'Wasser',      type: 'noun' },
-        { id: 'fire',      kanji: '火',   kana: 'huǒ',       de: 'Feuer',       type: 'noun' },
-        { id: 'sky',       kanji: '天',   kana: 'tiān',      de: 'Himmel',      type: 'noun' },
-        { id: 'mountain',  kanji: '山',   kana: 'shān',      de: 'Berg',        type: 'noun' },
-        { id: 'flower',    kanji: '花',   kana: 'huā',       de: 'Blume',       type: 'noun' },
-        { id: 'tree',      kanji: '树',   kana: 'shù',       de: 'Baum',        type: 'noun' },
-        { id: 'fish',      kanji: '鱼',   kana: 'yú',        de: 'Fisch',       type: 'noun' },
-        { id: 'tea',       kanji: '茶',   kana: 'chá',       de: 'Tee',         type: 'noun' },
-        { id: 'rice',      kanji: '米',   kana: 'mǐ',        de: 'Reis',        type: 'noun' },
-        { id: 'food',      kanji: '饭',   kana: 'fàn',       de: 'Essen',       type: 'noun' },
-        { id: 'vegetable', kanji: '菜',   kana: 'cài',       de: 'Gemuese',     type: 'noun' },
-        { id: 'meat',      kanji: '肉',   kana: 'ròu',       de: 'Fleisch',     type: 'noun' },
-        { id: 'egg',       kanji: '蛋',   kana: 'dàn',       de: 'Ei',          type: 'noun' },
-        { id: 'dog',       kanji: '狗',   kana: 'gǒu',       de: 'Hund',        type: 'noun' },
-        { id: 'cat',       kanji: '猫',   kana: 'māo',       de: 'Katze',       type: 'noun' },
-        { id: 'bird',      kanji: '鸟',   kana: 'niǎo',      de: 'Vogel',       type: 'noun' },
-        { id: 'book',      kanji: '书',   kana: 'shū',       de: 'Buch',        type: 'noun' },
-        { id: 'cup',       kanji: '杯',   kana: 'bēi',       de: 'Tasse',       type: 'noun' },
-        { id: 'bowl',      kanji: '碗',   kana: 'wǎn',       de: 'Schuessel',   type: 'noun' },
-        { id: 'knife',     kanji: '刀',   kana: 'dāo',       de: 'Messer',      type: 'noun' },
-        { id: 'door',      kanji: '门',   kana: 'mén',       de: 'Tor',         type: 'noun' },
-        { id: 'bridge',    kanji: '桥',   kana: 'qiáo',      de: 'Bruecke',     type: 'noun' },
-        { id: 'road',      kanji: '路',   kana: 'lù',        de: 'Weg',         type: 'noun' },
-        { id: 'person',    kanji: '人',   kana: 'rén',       de: 'Mensch',      type: 'noun' },
-        { id: 'friend',    kanji: '朋友', kana: 'péngyou',   de: 'Freund',      type: 'noun' },
-        { id: 'child',     kanji: '孩子', kana: 'háizi',     de: 'Kind',        type: 'noun' },
-        { id: 'teacher',   kanji: '老师', kana: 'lǎoshī',    de: 'Lehrer',      type: 'noun' },
-        { id: 'home',      kanji: '家',   kana: 'jiā',       de: 'Zuhause',     type: 'noun' },
-        { id: 'house',     kanji: '房子', kana: 'fángzi',    de: 'Haus',        type: 'noun' },
-        { id: 'garden',    kanji: '花园', kana: 'huāyuán',   de: 'Garten',      type: 'noun' },
-        { id: 'boat',      kanji: '船',   kana: 'chuán',     de: 'Boot',        type: 'noun' },
-        { id: 'money',     kanji: '钱',   kana: 'qián',      de: 'Geld',        type: 'noun' },
-        { id: 'rain',      kanji: '雨',   kana: 'yǔ',        de: 'Regen',       type: 'noun' },
-        { id: 'wind',      kanji: '风',   kana: 'fēng',      de: 'Wind',        type: 'noun' },
-        { id: 'sun',       kanji: '太阳', kana: 'tàiyáng',   de: 'Sonne',       type: 'noun' },
-        { id: 'moon',      kanji: '月',   kana: 'yuè',       de: 'Mond',        type: 'noun' },
-        { id: 'river',     kanji: '河',   kana: 'hé',        de: 'Fluss',       type: 'noun' },
-        { id: 'song',      kanji: '歌',   kana: 'gē',        de: 'Lied',        type: 'noun' },
-        { id: 'story',     kanji: '故事', kana: 'gùshi',     de: 'Geschichte',  type: 'noun' },
-        { id: 'thing',     kanji: '东西', kana: 'dōngxi',    de: 'Ding',        type: 'noun' },
-        { id: 'day',       kanji: '日',   kana: 'rì',        de: 'Tag',         type: 'noun' },
-        { id: 'night',     kanji: '晚上', kana: 'wǎnshang',  de: 'Nacht',       type: 'noun' },
-        { id: 'morning',   kanji: '早上', kana: 'zǎoshang',  de: 'Morgen',      type: 'noun' },
-        // Setting-specific nouns (HSK 3+ only where needed)
-        { id: 'brush',     kanji: '笔',   kana: 'bǐ',        de: 'Pinsel',      type: 'noun' },
-        { id: 'ink',       kanji: '墨',   kana: 'mò',        de: 'Tusche',      type: 'noun' },
-        { id: 'paper',     kanji: '纸',   kana: 'zhǐ',       de: 'Papier',      type: 'noun' },
-        { id: 'silk',      kanji: '丝',   kana: 'sī',        de: 'Seide',       type: 'noun' },
-        { id: 'bamboo',    kanji: '竹',   kana: 'zhú',       de: 'Bambus',      type: 'noun' },
-        { id: 'pagoda',    kanji: '塔',   kana: 'tǎ',        de: 'Pagode',      type: 'noun' },
-        { id: 'lantern',   kanji: '灯',   kana: 'dēng',      de: 'Laterne',     type: 'noun' },
-        { id: 'basket',    kanji: '篮',   kana: 'lán',       de: 'Korb',        type: 'noun' },
-        { id: 'fan',       kanji: '扇',   kana: 'shàn',      de: 'Faecher',     type: 'noun' },
-        { id: 'pot',       kanji: '锅',   kana: 'guō',       de: 'Topf',        type: 'noun' },
-        { id: 'lotus',     kanji: '莲',   kana: 'lián',      de: 'Lotus',       type: 'noun' },
-        { id: 'picture',   kanji: '画',   kana: 'huà',       de: 'Bild',        type: 'noun' },
-        { id: 'music',     kanji: '音乐', kana: 'yīnyuè',    de: 'Musik',       type: 'noun' },
-        // Verbs (HSK 1-2)
-        { id: 'eat',       kanji: '吃',   kana: 'chī',       de: 'essen',       type: 'verb' },
-        { id: 'drink',     kanji: '喝',   kana: 'hē',        de: 'trinken',     type: 'verb' },
-        { id: 'sleep',     kanji: '睡',   kana: 'shuì',      de: 'schlafen',    type: 'verb' },
-        { id: 'make',      kanji: '做',   kana: 'zuò',       de: 'machen',      type: 'verb' },
-        { id: 'buy',       kanji: '买',   kana: 'mǎi',       de: 'kaufen',      type: 'verb' },
-        { id: 'sell',      kanji: '卖',   kana: 'mài',       de: 'verkaufen',   type: 'verb' },
-        { id: 'walk',      kanji: '走',   kana: 'zǒu',       de: 'gehen',       type: 'verb' },
-        { id: 'run',       kanji: '跑',   kana: 'pǎo',       de: 'laufen',      type: 'verb' },
-        { id: 'sit',       kanji: '坐',   kana: 'zuò',       de: 'sitzen',      type: 'verb' },
-        { id: 'look',      kanji: '看',   kana: 'kàn',       de: 'schauen',     type: 'verb' },
-        { id: 'listen',    kanji: '听',   kana: 'tīng',      de: 'zuhoeren',    type: 'verb' },
-        { id: 'say',       kanji: '说',   kana: 'shuō',      de: 'sprechen',    type: 'verb' },
-        { id: 'read',      kanji: '读',   kana: 'dú',        de: 'lesen',       type: 'verb' },
-        { id: 'write',     kanji: '写',   kana: 'xiě',       de: 'schreiben',   type: 'verb' },
-        { id: 'learn',     kanji: '学',   kana: 'xué',       de: 'lernen',      type: 'verb' },
-        { id: 'teach',     kanji: '教',   kana: 'jiāo',      de: 'lehren',      type: 'verb' },
-        { id: 'give',      kanji: '给',   kana: 'gěi',       de: 'geben',       type: 'verb' },
-        { id: 'find',      kanji: '找',   kana: 'zhǎo',      de: 'finden',      type: 'verb' },
-        { id: 'sing',      kanji: '唱',   kana: 'chàng',     de: 'singen',      type: 'verb' },
-        { id: 'wash',      kanji: '洗',   kana: 'xǐ',        de: 'waschen',     type: 'verb' },
-        { id: 'cook',      kanji: '做饭', kana: 'zuòfàn',    de: 'kochen',      type: 'verb' },
-        { id: 'cut',       kanji: '切',   kana: 'qiē',       de: 'schneiden',   type: 'verb' },
-        { id: 'carry',     kanji: '拿',   kana: 'ná',        de: 'tragen',      type: 'verb' },
-        { id: 'tell',      kanji: '讲',   kana: 'jiǎng',     de: 'erzaehlen',   type: 'verb' },
-        { id: 'smell',     kanji: '闻',   kana: 'wén',       de: 'riechen',     type: 'verb' },
-        { id: 'paint',     kanji: '画',   kana: 'huà',       de: 'malen',       type: 'verb' },
-        { id: 'catch',     kanji: '抓',   kana: 'zhuā',      de: 'fangen',      type: 'verb' },
-        { id: 'play',      kanji: '玩',   kana: 'wán',       de: 'spielen',     type: 'verb' },
-        // Modifiers (HSK 1-2)
-        { id: 'good',      kanji: '好',   kana: 'hǎo',       de: 'gut',         type: 'mod' },
-        { id: 'big',       kanji: '大',   kana: 'dà',        de: 'gross',       type: 'mod' },
-        { id: 'small',     kanji: '小',   kana: 'xiǎo',      de: 'klein',       type: 'mod' },
-        { id: 'many',      kanji: '多',   kana: 'duō',       de: 'viele',       type: 'mod' },
-        { id: 'few',       kanji: '少',   kana: 'shǎo',      de: 'wenige',      type: 'mod' },
-        { id: 'hot',       kanji: '热',   kana: 'rè',        de: 'heiss',       type: 'mod' },
-        { id: 'cold',      kanji: '冷',   kana: 'lěng',      de: 'kalt',        type: 'mod' },
-        { id: 'fast',      kanji: '快',   kana: 'kuài',      de: 'schnell',     type: 'mod' },
-        { id: 'slow',      kanji: '慢',   kana: 'màn',       de: 'langsam',     type: 'mod' },
-        { id: 'new',       kanji: '新',   kana: 'xīn',       de: 'neu',         type: 'mod' },
-        { id: 'long',      kanji: '长',   kana: 'cháng',     de: 'lang',        type: 'mod' },
-        { id: 'red',       kanji: '红',   kana: 'hóng',      de: 'rot',         type: 'mod' },
-        { id: 'white',     kanji: '白',   kana: 'bái',       de: 'weiss',       type: 'mod' },
-        { id: 'tall',      kanji: '高',   kana: 'gāo',       de: 'hoch',        type: 'mod' },
-        { id: 'beautiful', kanji: '漂亮', kana: 'piàoliang',  de: 'schoen',      type: 'mod' },
-        { id: 'old',       kanji: '老',   kana: 'lǎo',       de: 'alt',         type: 'mod' },
-        { id: 'quiet',     kanji: '安静', kana: 'ānjìng',    de: 'ruhig',       type: 'mod' },
-        // Pronouns / Particles (HSK 1)
-        { id: 'me',        kanji: '我',   kana: 'wǒ',        de: 'ich',         type: 'pronoun' },
-        { id: 'you',       kanji: '你',   kana: 'nǐ',        de: 'du',          type: 'pronoun' },
-        { id: 'he',        kanji: '他',   kana: 'tā',        de: 'er',          type: 'pronoun' },
-        { id: 'we',        kanji: '我们', kana: 'wǒmen',     de: 'wir',         type: 'pronoun' },
-        { id: 'this',      kanji: '这',   kana: 'zhè',       de: 'dies',        type: 'pronoun' },
-        { id: 'that',      kanji: '那',   kana: 'nà',        de: 'das',         type: 'pronoun' },
-        { id: 'here',      kanji: '这里', kana: 'zhèlǐ',     de: 'hier',        type: 'mod' },
-        { id: 'there',     kanji: '那里', kana: 'nàlǐ',      de: 'dort',        type: 'mod' },
-        { id: 'now',       kanji: '现在', kana: 'xiànzài',   de: 'jetzt',       type: 'mod' },
-        { id: 'yes',       kanji: '是',   kana: 'shì',       de: 'ja',          type: 'mod' },
-        { id: 'no',        kanji: '不',   kana: 'bù',        de: 'nein',        type: 'mod' },
-        // ── Expansion: Nouns — Animals (HSK 1-2) ──
-        { id: 'horse',     kanji: '马',   kana: 'mǎ',        de: 'Pferd',       type: 'noun' },
-        { id: 'cow',       kanji: '牛',   kana: 'niú',       de: 'Rind',        type: 'noun' },
-        { id: 'chicken',   kanji: '鸡',   kana: 'jī',        de: 'Huhn',        type: 'noun' },
-        { id: 'sheep',     kanji: '羊',   kana: 'yáng',      de: 'Schaf',       type: 'noun' },
-        { id: 'rabbit',    kanji: '兔子', kana: 'tùzi',      de: 'Hase',        type: 'noun' },
-        { id: 'frog',      kanji: '青蛙', kana: 'qīngwā',    de: 'Frosch',      type: 'noun' },
-        { id: 'butterfly', kanji: '蝴蝶', kana: 'húdié',     de: 'Schmetterling', type: 'noun' },
-        // ── Expansion: Nouns — Body (HSK 1-2) ──
-        { id: 'hand',      kanji: '手',   kana: 'shǒu',      de: 'Hand',        type: 'noun' },
-        { id: 'eye',       kanji: '眼睛', kana: 'yǎnjing',   de: 'Auge',        type: 'noun' },
-        { id: 'mouth',     kanji: '嘴',   kana: 'zuǐ',       de: 'Mund',        type: 'noun' },
-        { id: 'ear',       kanji: '耳朵', kana: 'ěrduo',     de: 'Ohr',         type: 'noun' },
-        { id: 'head',      kanji: '头',   kana: 'tóu',       de: 'Kopf',        type: 'noun' },
-        { id: 'heart',     kanji: '心',   kana: 'xīn',       de: 'Herz',        type: 'noun' },
-        { id: 'foot',      kanji: '脚',   kana: 'jiǎo',      de: 'Fuss',        type: 'noun' },
-        // ── Expansion: Nouns — Food & Drink (HSK 1-3) ──
-        { id: 'fruit',     kanji: '水果', kana: 'shuǐguǒ',   de: 'Obst',        type: 'noun' },
-        { id: 'apple',     kanji: '苹果', kana: 'píngguǒ',   de: 'Apfel',       type: 'noun' },
-        { id: 'sugar',     kanji: '糖',   kana: 'táng',      de: 'Zucker',      type: 'noun' },
-        { id: 'salt',      kanji: '盐',   kana: 'yán',       de: 'Salz',        type: 'noun' },
-        { id: 'oil',       kanji: '油',   kana: 'yóu',       de: 'Oel',         type: 'noun' },
-        { id: 'noodle',    kanji: '面',   kana: 'miàn',      de: 'Nudel',       type: 'noun' },
-        { id: 'soup',      kanji: '汤',   kana: 'tāng',      de: 'Suppe',       type: 'noun' },
-        { id: 'wine',      kanji: '酒',   kana: 'jiǔ',       de: 'Wein',        type: 'noun' },
-        { id: 'milk',      kanji: '奶',   kana: 'nǎi',       de: 'Milch',       type: 'noun' },
-        // ── Expansion: Nouns — Nature (HSK 1-3) ──
-        { id: 'stone',     kanji: '石头', kana: 'shítou',    de: 'Stein',       type: 'noun' },
-        { id: 'earth',     kanji: '土',   kana: 'tǔ',        de: 'Erde',        type: 'noun' },
-        { id: 'grass',     kanji: '草',   kana: 'cǎo',       de: 'Gras',        type: 'noun' },
-        { id: 'leaf',      kanji: '叶子', kana: 'yèzi',      de: 'Blatt',       type: 'noun' },
-        { id: 'star',      kanji: '星星', kana: 'xīngxing',  de: 'Stern',       type: 'noun' },
-        { id: 'snow',      kanji: '雪',   kana: 'xuě',       de: 'Schnee',      type: 'noun' },
-        { id: 'cloud',     kanji: '云',   kana: 'yún',       de: 'Wolke',       type: 'noun' },
-        { id: 'lake',      kanji: '湖',   kana: 'hú',        de: 'See',         type: 'noun' },
-        { id: 'forest',    kanji: '林',   kana: 'lín',       de: 'Wald',        type: 'noun' },
-        { id: 'field',     kanji: '田',   kana: 'tián',      de: 'Feld',        type: 'noun' },
-        // ── Expansion: Nouns — Daily Objects (HSK 1-3) ──
-        { id: 'clothes',   kanji: '衣服', kana: 'yīfu',      de: 'Kleidung',    type: 'noun' },
-        { id: 'shoes',     kanji: '鞋子', kana: 'xiézi',     de: 'Schuhe',      type: 'noun' },
-        { id: 'hat',       kanji: '帽子', kana: 'màozi',     de: 'Hut',         type: 'noun' },
-        { id: 'bed',       kanji: '床',   kana: 'chuáng',    de: 'Bett',        type: 'noun' },
-        { id: 'table',     kanji: '桌子', kana: 'zhuōzi',    de: 'Tisch',       type: 'noun' },
-        { id: 'chair',     kanji: '椅子', kana: 'yǐzi',      de: 'Stuhl',       type: 'noun' },
-        { id: 'rope',      kanji: '绳子', kana: 'shéngzi',   de: 'Seil',        type: 'noun' },
-        { id: 'needle',    kanji: '针',   kana: 'zhēn',      de: 'Nadel',       type: 'noun' },
-        { id: 'candle',    kanji: '蜡烛', kana: 'làzhú',     de: 'Kerze',       type: 'noun' },
-        { id: 'broom',     kanji: '扫帚', kana: 'sàozhou',   de: 'Besen',       type: 'noun' },
-        // ── Expansion: Nouns — People (HSK 1-2) ──
-        { id: 'mother',    kanji: '妈妈', kana: 'māma',      de: 'Mutter',      type: 'noun' },
-        { id: 'father',    kanji: '爸爸', kana: 'bàba',      de: 'Vater',       type: 'noun' },
-        { id: 'brother',   kanji: '哥哥', kana: 'gēge',      de: 'Bruder',      type: 'noun' },
-        { id: 'sister',    kanji: '姐姐', kana: 'jiějie',    de: 'Schwester',   type: 'noun' },
-        { id: 'girl',      kanji: '女孩', kana: 'nǚhái',     de: 'Maedchen',    type: 'noun' },
-        { id: 'boy',       kanji: '男孩', kana: 'nánhái',    de: 'Junge',       type: 'noun' },
-        { id: 'doctor',    kanji: '医生', kana: 'yīshēng',   de: 'Arzt',        type: 'noun' },
-        { id: 'neighbor',  kanji: '邻居', kana: 'línjū',     de: 'Nachbar',     type: 'noun' },
-        // ── Expansion: Nouns — Places & Time (HSK 1-2) ──
-        { id: 'school',    kanji: '学校', kana: 'xuéxiào',   de: 'Schule',      type: 'noun' },
-        { id: 'shop',      kanji: '商店', kana: 'shāngdiàn', de: 'Laden',       type: 'noun' },
-        { id: 'village',   kanji: '村子', kana: 'cūnzi',     de: 'Dorf',        type: 'noun' },
-        { id: 'year',      kanji: '年',   kana: 'nián',      de: 'Jahr',        type: 'noun' },
-        { id: 'today',     kanji: '今天', kana: 'jīntiān',   de: 'heute',       type: 'noun' },
-        { id: 'tomorrow',  kanji: '明天', kana: 'míngtiān',  de: 'morgen',      type: 'noun' },
-        { id: 'yesterday', kanji: '昨天', kana: 'zuótiān',   de: 'gestern',     type: 'noun' },
-        // ── Expansion: Verbs (HSK 1-3) ──
-        { id: 'open',      kanji: '开',   kana: 'kāi',       de: 'oeffnen',     type: 'verb' },
-        { id: 'close',     kanji: '关',   kana: 'guān',      de: 'schliessen',  type: 'verb' },
-        { id: 'help',      kanji: '帮',   kana: 'bāng',      de: 'helfen',      type: 'verb' },
-        { id: 'want',      kanji: '要',   kana: 'yào',       de: 'wollen',      type: 'verb' },
-        { id: 'can',       kanji: '能',   kana: 'néng',      de: 'koennen',     type: 'verb' },
-        { id: 'love',      kanji: '爱',   kana: 'ài',        de: 'lieben',      type: 'verb' },
-        { id: 'know',      kanji: '知道', kana: 'zhīdào',    de: 'wissen',      type: 'verb' },
-        { id: 'understand', kanji: '懂',  kana: 'dǒng',      de: 'verstehen',   type: 'verb' },
-        { id: 'wait',      kanji: '等',   kana: 'děng',      de: 'warten',      type: 'verb' },
-        { id: 'ask',       kanji: '问',   kana: 'wèn',       de: 'fragen',      type: 'verb' },
-        { id: 'answer',    kanji: '回答', kana: 'huídá',     de: 'antworten',   type: 'verb' },
-        { id: 'come',      kanji: '来',   kana: 'lái',       de: 'kommen',      type: 'verb' },
-        { id: 'go',        kanji: '去',   kana: 'qù',        de: 'gehen',       type: 'verb' },
-        { id: 'return',    kanji: '回',   kana: 'huí',       de: 'zurueckkehren', type: 'verb' },
-        { id: 'think',     kanji: '想',   kana: 'xiǎng',     de: 'denken',      type: 'verb' },
-        { id: 'remember',  kanji: '记',   kana: 'jì',        de: 'erinnern',    type: 'verb' },
-        { id: 'forget',    kanji: '忘',   kana: 'wàng',      de: 'vergessen',   type: 'verb' },
-        { id: 'use',       kanji: '用',   kana: 'yòng',      de: 'benutzen',    type: 'verb' },
-        { id: 'plant',     kanji: '种',   kana: 'zhòng',     de: 'pflanzen',    type: 'verb' },
-        { id: 'repair',    kanji: '修',   kana: 'xiū',       de: 'reparieren',  type: 'verb' },
-        { id: 'sweep',     kanji: '扫',   kana: 'sǎo',       de: 'fegen',       type: 'verb' },
-        { id: 'pour',      kanji: '倒',   kana: 'dào',       de: 'giessen',     type: 'verb' },
-        { id: 'dance',     kanji: '跳舞', kana: 'tiàowǔ',    de: 'tanzen',      type: 'verb' },
-        { id: 'laugh',     kanji: '笑',   kana: 'xiào',      de: 'lachen',      type: 'verb' },
-        { id: 'cry',       kanji: '哭',   kana: 'kū',        de: 'weinen',      type: 'verb' },
-        { id: 'climb',     kanji: '爬',   kana: 'pá',        de: 'klettern',    type: 'verb' },
-        { id: 'fly',       kanji: '飞',   kana: 'fēi',       de: 'fliegen',     type: 'verb' },
-        { id: 'stand',     kanji: '站',   kana: 'zhàn',      de: 'stehen',      type: 'verb' },
-        { id: 'rest',      kanji: '休息', kana: 'xiūxi',     de: 'ausruhen',    type: 'verb' },
-        { id: 'begin',     kanji: '开始', kana: 'kāishǐ',    de: 'anfangen',    type: 'verb' },
-        { id: 'finish',    kanji: '完',   kana: 'wán',       de: 'beenden',     type: 'verb' },
-        { id: 'send',      kanji: '送',   kana: 'sòng',      de: 'schicken',    type: 'verb' },
-        { id: 'receive',   kanji: '收',   kana: 'shōu',      de: 'empfangen',   type: 'verb' },
-        { id: 'feed',      kanji: '喂',   kana: 'wèi',       de: 'fuettern',    type: 'verb' },
-        { id: 'pick',      kanji: '摘',   kana: 'zhāi',      de: 'pfluecken',   type: 'verb' },
-        // ── Expansion: Modifiers (HSK 1-3) ──
-        { id: 'sweet',     kanji: '甜',   kana: 'tián',      de: 'suess',       type: 'mod' },
-        { id: 'sour',      kanji: '酸',   kana: 'suān',      de: 'sauer',       type: 'mod' },
-        { id: 'bitter',    kanji: '苦',   kana: 'kǔ',        de: 'bitter',      type: 'mod' },
-        { id: 'spicy',     kanji: '辣',   kana: 'là',        de: 'scharf',      type: 'mod' },
-        { id: 'soft',      kanji: '软',   kana: 'ruǎn',      de: 'weich',       type: 'mod' },
-        { id: 'hard',      kanji: '硬',   kana: 'yìng',      de: 'hart',        type: 'mod' },
-        { id: 'heavy',     kanji: '重',   kana: 'zhòng',     de: 'schwer',      type: 'mod' },
-        { id: 'light',     kanji: '轻',   kana: 'qīng',      de: 'leicht',      type: 'mod' },
-        { id: 'round',     kanji: '圆',   kana: 'yuán',      de: 'rund',        type: 'mod' },
-        { id: 'clean',     kanji: '干净', kana: 'gānjìng',   de: 'sauber',      type: 'mod' },
-        { id: 'dirty',     kanji: '脏',   kana: 'zāng',      de: 'schmutzig',   type: 'mod' },
-        { id: 'happy',     kanji: '开心', kana: 'kāixīn',    de: 'gluecklich',  type: 'mod' },
-        { id: 'tired',     kanji: '累',   kana: 'lèi',       de: 'muede',       type: 'mod' },
-        { id: 'hungry',    kanji: '饿',   kana: 'è',         de: 'hungrig',     type: 'mod' },
-        { id: 'full',      kanji: '饱',   kana: 'bǎo',       de: 'satt',        type: 'mod' },
-        { id: 'near',      kanji: '近',   kana: 'jìn',       de: 'nah',         type: 'mod' },
-        { id: 'far',       kanji: '远',   kana: 'yuǎn',      de: 'weit',        type: 'mod' },
-        { id: 'early',     kanji: '早',   kana: 'zǎo',       de: 'frueh',       type: 'mod' },
-        { id: 'late',      kanji: '晚',   kana: 'wǎn',       de: 'spaet',       type: 'mod' },
-        { id: 'dark',      kanji: '暗',   kana: 'àn',        de: 'dunkel',      type: 'mod' },
-        { id: 'bright',    kanji: '亮',   kana: 'liàng',     de: 'hell',        type: 'mod' },
-        { id: 'right',     kanji: '对',   kana: 'duì',       de: 'richtig',     type: 'mod' },
-        { id: 'wrong',     kanji: '错',   kana: 'cuò',       de: 'falsch',      type: 'mod' },
-        { id: 'deep',      kanji: '深',   kana: 'shēn',      de: 'tief',        type: 'mod' },
-        { id: 'shallow',   kanji: '浅',   kana: 'qiǎn',      de: 'flach',       type: 'mod' },
-        // ── Expansion: Colors (HSK 1-2) ──
-        { id: 'yellow',    kanji: '黄',   kana: 'huáng',     de: 'gelb',        type: 'mod' },
-        { id: 'blue',      kanji: '蓝',   kana: 'lán',       de: 'blau',        type: 'mod' },
-        { id: 'green',     kanji: '绿',   kana: 'lǜ',        de: 'gruen',       type: 'mod' },
-        { id: 'black',     kanji: '黑',   kana: 'hēi',       de: 'schwarz',     type: 'mod' },
-        // ── Expansion: Pronouns & Function Words (HSK 1-2) ──
-        { id: 'she',       kanji: '她',   kana: 'tā',        de: 'sie',         type: 'pronoun' },
-        { id: 'they',      kanji: '他们', kana: 'tāmen',     de: 'sie (Pl.)',   type: 'pronoun' },
-        { id: 'who',       kanji: '谁',   kana: 'shéi',      de: 'wer',         type: 'pronoun' },
-        { id: 'what',      kanji: '什么', kana: 'shénme',    de: 'was',         type: 'pronoun' },
-        { id: 'where',     kanji: '哪里', kana: 'nǎlǐ',      de: 'wo',          type: 'pronoun' },
-        { id: 'every',     kanji: '每',   kana: 'měi',       de: 'jede/r',      type: 'mod' },
-        { id: 'also',      kanji: '也',   kana: 'yě',        de: 'auch',        type: 'mod' },
-        { id: 'very',      kanji: '很',   kana: 'hěn',       de: 'sehr',        type: 'mod' },
-        { id: 'still',     kanji: '还',   kana: 'hái',       de: 'noch',        type: 'mod' },
-        { id: 'already',   kanji: '已经', kana: 'yǐjīng',    de: 'schon',       type: 'mod' },
-        // ── Expansion: New HSK 1-2 — Verbs ──
-        { id: 'have',      kanji: '有',   kana: 'yǒu',       de: 'haben',       type: 'verb' },
-        { id: 'live',      kanji: '住',   kana: 'zhù',       de: 'wohnen',      type: 'verb' },
-        { id: 'like',      kanji: '喜欢', kana: 'xǐhuan',    de: 'moegen',      type: 'verb' },
-        { id: 'call',      kanji: '叫',   kana: 'jiào',      de: 'rufen',       type: 'verb' },
-        { id: 'enter',     kanji: '进',   kana: 'jìn',       de: 'eintreten',   type: 'verb' },
-        { id: 'exit2',     kanji: '出',   kana: 'chū',       de: 'hinausgehen', type: 'verb' },
-        { id: 'arrive',    kanji: '到',   kana: 'dào',       de: 'ankommen',    type: 'verb' },
-        { id: 'wear',      kanji: '穿',   kana: 'chuān',     de: 'anziehen',    type: 'verb' },
-        { id: 'prepare',   kanji: '准备', kana: 'zhǔnbèi',   de: 'vorbereiten', type: 'verb' },
-        { id: 'swim',      kanji: '游泳', kana: 'yóuyǒng',   de: 'schwimmen',   type: 'verb' },
-        { id: 'allow',     kanji: '让',   kana: 'ràng',      de: 'lassen',      type: 'verb' },
-        { id: 'inform',    kanji: '告诉', kana: 'gàosù',     de: 'erzaehlen',   type: 'verb' },
-        { id: 'hope',      kanji: '希望', kana: 'xīwàng',    de: 'hoffen',      type: 'verb' },
-        { id: 'feel',      kanji: '觉得', kana: 'juédé',     de: 'finden',      type: 'verb' },
-        // ── Expansion: New HSK 1-2 — Nouns ──
-        { id: 'name',      kanji: '名字', kana: 'míngzi',    de: 'Name',        type: 'noun' },
-        { id: 'weather',   kanji: '天气', kana: 'tiānqì',    de: 'Wetter',      type: 'noun' },
-        { id: 'son',       kanji: '儿子', kana: 'érzi',      de: 'Sohn',        type: 'noun' },
-        { id: 'daughter',  kanji: '女儿', kana: 'nǚér',      de: 'Tochter',     type: 'noun' },
-        { id: 'room',      kanji: '房间', kana: 'fángjiān',  de: 'Zimmer',      type: 'noun' },
-        { id: 'medicine',  kanji: '药',   kana: 'yào',       de: 'Medizin',     type: 'noun' },
-        { id: 'body',      kanji: '身体', kana: 'shēntǐ',    de: 'Koerper',     type: 'noun' },
-        { id: 'student',   kanji: '学生', kana: 'xuéshēng',  de: 'Schueler',    type: 'noun' },
-        { id: 'character', kanji: '字',   kana: 'zì',        de: 'Zeichen',     type: 'noun' },
-        { id: 'lesson',    kanji: '课',   kana: 'kè',        de: 'Unterricht',  type: 'noun' },
-        { id: 'question',  kanji: '题',   kana: 'tí',        de: 'Frage',       type: 'noun' },
-        { id: 'time',      kanji: '时间', kana: 'shíjiān',   de: 'Zeit',        type: 'noun' },
-        { id: 'exercise',  kanji: '运动', kana: 'yùndòng',   de: 'Bewegung',    type: 'noun' },
-        // ── Expansion: New HSK 1-2 — Modifiers ──
-        { id: 'up',        kanji: '上',   kana: 'shàng',     de: 'oben',        type: 'mod' },
-        { id: 'down',      kanji: '下',   kana: 'xià',       de: 'unten',       type: 'mod' },
-        { id: 'inside',    kanji: '里面', kana: 'lǐmiàn',    de: 'drinnen',     type: 'mod' },
-        { id: 'front',     kanji: '前面', kana: 'qiánmiàn',  de: 'vorne',       type: 'mod' },
-        { id: 'behind',    kanji: '后面', kana: 'hòumiàn',   de: 'hinten',      type: 'mod' },
-        { id: 'outside',   kanji: '外',   kana: 'wài',       de: 'draussen',    type: 'mod' },
-        { id: 'please',    kanji: '请',   kana: 'qǐng',      de: 'bitte',       type: 'mod' },
-        { id: 'thanks',    kanji: '谢谢', kana: 'xièxie',    de: 'danke',       type: 'mod' },
-        { id: 'expensive', kanji: '贵',   kana: 'guì',       de: 'teuer',       type: 'mod' },
-        { id: 'cheap',     kanji: '便宜', kana: 'piányi',    de: 'billig',      type: 'mod' },
-        { id: 'busy',      kanji: '忙',   kana: 'máng',      de: 'beschaeftigt', type: 'mod' },
-        { id: 'really',    kanji: '真',   kana: 'zhēn',      de: 'wirklich',    type: 'mod' },
-        { id: 'extremely', kanji: '非常', kana: 'fēicháng',  de: 'sehr',        type: 'mod' },
-        { id: 'together',  kanji: '一起', kana: 'yìqǐ',      de: 'zusammen',    type: 'mod' },
-        { id: 'glad',      kanji: '高兴', kana: 'gāoxìng',   de: 'froh',        type: 'mod' },
-        { id: 'joyful',    kanji: '快乐', kana: 'kuàilè',    de: 'gluecklich',  type: 'mod' },
-        // ── Expansion: Numbers (HSK 1) ──
-        { id: 'one',       kanji: '一',   kana: 'yī',        de: 'eins',        type: 'mod' },
-        { id: 'two',       kanji: '二',   kana: 'èr',        de: 'zwei',        type: 'mod' },
-        { id: 'three',     kanji: '三',   kana: 'sān',       de: 'drei',        type: 'mod' },
-        { id: 'four',      kanji: '四',   kana: 'sì',        de: 'vier',        type: 'mod' },
-        { id: 'five',      kanji: '五',   kana: 'wǔ',        de: 'fuenf',       type: 'mod' },
-        { id: 'six',       kanji: '六',   kana: 'liù',       de: 'sechs',       type: 'mod' },
-        { id: 'seven',     kanji: '七',   kana: 'qī',        de: 'sieben',      type: 'mod' },
-        { id: 'eight',     kanji: '八',   kana: 'bā',        de: 'acht',        type: 'mod' },
-        { id: 'nine',      kanji: '九',   kana: 'jiǔ',       de: 'neun',        type: 'mod' },
-        { id: 'ten',       kanji: '十',   kana: 'shí',       de: 'zehn',        type: 'mod' },
-        { id: 'hundred',   kanji: '百',   kana: 'bǎi',       de: 'hundert',     type: 'mod' },
-        // ── Expansion: Social Phrases (HSK 1-2) ──
-        { id: 'hello',     kanji: '你好', kana: 'nǐhǎo',     de: 'hallo',       type: 'mod' },
-        { id: 'goodbye',   kanji: '再见', kana: 'zàijiàn',   de: 'tschuess',    type: 'mod' },
-        { id: 'sorry',     kanji: '对不起', kana: 'duìbuqǐ',  de: 'Entschuldigung', type: 'mod' },
-        { id: 'nevermind', kanji: '没关系', kana: 'méiguānxi', de: 'macht nichts', type: 'mod' },
-        { id: 'yourewelcome', kanji: '不客气', kana: 'búkèqi', de: 'gern geschehen', type: 'mod' },
-        { id: 'welcome',   kanji: '欢迎', kana: 'huānyíng',  de: 'willkommen',  type: 'mod' },
-        { id: 'careful',   kanji: '小心', kana: 'xiǎoxīn',   de: 'Vorsicht',    type: 'mod' },
-        { id: 'goforit',   kanji: '加油', kana: 'jiāyóu',    de: 'Los!',        type: 'mod' },
-        // ── Grammar Particles (structural) ──
-        { id: 'de_poss',   kanji: '的', kana: 'de',  de: '(Besitz)',     type: 'particle' },
-        { id: 'le_perf',   kanji: '了', kana: 'le',  de: '(abgeschl.)',  type: 'particle' },
-        { id: 'ma_q',      kanji: '吗', kana: 'ma',  de: '(Frage)',      type: 'particle' },
-        { id: 'ne_q',      kanji: '呢', kana: 'ne',  de: '(und du?)',    type: 'particle' },
-        { id: 'de_comp',   kanji: '得', kana: 'de',  de: '(Grad)',       type: 'particle' },
-        { id: 'zhe_dur',   kanji: '着', kana: 'zhe', de: '(andauernd)',  type: 'particle' },
-        { id: 'guo_exp',   kanji: '过', kana: 'guo', de: '(Erfahrung)', type: 'particle' },
-        { id: 'zai_prog',  kanji: '在', kana: 'zài', de: '(gerade)',    type: 'particle' },
-        { id: 'mei_neg',   kanji: '没', kana: 'méi', de: '(nicht/kein)', type: 'particle' },
-        { id: 'ba_disp',   kanji: '把', kana: 'bǎ',  de: '(Objekt-VZ)', type: 'particle' },
-        { id: 'a_mood',    kanji: '啊', kana: 'a',   de: '(Ausruf)',    type: 'particle' },
-        { id: 'ba_sug',    kanji: '吧', kana: 'ba',  de: '(Vorschlag)', type: 'particle' },
-        { id: 'la_mood',   kanji: '啦', kana: 'la',  de: '(Freude)',    type: 'particle' },
-        { id: 'dou_all',   kanji: '都', kana: 'dōu', de: '(alle)',      type: 'particle' },
-        { id: 'jiu_then',  kanji: '就', kana: 'jiù', de: '(dann/gleich)', type: 'particle' },
-        { id: 'zai_again', kanji: '再', kana: 'zài', de: '(nochmal)',   type: 'particle' },
-        // ── Expansion: Grammar & Function Words (HSK 1-2) ──
-        { id: 'and',       kanji: '和',   kana: 'hé',        de: 'und',         type: 'mod' },
-        { id: 'but',       kanji: '但是', kana: 'dànshì',    de: 'aber',        type: 'mod' },
-        { id: 'because',   kanji: '因为', kana: 'yīnwèi',    de: 'weil',        type: 'mod' },
-        { id: 'therefore', kanji: '所以', kana: 'suǒyǐ',     de: 'deshalb',     type: 'mod' },
-        { id: 'if',        kanji: '如果', kana: 'rúguǒ',     de: 'wenn/falls',  type: 'mod' },
-        { id: 'may',       kanji: '可以', kana: 'kěyǐ',      de: 'duerfen',     type: 'mod' },
-        { id: 'will',      kanji: '会',   kana: 'huì',       de: 'werden',      type: 'mod' },
-        { id: 'should',    kanji: '应该', kana: 'yīnggāi',   de: 'sollen',      type: 'mod' },
-        { id: 'why',       kanji: '为什么', kana: 'wèishénme', de: 'warum',      type: 'pronoun' },
-        { id: 'how',       kanji: '怎么', kana: 'zěnme',     de: 'wie',         type: 'pronoun' },
-        { id: 'howmany',   kanji: '多少', kana: 'duōshǎo',   de: 'wieviel',     type: 'pronoun' },
-        { id: 'howmany2',  kanji: '几',   kana: 'jǐ',        de: 'wie viele',   type: 'pronoun' },
-        // ── Expansion: More Verbs (HSK 1-3) ──
-        { id: 'getup',     kanji: '起床', kana: 'qǐchuáng',  de: 'aufstehen',   type: 'verb' },
-        { id: 'gotosleep', kanji: '睡觉', kana: 'shuìjiào',  de: 'schlafen gehen', type: 'verb' },
-        { id: 'putdown',   kanji: '放',   kana: 'fàng',      de: 'stellen',     type: 'verb' },
-        { id: 'pull',      kanji: '拉',   kana: 'lā',        de: 'ziehen',      type: 'verb' },
-        { id: 'push',      kanji: '推',   kana: 'tuī',       de: 'schieben',    type: 'verb' },
-        { id: 'haul',      kanji: '搬',   kana: 'bān',       de: 'schleppen',   type: 'verb' },
-        { id: 'hangup',    kanji: '挂',   kana: 'guà',       de: 'aufhaengen',  type: 'verb' },
-        { id: 'sundry',    kanji: '晒',   kana: 'shài',      de: 'sonnentrocknen', type: 'verb' },
-        { id: 'burn',      kanji: '烧',   kana: 'shāo',      de: 'verbrennen',  type: 'verb' },
-        { id: 'drop',      kanji: '掉',   kana: 'diào',      de: 'fallen lassen', type: 'verb' },
-        { id: 'change',    kanji: '变',   kana: 'biàn',      de: 'veraendern',  type: 'verb' },
-        { id: 'try',       kanji: '试',   kana: 'shì',       de: 'versuchen',   type: 'verb' },
-        { id: 'borrow',    kanji: '借',   kana: 'jiè',       de: 'leihen',      type: 'verb' },
-        { id: 'giveback',  kanji: '还',   kana: 'huán',      de: 'zurueckgeben', type: 'verb' },
-        { id: 'meetknow',  kanji: '认识', kana: 'rènshi',    de: 'kennenlernen', type: 'verb' },
-        { id: 'compete',   kanji: '比赛', kana: 'bǐsài',     de: 'Wettbewerb',  type: 'verb' },
-        { id: 'belate',    kanji: '迟到', kana: 'chídào',    de: 'zu spaet kommen', type: 'verb' },
-        { id: 'cleanup',   kanji: '打扫', kana: 'dǎsǎo',     de: 'sauber machen', type: 'verb' },
-        // ── Expansion: Emotions & States (HSK 1-3) ──
-        { id: 'angry',     kanji: '生气', kana: 'shēngqì',   de: 'wuetend',     type: 'mod' },
-        { id: 'afraid',    kanji: '害怕', kana: 'hàipà',     de: 'Angst haben', type: 'mod' },
-        { id: 'worried',   kanji: '担心', kana: 'dānxīn',    de: 'sich sorgen', type: 'mod' },
-        { id: 'sad',       kanji: '难过', kana: 'nánguò',    de: 'traurig',     type: 'mod' },
-        { id: 'anxious',   kanji: '着急', kana: 'zháojí',    de: 'eilig',       type: 'mod' },
-        { id: 'bored',     kanji: '无聊', kana: 'wúliáo',    de: 'langweilig',  type: 'mod' },
-        { id: 'comfy',     kanji: '舒服', kana: 'shūfu',     de: 'bequem',      type: 'mod' },
-        { id: 'thirsty',   kanji: '渴',   kana: 'kě',        de: 'durstig',     type: 'mod' },
-        { id: 'sleepy',    kanji: '困',   kana: 'kùn',       de: 'schlaefrig',  type: 'mod' },
-        // ── Expansion: Senses & Properties (HSK 1-3) ──
-        { id: 'fragrant',  kanji: '香',   kana: 'xiāng',     de: 'duftend',     type: 'mod' },
-        { id: 'stinky',    kanji: '臭',   kana: 'chòu',      de: 'stinkend',    type: 'mod' },
-        { id: 'thick',     kanji: '厚',   kana: 'hòu',       de: 'dick',        type: 'mod' },
-        { id: 'thin2',     kanji: '薄',   kana: 'báo',       de: 'duenn',       type: 'mod' },
-        { id: 'wide',      kanji: '宽',   kana: 'kuān',      de: 'breit',       type: 'mod' },
-        { id: 'narrow',    kanji: '窄',   kana: 'zhǎi',      de: 'eng',         type: 'mod' },
-        { id: 'full2',     kanji: '满',   kana: 'mǎn',       de: 'voll',        type: 'mod' },
-        { id: 'empty',     kanji: '空',   kana: 'kōng',      de: 'leer',        type: 'mod' },
-        { id: 'warm',      kanji: '暖',   kana: 'nuǎn',      de: 'warm',        type: 'mod' },
-        // ── Expansion: Nature & Environment (HSK 1-3) ──
-        { id: 'insect',    kanji: '虫',   kana: 'chóng',     de: 'Insekt',      type: 'noun' },
-        { id: 'snake',     kanji: '蛇',   kana: 'shé',       de: 'Schlange',    type: 'noun' },
-        { id: 'ice',       kanji: '冰',   kana: 'bīng',      de: 'Eis',         type: 'noun' },
-        { id: 'mist',      kanji: '雾',   kana: 'wù',        de: 'Nebel',       type: 'noun' },
-        { id: 'pine',      kanji: '松',   kana: 'sōng',      de: 'Kiefer',      type: 'noun' },
-        { id: 'shore',     kanji: '岸',   kana: 'àn',        de: 'Ufer',        type: 'noun' },
-        { id: 'shadow',    kanji: '影子', kana: 'yǐngzi',    de: 'Schatten',    type: 'noun' },
-        { id: 'sound',     kanji: '声音', kana: 'shēngyīn',  de: 'Geraeusch',   type: 'noun' },
-        // ── Expansion: Abstract Nouns (HSK 1-3) ──
-        { id: 'taste',     kanji: '味道', kana: 'wèidào',    de: 'Geschmack',   type: 'noun' },
-        { id: 'dream',     kanji: '梦',   kana: 'mèng',      de: 'Traum',       type: 'noun' },
-        { id: 'strength',  kanji: '力气', kana: 'lìqi',      de: 'Kraft',       type: 'noun' },
-        { id: 'gift',      kanji: '礼物', kana: 'lǐwù',      de: 'Geschenk',    type: 'noun' },
-        { id: 'news',      kanji: '消息', kana: 'xiāoxi',    de: 'Nachricht',   type: 'noun' },
-        { id: 'method',    kanji: '办法', kana: 'bànfǎ',     de: 'Methode',     type: 'noun' },
-        { id: 'secret',    kanji: '秘密', kana: 'mìmì',      de: 'Geheimnis',   type: 'noun' },
-        { id: 'meaning',   kanji: '意思', kana: 'yìsi',      de: 'Bedeutung',   type: 'noun' },
-        { id: 'habit',     kanji: '习惯', kana: 'xíguàn',    de: 'Gewohnheit',  type: 'noun' },
-        // ── Expansion: Object-coverage vocab ──
-        { id: 'well2',     kanji: '井',   kana: 'jǐng',      de: 'Brunnen',       type: 'noun' },
-        { id: 'wish',      kanji: '愿',   kana: 'yuàn',      de: 'Wunsch',        type: 'noun' },
-        { id: 'god',       kanji: '神',   kana: 'shén',      de: 'Gott',          type: 'noun' },
-        { id: 'incense',   kanji: '香',   kana: 'xiāng',     de: 'Raeucherwerk',  type: 'noun' },
-        { id: 'bell',      kanji: '钟',   kana: 'zhōng',     de: 'Glocke',        type: 'noun' },
-        { id: 'net',       kanji: '网',   kana: 'wǎng',      de: 'Netz',          type: 'noun' },
-        { id: 'sail',      kanji: '帆',   kana: 'fān',       de: 'Segel',         type: 'noun' },
-        { id: 'poem',      kanji: '诗',   kana: 'shī',       de: 'Gedicht',       type: 'noun' },
-        { id: 'grain',     kanji: '谷',   kana: 'gǔ',        de: 'Korn',          type: 'noun' },
-        { id: 'harvest',   kanji: '收',   kana: 'shōu',      de: 'ernten',        type: 'verb' },
-        { id: 'hang',      kanji: '挂',   kana: 'guà',       de: 'aufhaengen',    type: 'verb' },
-        { id: 'pray',      kanji: '拜',   kana: 'bài',       de: 'beten',         type: 'verb' },
-        { id: 'float',     kanji: '浮',   kana: 'fú',        de: 'schweben',      type: 'verb' },
-        { id: 'blow',      kanji: '吹',   kana: 'chuī',      de: 'blasen',        type: 'verb' },
-        { id: 'wet',       kanji: '湿',   kana: 'shī',       de: 'nass',          type: 'mod' },
-        // ── Festival vocab ──
-        { id: 'festival',  kanji: '节',   kana: 'jié',       de: 'Fest',          type: 'noun' },
-        { id: 'dragon',    kanji: '龙',   kana: 'lóng',      de: 'Drache',        type: 'noun' },
-        { id: 'mooncake',  kanji: '月饼', kana: 'yuèbǐng',   de: 'Mondkuchen',    type: 'noun' },
-        { id: 'celebrate', kanji: '庆祝', kana: 'qìngzhù',   de: 'feiern',        type: 'verb' },
-        { id: 'lucky',     kanji: '福',   kana: 'fú',        de: 'Glueck',        type: 'noun' },
-        { id: 'together2', kanji: '团圆', kana: 'tuányuán',   de: 'Wiedersehen',   type: 'noun' },
+      // --- Nature & Landscape ---
+      { id: 'water', kanji: '水', kana: 'みず', romaji: 'mizu', de: 'Wasser', type: 'noun' },
+      { id: 'fire', kanji: '火', kana: 'ひ', romaji: 'hi', de: 'Feuer', type: 'noun' },
+      { id: 'sky', kanji: '空', kana: 'そら', romaji: 'sora', de: 'Himmel', type: 'noun' },
+      { id: 'mountain', kanji: '山', kana: 'やま', romaji: 'yama', de: 'Berg', type: 'noun' },
+      { id: 'flower', kanji: '花', kana: 'はな', romaji: 'hana', de: 'Blume', type: 'noun' },
+      { id: 'tree', kanji: '木', kana: 'き', romaji: 'ki', de: 'Baum', type: 'noun' },
+      { id: 'fish', kanji: '魚', kana: 'さかな', romaji: 'sakana', de: 'Fisch', type: 'noun' },
+      { id: 'tea', kanji: '茶', kana: 'ちゃ', romaji: 'cha', de: 'Tee', type: 'noun' },
+      { id: 'rice', kanji: '米', kana: 'こめ', romaji: 'kome', de: 'Reis', type: 'noun' },
+      { id: 'food', kanji: '食べ物', kana: 'たべもの', romaji: 'tabemono', de: 'Essen', type: 'noun' },
+      { id: 'vegetable', kanji: '野菜', kana: 'やさい', romaji: 'yasai', de: 'Gemuese', type: 'noun' },
+      { id: 'meat', kanji: '肉', kana: 'にく', romaji: 'niku', de: 'Fleisch', type: 'noun' },
+      { id: 'egg', kanji: '卵', kana: 'たまご', romaji: 'tamago', de: 'Ei', type: 'noun' },
+      // --- Animals ---
+      { id: 'dog', kanji: '犬', kana: 'いぬ', romaji: 'inu', de: 'Hund', type: 'noun' },
+      { id: 'cat', kanji: '猫', kana: 'ねこ', romaji: 'neko', de: 'Katze', type: 'noun' },
+      { id: 'bird', kanji: '鳥', kana: 'とり', romaji: 'tori', de: 'Vogel', type: 'noun' },
+      { id: 'chicken', kanji: '鶏', kana: 'にわとり', romaji: 'niwatori', de: 'Huhn', type: 'noun' },
+      { id: 'rabbit', kanji: '兎', kana: 'うさぎ', romaji: 'usagi', de: 'Kaninchen', type: 'noun' },
+      { id: 'frog', kanji: '蛙', kana: 'かえる', romaji: 'kaeru', de: 'Frosch', type: 'noun' },
+      { id: 'butterfly', kanji: '蝶', kana: 'ちょう', romaji: 'chou', de: 'Schmetterling', type: 'noun' },
+      { id: 'horse', kanji: '馬', kana: 'うま', romaji: 'uma', de: 'Pferd', type: 'noun' },
+      { id: 'cow', kanji: '牛', kana: 'うし', romaji: 'ushi', de: 'Kuh', type: 'noun' },
+      { id: 'crane', kanji: '鶴', kana: 'つる', romaji: 'tsuru', de: 'Kranich', type: 'noun' },
+      { id: 'insect', kanji: '虫', kana: 'むし', romaji: 'mushi', de: 'Insekt', type: 'noun' },
+      { id: 'sheep', kanji: '羊', kana: 'ひつじ', romaji: 'hitsuji', de: 'Schaf', type: 'noun' },
+      { id: 'snake', kanji: '蛇', kana: 'へび', romaji: 'hebi', de: 'Schlange', type: 'noun' },
+      { id: 'tanuki', kanji: '狸', kana: 'たぬき', romaji: 'tanuki', de: 'Marderhund', type: 'noun' },
+      // --- People ---
+      { id: 'person', kanji: '人', kana: 'ひと', romaji: 'hito', de: 'Person', type: 'noun' },
+      { id: 'friend', kanji: '友達', kana: 'ともだち', romaji: 'tomodachi', de: 'Freund', type: 'noun' },
+      { id: 'child', kanji: '子供', kana: 'こども', romaji: 'kodomo', de: 'Kind', type: 'noun' },
+      { id: 'teacher', kanji: '先生', kana: 'せんせい', romaji: 'sensei', de: 'Lehrer', type: 'noun' },
+      { id: 'student', kanji: '学生', kana: 'がくせい', romaji: 'gakusei', de: 'Schueler', type: 'noun' },
+      { id: 'doctor', kanji: '医者', kana: 'いしゃ', romaji: 'isha', de: 'Arzt', type: 'noun' },
+      { id: 'neighbor', kanji: '隣人', kana: 'りんじん', romaji: 'rinjin', de: 'Nachbar', type: 'noun' },
+      { id: 'boy', kanji: '男の子', kana: 'おとこのこ', romaji: 'otokonoko', de: 'Junge', type: 'noun' },
+      { id: 'girl', kanji: '女の子', kana: 'おんなのこ', romaji: 'onnanoko', de: 'Maedchen', type: 'noun' },
+      { id: 'mother', kanji: '母', kana: 'はは', romaji: 'haha', de: 'Mutter', type: 'noun' },
+      { id: 'father', kanji: '父', kana: 'ちち', romaji: 'chichi', de: 'Vater', type: 'noun' },
+      { id: 'brother', kanji: '兄', kana: 'あに', romaji: 'ani', de: 'Bruder', type: 'noun' },
+      { id: 'sister', kanji: '姉', kana: 'あね', romaji: 'ane', de: 'Schwester', type: 'noun' },
+      { id: 'son', kanji: '息子', kana: 'むすこ', romaji: 'musuko', de: 'Sohn', type: 'noun' },
+      { id: 'daughter', kanji: '娘', kana: 'むすめ', romaji: 'musume', de: 'Tochter', type: 'noun' },
+      // --- Body ---
+      { id: 'head', kanji: '頭', kana: 'あたま', romaji: 'atama', de: 'Kopf', type: 'noun' },
+      { id: 'hand', kanji: '手', kana: 'て', romaji: 'te', de: 'Hand', type: 'noun' },
+      { id: 'eye', kanji: '目', kana: 'め', romaji: 'me', de: 'Auge', type: 'noun' },
+      { id: 'mouth', kanji: '口', kana: 'くち', romaji: 'kuchi', de: 'Mund', type: 'noun' },
+      { id: 'ear', kanji: '耳', kana: 'みみ', romaji: 'mimi', de: 'Ohr', type: 'noun' },
+      { id: 'nose', kanji: '鼻', kana: 'はな', romaji: 'hana', de: 'Nase', type: 'noun' },
+      { id: 'body', kanji: '体', kana: 'からだ', romaji: 'karada', de: 'Koerper', type: 'noun' },
+      { id: 'face', kanji: '顔', kana: 'かお', romaji: 'kao', de: 'Gesicht', type: 'noun' },
+      { id: 'heart', kanji: '心', kana: 'こころ', romaji: 'kokoro', de: 'Herz', type: 'noun' },
+      { id: 'foot', kanji: '足', kana: 'あし', romaji: 'ashi', de: 'Fuss', type: 'noun' },
+      // --- Daily Objects ---
+      { id: 'book', kanji: '本', kana: 'ほん', romaji: 'hon', de: 'Buch', type: 'noun' },
+      { id: 'cup', kanji: '杯', kana: 'はい', romaji: 'hai', de: 'Tasse', type: 'noun' },
+      { id: 'bowl', kanji: '茶碗', kana: 'ちゃわん', romaji: 'chawan', de: 'Schale', type: 'noun' },
+      { id: 'knife', kanji: '包丁', kana: 'ほうちょう', romaji: 'houchou', de: 'Messer', type: 'noun' },
+      { id: 'door', kanji: '戸', kana: 'と', romaji: 'to', de: 'Tuer', type: 'noun' },
+      { id: 'bridge', kanji: '橋', kana: 'はし', romaji: 'hashi', de: 'Bruecke', type: 'noun' },
+      { id: 'boat', kanji: '船', kana: 'ふね', romaji: 'fune', de: 'Boot', type: 'noun' },
+      { id: 'money', kanji: 'お金', kana: 'おかね', romaji: 'okane', de: 'Geld', type: 'noun' },
+      { id: 'clothes', kanji: '服', kana: 'ふく', romaji: 'fuku', de: 'Kleidung', type: 'noun' },
+      { id: 'shoe', kanji: '靴', kana: 'くつ', romaji: 'kutsu', de: 'Schuh', type: 'noun' },
+      { id: 'hat', kanji: '帽子', kana: 'ぼうし', romaji: 'boushi', de: 'Hut', type: 'noun' },
+      { id: 'chair', kanji: '椅子', kana: 'いす', romaji: 'isu', de: 'Stuhl', type: 'noun' },
+      { id: 'table', kanji: '机', kana: 'つくえ', romaji: 'tsukue', de: 'Tisch', type: 'noun' },
+      { id: 'bed', kanji: '布団', kana: 'ふとん', romaji: 'futon', de: 'Bett', type: 'noun' },
+      { id: 'broom', kanji: '箒', kana: 'ほうき', romaji: 'houki', de: 'Besen', type: 'noun' },
+      { id: 'stone', kanji: '石', kana: 'いし', romaji: 'ishi', de: 'Stein', type: 'noun' },
+      { id: 'rope', kanji: '縄', kana: 'なわ', romaji: 'nawa', de: 'Seil', type: 'noun' },
+      { id: 'candle', kanji: '蝋燭', kana: 'ろうそく', romaji: 'rousoku', de: 'Kerze', type: 'noun' },
+      { id: 'mirror', kanji: '鏡', kana: 'かがみ', romaji: 'kagami', de: 'Spiegel', type: 'noun' },
+      { id: 'umbrella', kanji: '傘', kana: 'かさ', romaji: 'kasa', de: 'Regenschirm', type: 'noun' },
+      // --- Food & Drink ---
+      { id: 'noodle', kanji: '麺', kana: 'めん', romaji: 'men', de: 'Nudel', type: 'noun' },
+      { id: 'soup', kanji: '汁', kana: 'しる', romaji: 'shiru', de: 'Suppe', type: 'noun' },
+      { id: 'wine', kanji: '酒', kana: 'さけ', romaji: 'sake', de: 'Sake', type: 'noun' },
+      { id: 'milk', kanji: '牛乳', kana: 'ぎゅうにゅう', romaji: 'gyuunyuu', de: 'Milch', type: 'noun' },
+      { id: 'salt', kanji: '塩', kana: 'しお', romaji: 'shio', de: 'Salz', type: 'noun' },
+      { id: 'sugar', kanji: '砂糖', kana: 'さとう', romaji: 'satou', de: 'Zucker', type: 'noun' },
+      { id: 'oil', kanji: '油', kana: 'あぶら', romaji: 'abura', de: 'Oel', type: 'noun' },
+      { id: 'apple', kanji: '林檎', kana: 'りんご', romaji: 'ringo', de: 'Apfel', type: 'noun' },
+      { id: 'onigiri', kanji: 'おにぎり', kana: 'おにぎり', romaji: 'onigiri', de: 'Reisbaellchen', type: 'noun' },
+      { id: 'mochi', kanji: '餅', kana: 'もち', romaji: 'mochi', de: 'Reiskuchen', type: 'noun' },
+      { id: 'tofu', kanji: '豆腐', kana: 'とうふ', romaji: 'toufu', de: 'Tofu', type: 'noun' },
+      // --- Places & Time ---
+      { id: 'home', kanji: '家', kana: 'いえ', romaji: 'ie', de: 'Zuhause', type: 'noun' },
+      { id: 'house', kanji: '家屋', kana: 'かおく', romaji: 'kaoku', de: 'Haus', type: 'noun' },
+      { id: 'garden', kanji: '庭', kana: 'にわ', romaji: 'niwa', de: 'Garten', type: 'noun' },
+      { id: 'village', kanji: '村', kana: 'むら', romaji: 'mura', de: 'Dorf', type: 'noun' },
+      { id: 'road', kanji: '道', kana: 'みち', romaji: 'michi', de: 'Weg', type: 'noun' },
+      { id: 'country', kanji: '国', kana: 'くに', romaji: 'kuni', de: 'Land', type: 'noun' },
+      { id: 'day', kanji: '日', kana: 'ひ', romaji: 'hi', de: 'Tag', type: 'noun' },
+      { id: 'night', kanji: '夜', kana: 'よる', romaji: 'yoru', de: 'Nacht', type: 'noun' },
+      { id: 'morning', kanji: '朝', kana: 'あさ', romaji: 'asa', de: 'Morgen', type: 'noun' },
+      { id: 'year', kanji: '年', kana: 'とし', romaji: 'toshi', de: 'Jahr', type: 'noun' },
+      { id: 'month', kanji: '月', kana: 'つき', romaji: 'tsuki', de: 'Monat', type: 'noun' },
+      { id: 'spring', kanji: '春', kana: 'はる', romaji: 'haru', de: 'Fruehling', type: 'noun' },
+      { id: 'summer', kanji: '夏', kana: 'なつ', romaji: 'natsu', de: 'Sommer', type: 'noun' },
+      { id: 'autumn', kanji: '秋', kana: 'あき', romaji: 'aki', de: 'Herbst', type: 'noun' },
+      { id: 'winter', kanji: '冬', kana: 'ふゆ', romaji: 'fuyu', de: 'Winter', type: 'noun' },
+      // --- Abstract ---
+      { id: 'music', kanji: '音楽', kana: 'おんがく', romaji: 'ongaku', de: 'Musik', type: 'noun' },
+      { id: 'picture', kanji: '絵', kana: 'え', romaji: 'e', de: 'Bild', type: 'noun' },
+      { id: 'story', kanji: '話', kana: 'はなし', romaji: 'hanashi', de: 'Geschichte', type: 'noun' },
+      { id: 'song', kanji: '歌', kana: 'うた', romaji: 'uta', de: 'Lied', type: 'noun' },
+      { id: 'dream', kanji: '夢', kana: 'ゆめ', romaji: 'yume', de: 'Traum', type: 'noun' },
+      { id: 'name', kanji: '名前', kana: 'なまえ', romaji: 'namae', de: 'Name', type: 'noun' },
+      { id: 'meaning', kanji: '意味', kana: 'いみ', romaji: 'imi', de: 'Bedeutung', type: 'noun' },
+      { id: 'sound', kanji: '音', kana: 'おと', romaji: 'oto', de: 'Klang', type: 'noun' },
+      // --- Japanese setting ---
+      { id: 'brush', kanji: '筆', kana: 'ふで', romaji: 'fude', de: 'Pinsel', type: 'noun' },
+      { id: 'ink', kanji: '墨', kana: 'すみ', romaji: 'sumi', de: 'Tusche', type: 'noun' },
+      { id: 'paper', kanji: '紙', kana: 'かみ', romaji: 'kami', de: 'Papier', type: 'noun' },
+      { id: 'silk', kanji: '絹', kana: 'きぬ', romaji: 'kinu', de: 'Seide', type: 'noun' },
+      { id: 'bamboo', kanji: '竹', kana: 'たけ', romaji: 'take', de: 'Bambus', type: 'noun' },
+      { id: 'lantern', kanji: '提灯', kana: 'ちょうちん', romaji: 'chouchin', de: 'Laterne', type: 'noun' },
+      { id: 'basket', kanji: '籠', kana: 'かご', romaji: 'kago', de: 'Korb', type: 'noun' },
+      { id: 'fan', kanji: '扇', kana: 'おうぎ', romaji: 'ougi', de: 'Faecher', type: 'noun' },
+      { id: 'pot', kanji: '鍋', kana: 'なべ', romaji: 'nabe', de: 'Topf', type: 'noun' },
+      { id: 'lotus', kanji: '蓮', kana: 'はす', romaji: 'hasu', de: 'Lotus', type: 'noun' },
+      { id: 'tatami', kanji: '畳', kana: 'たたみ', romaji: 'tatami', de: 'Tatami', type: 'noun' },
+      { id: 'kimono', kanji: '着物', kana: 'きもの', romaji: 'kimono', de: 'Kimono', type: 'noun' },
+      { id: 'torii', kanji: '鳥居', kana: 'とりい', romaji: 'torii', de: 'Torii', type: 'noun' },
+      { id: 'onsen', kanji: '温泉', kana: 'おんせん', romaji: 'onsen', de: 'Thermalquelle', type: 'noun' },
+      { id: 'shrine', kanji: '神社', kana: 'じんじゃ', romaji: 'jinja', de: 'Schrein', type: 'noun' },
+      // --- Verbs ---
+      { id: 'eat', kanji: '食べる', kana: 'たべる', romaji: 'taberu', de: 'essen', type: 'verb', vclass: 'ichidan' },
+      { id: 'drink', kanji: '飲む', kana: 'のむ', romaji: 'nomu', de: 'trinken', type: 'verb', vclass: 'godan' },
+      { id: 'sleep', kanji: '寝る', kana: 'ねる', romaji: 'neru', de: 'schlafen', type: 'verb', vclass: 'ichidan' },
+      { id: 'walk', kanji: '歩く', kana: 'あるく', romaji: 'aruku', de: 'gehen', type: 'verb', vclass: 'godan' },
+      { id: 'run', kanji: '走る', kana: 'はしる', romaji: 'hashiru', de: 'rennen', type: 'verb', vclass: 'godan' },
+      { id: 'sit', kanji: '座る', kana: 'すわる', romaji: 'suwaru', de: 'sitzen', type: 'verb', vclass: 'godan' },
+      { id: 'stand', kanji: '立つ', kana: 'たつ', romaji: 'tatsu', de: 'stehen', type: 'verb', vclass: 'godan' },
+      { id: 'go', kanji: '行く', kana: 'いく', romaji: 'iku', de: 'gehen', type: 'verb', vclass: 'godan' },
+      { id: 'come', kanji: '来る', kana: 'くる', romaji: 'kuru', de: 'kommen', type: 'verb', vclass: 'irregular' },
+      { id: 'return', kanji: '帰る', kana: 'かえる', romaji: 'kaeru', de: 'zurueckkehren', type: 'verb', vclass: 'godan' },
+      { id: 'look', kanji: '見る', kana: 'みる', romaji: 'miru', de: 'schauen', type: 'verb', vclass: 'ichidan' },
+      { id: 'listen', kanji: '聞く', kana: 'きく', romaji: 'kiku', de: 'hoeren', type: 'verb', vclass: 'godan' },
+      { id: 'say', kanji: '言う', kana: 'いう', romaji: 'iu', de: 'sagen', type: 'verb', vclass: 'godan' },
+      { id: 'read', kanji: '読む', kana: 'よむ', romaji: 'yomu', de: 'lesen', type: 'verb', vclass: 'godan' },
+      { id: 'write', kanji: '書く', kana: 'かく', romaji: 'kaku', de: 'schreiben', type: 'verb', vclass: 'godan' },
+      { id: 'think', kanji: '考える', kana: 'かんがえる', romaji: 'kangaeru', de: 'denken', type: 'verb', vclass: 'ichidan' },
+      { id: 'know', kanji: '知る', kana: 'しる', romaji: 'shiru', de: 'wissen', type: 'verb', vclass: 'godan' },
+      { id: 'buy', kanji: '買う', kana: 'かう', romaji: 'kau', de: 'kaufen', type: 'verb', vclass: 'godan' },
+      { id: 'sell', kanji: '売る', kana: 'うる', romaji: 'uru', de: 'verkaufen', type: 'verb', vclass: 'godan' },
+      { id: 'give', kanji: 'あげる', kana: 'あげる', romaji: 'ageru', de: 'geben', type: 'verb', vclass: 'ichidan' },
+      { id: 'take', kanji: '取る', kana: 'とる', romaji: 'toru', de: 'nehmen', type: 'verb', vclass: 'godan' },
+      { id: 'make', kanji: '作る', kana: 'つくる', romaji: 'tsukuru', de: 'machen', type: 'verb', vclass: 'godan' },
+      { id: 'use', kanji: '使う', kana: 'つかう', romaji: 'tsukau', de: 'benutzen', type: 'verb', vclass: 'godan' },
+      { id: 'open', kanji: '開ける', kana: 'あける', romaji: 'akeru', de: 'oeffnen', type: 'verb', vclass: 'ichidan' },
+      { id: 'close', kanji: '閉める', kana: 'しめる', romaji: 'shimeru', de: 'schliessen', type: 'verb', vclass: 'ichidan' },
+      { id: 'hold', kanji: '持つ', kana: 'もつ', romaji: 'motsu', de: 'halten', type: 'verb', vclass: 'godan' },
+      { id: 'put', kanji: '置く', kana: 'おく', romaji: 'oku', de: 'legen', type: 'verb', vclass: 'godan' },
+      { id: 'cut', kanji: '切る', kana: 'きる', romaji: 'kiru', de: 'schneiden', type: 'verb', vclass: 'godan' },
+      { id: 'meet', kanji: '会う', kana: 'あう', romaji: 'au', de: 'treffen', type: 'verb', vclass: 'godan' },
+      { id: 'wait', kanji: '待つ', kana: 'まつ', romaji: 'matsu', de: 'warten', type: 'verb', vclass: 'godan' },
+      { id: 'begin', kanji: '始める', kana: 'はじめる', romaji: 'hajimeru', de: 'beginnen', type: 'verb', vclass: 'ichidan' },
+      { id: 'end', kanji: '終わる', kana: 'おわる', romaji: 'owaru', de: 'enden', type: 'verb', vclass: 'godan' },
+      { id: 'cook', kanji: '料理する', kana: 'りょうりする', romaji: 'ryouri suru', de: 'kochen', type: 'verb', vclass: 'irregular' },
+      { id: 'plant', kanji: '植える', kana: 'うえる', romaji: 'ueru', de: 'pflanzen', type: 'verb', vclass: 'ichidan' },
+      { id: 'fish_v', kanji: '釣る', kana: 'つる', romaji: 'tsuru', de: 'angeln', type: 'verb', vclass: 'godan' },
+      { id: 'wash', kanji: '洗う', kana: 'あらう', romaji: 'arau', de: 'waschen', type: 'verb', vclass: 'godan' },
+      { id: 'paint', kanji: '描く', kana: 'えがく', romaji: 'egaku', de: 'malen', type: 'verb', vclass: 'godan' },
+      { id: 'teach', kanji: '教える', kana: 'おしえる', romaji: 'oshieru', de: 'lehren', type: 'verb', vclass: 'ichidan' },
+      { id: 'learn', kanji: '学ぶ', kana: 'まなぶ', romaji: 'manabu', de: 'lernen', type: 'verb', vclass: 'godan' },
+      { id: 'help', kanji: '助ける', kana: 'たすける', romaji: 'tasukeru', de: 'helfen', type: 'verb', vclass: 'ichidan' },
+      { id: 'carry', kanji: '運ぶ', kana: 'はこぶ', romaji: 'hakobu', de: 'tragen', type: 'verb', vclass: 'godan' },
+      { id: 'pull', kanji: '引く', kana: 'ひく', romaji: 'hiku', de: 'ziehen', type: 'verb', vclass: 'godan' },
+      { id: 'push', kanji: '押す', kana: 'おす', romaji: 'osu', de: 'druecken', type: 'verb', vclass: 'godan' },
+      { id: 'catch', kanji: '捕まえる', kana: 'つかまえる', romaji: 'tsukamaeru', de: 'fangen', type: 'verb', vclass: 'ichidan' },
+      { id: 'hang', kanji: '掛ける', kana: 'かける', romaji: 'kakeru', de: 'haengen', type: 'verb', vclass: 'ichidan' },
+      { id: 'repair', kanji: '直す', kana: 'なおす', romaji: 'naosu', de: 'reparieren', type: 'verb', vclass: 'godan' },
+      { id: 'fold', kanji: '畳む', kana: 'たたむ', romaji: 'tatamu', de: 'falten', type: 'verb', vclass: 'godan' },
+      { id: 'feel', kanji: '感じる', kana: 'かんじる', romaji: 'kanjiru', de: 'fuehlen', type: 'verb', vclass: 'ichidan' },
+      { id: 'smell', kanji: '嗅ぐ', kana: 'かぐ', romaji: 'kagu', de: 'riechen', type: 'verb', vclass: 'godan' },
+      { id: 'laugh', kanji: '笑う', kana: 'わらう', romaji: 'warau', de: 'lachen', type: 'verb', vclass: 'godan' },
+      { id: 'cry', kanji: '泣く', kana: 'なく', romaji: 'naku', de: 'weinen', type: 'verb', vclass: 'godan' },
+      { id: 'sing', kanji: '歌う', kana: 'うたう', romaji: 'utau', de: 'singen', type: 'verb', vclass: 'godan' },
+      { id: 'dance', kanji: '踊る', kana: 'おどる', romaji: 'odoru', de: 'tanzen', type: 'verb', vclass: 'godan' },
+      { id: 'play', kanji: '遊ぶ', kana: 'あそぶ', romaji: 'asobu', de: 'spielen', type: 'verb', vclass: 'godan' },
+      { id: 'pray', kanji: '祈る', kana: 'いのる', romaji: 'inoru', de: 'beten', type: 'verb', vclass: 'godan' },
+      { id: 'forget', kanji: '忘れる', kana: 'わすれる', romaji: 'wasureru', de: 'vergessen', type: 'verb', vclass: 'ichidan' },
+      { id: 'remember', kanji: '覚える', kana: 'おぼえる', romaji: 'oboeru', de: 'erinnern', type: 'verb', vclass: 'ichidan' },
+      { id: 'understand', kanji: '分かる', kana: 'わかる', romaji: 'wakaru', de: 'verstehen', type: 'verb', vclass: 'godan' },
+      { id: 'find', kanji: '見つける', kana: 'みつける', romaji: 'mitsukeru', de: 'finden', type: 'verb', vclass: 'ichidan' },
+      { id: 'climb', kanji: '登る', kana: 'のぼる', romaji: 'noboru', de: 'klettern', type: 'verb', vclass: 'godan' },
+      { id: 'swim', kanji: '泳ぐ', kana: 'およぐ', romaji: 'oyogu', de: 'schwimmen', type: 'verb', vclass: 'godan' },
+      { id: 'fly', kanji: '飛ぶ', kana: 'とぶ', romaji: 'tobu', de: 'fliegen', type: 'verb', vclass: 'godan' },
+      { id: 'burn', kanji: '燃える', kana: 'もえる', romaji: 'moeru', de: 'brennen', type: 'verb', vclass: 'ichidan' },
+      // --- Modifiers (type: 'mod') ---
+      { id: 'big', kanji: '大きい', kana: 'おおきい', romaji: 'ookii', de: 'gross', type: 'mod' },
+      { id: 'small', kanji: '小さい', kana: 'ちいさい', romaji: 'chiisai', de: 'klein', type: 'mod' },
+      { id: 'many', kanji: '多い', kana: 'おおい', romaji: 'ooi', de: 'viele', type: 'mod' },
+      { id: 'long', kanji: '長い', kana: 'ながい', romaji: 'nagai', de: 'lang', type: 'mod' },
+      { id: 'tall', kanji: '高い', kana: 'たかい', romaji: 'takai', de: 'hoch', type: 'mod' },
+      { id: 'wide', kanji: '広い', kana: 'ひろい', romaji: 'hiroi', de: 'breit', type: 'mod' },
+      { id: 'heavy', kanji: '重い', kana: 'おもい', romaji: 'omoi', de: 'schwer', type: 'mod' },
+      { id: 'deep', kanji: '深い', kana: 'ふかい', romaji: 'fukai', de: 'tief', type: 'mod' },
+      { id: 'far', kanji: '遠い', kana: 'とおい', romaji: 'tooi', de: 'weit', type: 'mod' },
+      { id: 'near', kanji: '近い', kana: 'ちかい', romaji: 'chikai', de: 'nah', type: 'mod' },
+      { id: 'fast', kanji: '速い', kana: 'はやい', romaji: 'hayai', de: 'schnell', type: 'mod' },
+      { id: 'slow', kanji: '遅い', kana: 'おそい', romaji: 'osoi', de: 'langsam', type: 'mod' },
+      { id: 'good', kanji: '良い', kana: 'よい', romaji: 'yoi', de: 'gut', type: 'mod' },
+      { id: 'bad', kanji: '悪い', kana: 'わるい', romaji: 'warui', de: 'schlecht', type: 'mod' },
+      { id: 'new', kanji: '新しい', kana: 'あたらしい', romaji: 'atarashii', de: 'neu', type: 'mod' },
+      { id: 'old', kanji: '古い', kana: 'ふるい', romaji: 'furui', de: 'alt', type: 'mod' },
+      { id: 'beautiful', kanji: '美しい', kana: 'うつくしい', romaji: 'utsukushii', de: 'schoen', type: 'mod' },
+      { id: 'clean', kanji: '綺麗', kana: 'きれい', romaji: 'kirei', de: 'sauber', type: 'mod' },
+      { id: 'dirty', kanji: '汚い', kana: 'きたない', romaji: 'kitanai', de: 'schmutzig', type: 'mod' },
+      { id: 'strong', kanji: '強い', kana: 'つよい', romaji: 'tsuyoi', de: 'stark', type: 'mod' },
+      { id: 'hard', kanji: '硬い', kana: 'かたい', romaji: 'katai', de: 'hart', type: 'mod' },
+      { id: 'soft', kanji: '柔らかい', kana: 'やわらかい', romaji: 'yawarakai', de: 'weich', type: 'mod' },
+      { id: 'round', kanji: '丸い', kana: 'まるい', romaji: 'marui', de: 'rund', type: 'mod' },
+      { id: 'hot', kanji: '暑い', kana: 'あつい', romaji: 'atsui', de: 'heiss', type: 'mod' },
+      { id: 'cold', kanji: '寒い', kana: 'さむい', romaji: 'samui', de: 'kalt', type: 'mod' },
+      { id: 'warm', kanji: '暖かい', kana: 'あたたかい', romaji: 'atatakai', de: 'warm', type: 'mod' },
+      { id: 'bright', kanji: '明るい', kana: 'あかるい', romaji: 'akarui', de: 'hell', type: 'mod' },
+      { id: 'dark', kanji: '暗い', kana: 'くらい', romaji: 'kurai', de: 'dunkel', type: 'mod' },
+      { id: 'happy', kanji: '嬉しい', kana: 'うれしい', romaji: 'ureshii', de: 'gluecklich', type: 'mod' },
+      { id: 'sad', kanji: '悲しい', kana: 'かなしい', romaji: 'kanashii', de: 'traurig', type: 'mod' },
+      { id: 'quiet', kanji: '静か', kana: 'しずか', romaji: 'shizuka', de: 'ruhig', type: 'mod' },
+      { id: 'hungry', kanji: '空腹', kana: 'くうふく', romaji: 'kuufuku', de: 'hungrig', type: 'mod' },
+      { id: 'busy', kanji: '忙しい', kana: 'いそがしい', romaji: 'isogashii', de: 'beschaeftigt', type: 'mod' },
+      { id: 'sweet', kanji: '甘い', kana: 'あまい', romaji: 'amai', de: 'suess', type: 'mod' },
+      { id: 'gentle', kanji: '優しい', kana: 'やさしい', romaji: 'yasashii', de: 'sanft', type: 'mod' },
+      { id: 'red', kanji: '赤い', kana: 'あかい', romaji: 'akai', de: 'rot', type: 'mod' },
+      { id: 'white', kanji: '白い', kana: 'しろい', romaji: 'shiroi', de: 'weiss', type: 'mod' },
+      { id: 'black', kanji: '黒い', kana: 'くろい', romaji: 'kuroi', de: 'schwarz', type: 'mod' },
+      { id: 'green', kanji: '緑', kana: 'みどり', romaji: 'midori', de: 'gruen', type: 'mod' },
+      { id: 'blue', kanji: '青い', kana: 'あおい', romaji: 'aoi', de: 'blau', type: 'mod' },
+      { id: 'yellow', kanji: '黄色い', kana: 'きいろい', romaji: 'kiiroi', de: 'gelb', type: 'mod' },
+      // --- Adverbs ---
+      { id: 'very', kanji: 'とても', kana: 'とても', romaji: 'totemo', de: 'sehr', type: 'mod' },
+      { id: 'also', kanji: 'また', kana: 'また', romaji: 'mata', de: 'auch', type: 'mod' },
+      { id: 'here', kanji: 'ここ', kana: 'ここ', romaji: 'koko', de: 'hier', type: 'mod' },
+      { id: 'there', kanji: 'そこ', kana: 'そこ', romaji: 'soko', de: 'dort', type: 'mod' },
+      { id: 'now', kanji: '今', kana: 'いま', romaji: 'ima', de: 'jetzt', type: 'mod' },
+      { id: 'today', kanji: '今日', kana: 'きょう', romaji: 'kyou', de: 'heute', type: 'mod' },
+      { id: 'tomorrow', kanji: '明日', kana: 'あした', romaji: 'ashita', de: 'morgen', type: 'mod' },
+      { id: 'yesterday', kanji: '昨日', kana: 'きのう', romaji: 'kinou', de: 'gestern', type: 'mod' },
+      // --- Pronouns ---
+      { id: 'me', kanji: '私', kana: 'わたし', romaji: 'watashi', de: 'ich', type: 'pronoun' },
+      { id: 'you', kanji: 'あなた', kana: 'あなた', romaji: 'anata', de: 'du', type: 'pronoun' },
+      { id: 'he', kanji: '彼', kana: 'かれ', romaji: 'kare', de: 'er', type: 'pronoun' },
+      { id: 'she', kanji: '彼女', kana: 'かのじょ', romaji: 'kanojo', de: 'sie', type: 'pronoun' },
+      { id: 'we', kanji: '私達', kana: 'わたしたち', romaji: 'watashitachi', de: 'wir', type: 'pronoun' },
+      { id: 'this', kanji: 'これ', kana: 'これ', romaji: 'kore', de: 'dies', type: 'pronoun' },
+      { id: 'that', kanji: 'それ', kana: 'それ', romaji: 'sore', de: 'das', type: 'pronoun' },
+      // --- Particles ---
+      { id: 'wa_topic', kanji: 'は', kana: 'は', romaji: 'wa', de: 'Themenmarker', type: 'particle' },
+      { id: 'ga_subj', kanji: 'が', kana: 'が', romaji: 'ga', de: 'Subjektmarker', type: 'particle' },
+      { id: 'wo_obj', kanji: 'を', kana: 'を', romaji: 'wo', de: 'Objektmarker', type: 'particle' },
+      { id: 'ni_loc', kanji: 'に', kana: 'に', romaji: 'ni', de: 'Ort/Zeit', type: 'particle' },
+      { id: 'de_means', kanji: 'で', kana: 'で', romaji: 'de', de: 'Mittel/Ort', type: 'particle' },
+      { id: 'mo_also', kanji: 'も', kana: 'も', romaji: 'mo', de: 'auch', type: 'particle' },
+      { id: 'no_poss', kanji: 'の', kana: 'の', romaji: 'no', de: 'Besitz', type: 'particle' },
+      { id: 'ka_q', kanji: 'か', kana: 'か', romaji: 'ka', de: 'Fragemarker', type: 'particle' },
+      { id: 'yo_emph', kanji: 'よ', kana: 'よ', romaji: 'yo', de: 'Betonung', type: 'particle' },
+      { id: 'ne_confirm', kanji: 'ね', kana: 'ね', romaji: 'ne', de: 'Bestaetigung', type: 'particle' },
+      { id: 'to_and', kanji: 'と', kana: 'と', romaji: 'to', de: 'und/mit', type: 'particle' },
+      { id: 'kara_from', kanji: 'から', kana: 'から', romaji: 'kara', de: 'von/ab', type: 'particle' },
+      { id: 'kedo_but', kanji: 'けど', kana: 'けど', romaji: 'kedo', de: 'aber', type: 'particle' },
     ];
 
     function buildVocab() {
         const v = {};
         for (const c of VOCABULARY) {
-            v[c.id] = { kanji: c.kanji, kana: c.kana, de: c.de, type: c.type };
+            v[c.id] = { kanji: c.kanji, kana: c.kana, romaji: c.romaji, de: c.de, type: c.type, vclass: c.vclass };
         }
         return v;
     }
-
     // ============================================================
     //  WORLD OBJECTS
     // ============================================================
@@ -4416,11 +4394,10 @@
             return moveEntityToward(this, tx, ty, dt, this.moveSpeed, 0.4, 80, tType);
         }
     }
-
     // ============================================================
-    //  GRAMMAR SYSTEM — role colors, tier, particle helpers
+    //  GRAMMAR SYSTEM — Japanese SOV, verb conjugation, particles
     // ============================================================
-    const CJK_FONT_GRAMMAR = "'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic','Noto Sans CJK JP',sans-serif";
+    const CJK_FONT_GRAMMAR = "'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif";
     const ROLE_COLORS = {
         noun:     '#d4a030', // gold
         verb:     '#5aaa5a', // green
@@ -4452,99 +4429,249 @@
 
     function makeGrammarWord(id) {
         const v = vocab[id];
-        if (!v) return { conceptId: id, kanji: id, kana: id, de: '', type: 'particle', role: 'particle' };
-        return { conceptId: id, kanji: v.kanji, kana: v.kana, de: v.de, type: v.type, role: v.type };
+        if (!v) return { conceptId: id, kanji: id, kana: id, romaji: id, de: '', type: 'particle', role: 'particle' };
+        return { conceptId: id, kanji: v.kanji, kana: v.kana, romaji: v.romaji, de: v.de, type: v.type, role: v.type };
     }
 
-    // Measure words (量词) — noun → classifier mapping
-    const MEASURE_WORDS = {
-        // 个 gè — generic / people
-        _default: { kanji: '个', kana: 'gè' },
-        friend: { kanji: '个', kana: 'gè' }, person: { kanji: '个', kana: 'gè' },
-        neighbor: { kanji: '个', kana: 'gè' }, doctor: { kanji: '个', kana: 'gè' },
-        student: { kanji: '个', kana: 'gè' }, boy: { kanji: '个', kana: 'gè' },
-        girl: { kanji: '个', kana: 'gè' }, mother: { kanji: '个', kana: 'gè' },
-        father: { kanji: '个', kana: 'gè' }, brother: { kanji: '个', kana: 'gè' },
-        sister: { kanji: '个', kana: 'gè' }, son: { kanji: '个', kana: 'gè' },
-        daughter: { kanji: '个', kana: 'gè' }, apple: { kanji: '个', kana: 'gè' },
-        gift: { kanji: '个', kana: 'gè' }, dream: { kanji: '个', kana: 'gè' },
-        question: { kanji: '个', kana: 'gè' }, secret: { kanji: '个', kana: 'gè' },
-        // 杯 bēi — cups / drinks
-        tea: { kanji: '杯', kana: 'bēi' }, water: { kanji: '杯', kana: 'bēi' },
-        wine: { kanji: '杯', kana: 'bēi' }, milk: { kanji: '杯', kana: 'bēi' },
-        soup: { kanji: '碗', kana: 'wǎn' },
-        // 碗 wǎn — bowls
-        food: { kanji: '碗', kana: 'wǎn' }, rice: { kanji: '碗', kana: 'wǎn' },
-        noodle: { kanji: '碗', kana: 'wǎn' },
-        // 本 běn — books
-        book: { kanji: '本', kana: 'běn' },
-        // 支 zhī — pens/brushes
-        brush: { kanji: '支', kana: 'zhī' }, candle: { kanji: '支', kana: 'zhī' },
-        // 张 zhāng — flat things
-        paper: { kanji: '张', kana: 'zhāng' }, picture: { kanji: '张', kana: 'zhāng' },
-        table: { kanji: '张', kana: 'zhāng' }, bed: { kanji: '张', kana: 'zhāng' },
-        // 条 tiáo — long/thin things, rivers, fish, roads
-        river: { kanji: '条', kana: 'tiáo' }, fish: { kanji: '条', kana: 'tiáo' },
-        snake: { kanji: '条', kana: 'tiáo' }, rope: { kanji: '条', kana: 'tiáo' },
-        road: { kanji: '条', kana: 'tiáo' },
-        // 棵 kē — trees/plants
-        bamboo: { kanji: '棵', kana: 'kē' }, pine: { kanji: '棵', kana: 'kē' },
-        tree: { kanji: '棵', kana: 'kē' },
-        // 朵 duǒ — flowers, clouds
-        flower: { kanji: '朵', kana: 'duǒ' }, cloud: { kanji: '朵', kana: 'duǒ' },
-        // 只 zhī — animals (generic), one of a pair
-        bird: { kanji: '只', kana: 'zhī' }, cat: { kanji: '只', kana: 'zhī' },
-        chicken: { kanji: '只', kana: 'zhī' }, rabbit: { kanji: '只', kana: 'zhī' },
-        frog: { kanji: '只', kana: 'zhī' }, butterfly: { kanji: '只', kana: 'zhī' },
-        insect: { kanji: '只', kana: 'zhī' }, sheep: { kanji: '只', kana: 'zhī' },
-        // 匹 pǐ — horses
-        horse: { kanji: '匹', kana: 'pǐ' },
-        // 头 tóu — cattle
-        cow: { kanji: '头', kana: 'tóu' },
-        // 把 bǎ — handled things
-        chair: { kanji: '把', kana: 'bǎ' }, broom: { kanji: '把', kana: 'bǎ' },
-        // 座 zuò — mountains, buildings
-        mountain: { kanji: '座', kana: 'zuò' }, bridge: { kanji: '座', kana: 'zuò' },
-        house: { kanji: '座', kana: 'zuò' },
-        // 件 jiàn — clothes, matters
-        clothes: { kanji: '件', kana: 'jiàn' },
-        // 块 kuài — pieces, stones
-        stone: { kanji: '块', kana: 'kuài' }, mooncake: { kanji: '块', kana: 'kuài' },
-        // 颗 kē — small round things
-        star: { kanji: '颗', kana: 'kē' },
-        // 双 shuāng — pairs
-        shoes: { kanji: '双', kana: 'shuāng' },
-        // 顶 dǐng — hats
-        hat: { kanji: '顶', kana: 'dǐng' },
-        // 首 shǒu — poems/songs
-        poem: { kanji: '首', kana: 'shǒu' }, song: { kanji: '首', kana: 'shǒu' },
-        // 盏 zhǎn — lanterns/lamps
-        lantern: { kanji: '盏', kana: 'zhǎn' },
+    // Japanese counters (助数詞) — noun → counter mapping
+    const COUNTERS = {
+        _default: { kanji: '個', kana: 'こ', romaji: 'ko' },
+        // People: 人 nin
+        friend:  { kanji: '人', kana: 'にん', romaji: 'nin' },
+        person:  { kanji: '人', kana: 'にん', romaji: 'nin' },
+        // Cups/drinks: 杯 hai
+        tea:     { kanji: '杯', kana: 'はい', romaji: 'hai' },
+        water:   { kanji: '杯', kana: 'はい', romaji: 'hai' },
+        // Books: 冊 satsu
+        book:    { kanji: '冊', kana: 'さつ', romaji: 'satsu' },
+        // Small animals: 匹 hiki
+        fish:    { kanji: '匹', kana: 'ひき', romaji: 'hiki' },
+        cat:     { kanji: '匹', kana: 'ひき', romaji: 'hiki' },
+        dog:     { kanji: '匹', kana: 'ひき', romaji: 'hiki' },
+        // Birds: 羽 wa
+        bird:    { kanji: '羽', kana: 'わ', romaji: 'wa' },
+        chicken: { kanji: '羽', kana: 'わ', romaji: 'wa' },
+        crane:   { kanji: '羽', kana: 'わ', romaji: 'wa' },
+        // Large animals: 頭 tou
+        horse:   { kanji: '頭', kana: 'とう', romaji: 'tou' },
+        cow:     { kanji: '頭', kana: 'とう', romaji: 'tou' },
+        // Flat things: 枚 mai
+        paper:   { kanji: '枚', kana: 'まい', romaji: 'mai' },
+        picture: { kanji: '枚', kana: 'まい', romaji: 'mai' },
+        // Long things: 本 hon
+        brush:   { kanji: '本', kana: 'ほん', romaji: 'hon' },
+        candle:  { kanji: '本', kana: 'ほん', romaji: 'hon' },
+        bamboo:  { kanji: '本', kana: 'ほん', romaji: 'hon' },
+        tree:    { kanji: '本', kana: 'ほん', romaji: 'hon' },
+        // Bowls/cups: 杯 hai
+        rice:    { kanji: '杯', kana: 'はい', romaji: 'hai' },
+        soup:    { kanji: '杯', kana: 'はい', romaji: 'hai' },
+        // Thin flat things: 枚 mai
+        clothes: { kanji: '枚', kana: 'まい', romaji: 'mai' },
+        // Houses: 軒 ken
+        house:   { kanji: '軒', kana: 'けん', romaji: 'ken' },
+        // Mountains: 座 za
+        mountain:{ kanji: '座', kana: 'ざ', romaji: 'za' },
+        // Boats/ships: 隻 seki
+        boat:    { kanji: '隻', kana: 'せき', romaji: 'seki' },
     };
 
-    // Resultative complements — verb → possible complements
-    const RESULTATIVES = {
-        eat:   [{ kanji: '完', kana: 'wán', de: 'aufgegessen' }, { kanji: '饱', kana: 'bǎo', de: 'satt gegessen' }],
-        drink: [{ kanji: '完', kana: 'wán', de: 'ausgetrunken' }],
-        cook:  [{ kanji: '好', kana: 'hǎo', de: 'fertig gekocht' }],
-        make:  [{ kanji: '好', kana: 'hǎo', de: 'fertig gemacht' }, { kanji: '完', kana: 'wán', de: 'fertig' }],
-        write: [{ kanji: '好', kana: 'hǎo', de: 'fertig geschrieben' }, { kanji: '完', kana: 'wán', de: 'fertig' }],
-        learn: [{ kanji: '会', kana: 'huì', de: 'gelernt/kann' }],
-        look:  [{ kanji: '到', kana: 'dào', de: 'erblickt' }, { kanji: '见', kana: 'jiàn', de: 'gesehen' }],
-        listen:[{ kanji: '到', kana: 'dào', de: 'gehoert' }, { kanji: '见', kana: 'jiàn', de: 'gehoert' }],
-        find:  [{ kanji: '到', kana: 'dào', de: 'gefunden' }],
-        wash:  [{ kanji: '干净', kana: 'gānjìng', de: 'sauber gewaschen' }],
-        repair:[{ kanji: '好', kana: 'hǎo', de: 'repariert' }],
-        open:  [{ kanji: '开', kana: 'kāi', de: 'geoeffnet' }],
-        paint: [{ kanji: '好', kana: 'hǎo', de: 'fertig gemalt' }],
+    // ============================================================
+    //  VERB CONJUGATION ENGINE (Japanese)
+    // ============================================================
+
+    // Godan ending kana → row mappings
+    // Each entry: [i-row (masu stem), a-row (nai stem), te/ta ending, potential ending, volitional ending]
+    const GODAN_MAP = {
+        // kana:  [ i-row,  a-row,  te,     ta,     potential, volitional ]
+        'う': { i: 'い', a: 'わ', te: 'って', ta: 'った', pot: 'える', vol: 'おう' },
+        'く': { i: 'き', a: 'か', te: 'いて', ta: 'いた', pot: 'ける', vol: 'こう' },
+        'ぐ': { i: 'ぎ', a: 'が', te: 'いで', ta: 'いだ', pot: 'げる', vol: 'ごう' },
+        'す': { i: 'し', a: 'さ', te: 'して', ta: 'した', pot: 'せる', vol: 'そう' },
+        'つ': { i: 'ち', a: 'た', te: 'って', ta: 'った', pot: 'てる', vol: 'とう' },
+        'ぬ': { i: 'に', a: 'な', te: 'んで', ta: 'んだ', pot: 'ねる', vol: 'のう' },
+        'ぶ': { i: 'び', a: 'ば', te: 'んで', ta: 'んだ', pot: 'べる', vol: 'ぼう' },
+        'む': { i: 'み', a: 'ま', te: 'んで', ta: 'んだ', pot: 'める', vol: 'もう' },
+        'る': { i: 'り', a: 'ら', te: 'って', ta: 'った', pot: 'れる', vol: 'ろう' },
     };
 
-    // Time-word IDs (should be placed sentence-initially in Chinese)
+    // Romaji ending → conjugation stem mappings for godan
+    const GODAN_ROMAJI_MAP = {
+        'u':  { i: 'i',   a: 'wa',  te: 'tte',  ta: 'tta',  pot: 'eru',  vol: 'ou' },
+        'ku': { i: 'ki',  a: 'ka',  te: 'ite',  ta: 'ita',  pot: 'keru', vol: 'kou' },
+        'gu': { i: 'gi',  a: 'ga',  te: 'ide',  ta: 'ida',  pot: 'geru', vol: 'gou' },
+        'su': { i: 'shi', a: 'sa',  te: 'shite', ta: 'shita', pot: 'seru', vol: 'sou' },
+        'tsu':{ i: 'chi', a: 'ta',  te: 'tte',  ta: 'tta',  pot: 'teru', vol: 'tou' },
+        'nu': { i: 'ni',  a: 'na',  te: 'nde',  ta: 'nda',  pot: 'neru', vol: 'nou' },
+        'bu': { i: 'bi',  a: 'ba',  te: 'nde',  ta: 'nda',  pot: 'beru', vol: 'bou' },
+        'mu': { i: 'mi',  a: 'ma',  te: 'nde',  ta: 'nda',  pot: 'meru', vol: 'mou' },
+        'ru': { i: 'ri',  a: 'ra',  te: 'tte',  ta: 'tta',  pot: 'reru', vol: 'rou' },
+    };
+
+    // Helper: get the romaji ending key for a godan verb
+    function _godanRomajiEnding(romaji) {
+        if (romaji.endsWith('tsu')) return 'tsu';
+        if (romaji.endsWith('su')) return 'su';
+        if (romaji.endsWith('ku')) return 'ku';
+        if (romaji.endsWith('gu')) return 'gu';
+        if (romaji.endsWith('nu')) return 'nu';
+        if (romaji.endsWith('bu')) return 'bu';
+        if (romaji.endsWith('mu')) return 'mu';
+        if (romaji.endsWith('ru')) return 'ru';
+        if (romaji.endsWith('u')) return 'u';
+        return 'u'; // fallback
+    }
+
+    // Helper: length of romaji ending to strip
+    function _godanRomajiStripLen(ending) {
+        return ending.length; // 'tsu' → 3, 'ku' → 2, 'u' → 1, etc.
+    }
+
+    function conjugateIchidan(verbEntry, form) {
+        // Ichidan: drop final る (kana), last char (kanji), 'ru' (romaji), then add suffix
+        const kanjiStem = verbEntry.kanji.slice(0, -1);
+        const kanaStem = verbEntry.kana.slice(0, -1); // drop る
+        const romajiStem = verbEntry.romaji.endsWith('ru') ? verbEntry.romaji.slice(0, -2) : verbEntry.romaji;
+
+        const suffixes = {
+            masu:           { kanji: 'ます',         kana: 'ます',         romaji: 'masu' },
+            masen:          { kanji: 'ません',       kana: 'ません',       romaji: 'masen' },
+            te:             { kanji: 'て',           kana: 'て',           romaji: 'te' },
+            ta:             { kanji: 'た',           kana: 'た',           romaji: 'ta' },
+            nai:            { kanji: 'ない',         kana: 'ない',         romaji: 'nai' },
+            mashita:        { kanji: 'ました',       kana: 'ました',       romaji: 'mashita' },
+            masendeshita:   { kanji: 'ませんでした', kana: 'ませんでした', romaji: 'masendeshita' },
+            potential:      { kanji: 'られる',       kana: 'られる',       romaji: 'rareru' },
+            volitional:     { kanji: 'よう',         kana: 'よう',         romaji: 'you' },
+        };
+
+        const suf = suffixes[form];
+        if (!suf) return { kanji: verbEntry.kanji, kana: verbEntry.kana, romaji: verbEntry.romaji };
+
+        return {
+            kanji:  kanjiStem + suf.kanji,
+            kana:   kanaStem + suf.kana,
+            romaji: romajiStem + suf.romaji,
+        };
+    }
+
+    function conjugateGodan(verbEntry, form) {
+        // Godan: final kana determines conjugation row
+        const lastKana = verbEntry.kana.slice(-1);
+        const row = GODAN_MAP[lastKana];
+        if (!row) return { kanji: verbEntry.kanji, kana: verbEntry.kana, romaji: verbEntry.romaji };
+
+        const kanjiStem = verbEntry.kanji.slice(0, -1);
+        const kanaStem = verbEntry.kana.slice(0, -1);
+
+        // Romaji stem
+        const rEnding = _godanRomajiEnding(verbEntry.romaji);
+        const rMap = GODAN_ROMAJI_MAP[rEnding];
+        const romajiStem = verbEntry.romaji.slice(0, -_godanRomajiStripLen(rEnding));
+
+        // Special case: 行く (iku) → 行って (itte), not 行いて
+        const isIku = (verbEntry.kana === 'いく' || verbEntry.kana === 'ゆく');
+
+        switch (form) {
+            case 'masu':
+                return { kanji: kanjiStem + row.i + 'ます', kana: kanaStem + row.i + 'ます', romaji: romajiStem + rMap.i + 'masu' };
+            case 'masen':
+                return { kanji: kanjiStem + row.i + 'ません', kana: kanaStem + row.i + 'ません', romaji: romajiStem + rMap.i + 'masen' };
+            case 'mashita':
+                return { kanji: kanjiStem + row.i + 'ました', kana: kanaStem + row.i + 'ました', romaji: romajiStem + rMap.i + 'mashita' };
+            case 'masendeshita':
+                return { kanji: kanjiStem + row.i + 'ませんでした', kana: kanaStem + row.i + 'ませんでした', romaji: romajiStem + rMap.i + 'masendeshita' };
+            case 'te':
+                if (isIku) return { kanji: kanjiStem + 'って', kana: 'いって', romaji: 'itte' };
+                return { kanji: kanjiStem + row.te, kana: kanaStem + row.te, romaji: romajiStem + rMap.te };
+            case 'ta':
+                if (isIku) return { kanji: kanjiStem + 'った', kana: 'いった', romaji: 'itta' };
+                return { kanji: kanjiStem + row.ta, kana: kanaStem + row.ta, romaji: romajiStem + rMap.ta };
+            case 'nai':
+                return { kanji: kanjiStem + row.a + 'ない', kana: kanaStem + row.a + 'ない', romaji: romajiStem + rMap.a + 'nai' };
+            case 'potential':
+                return { kanji: kanjiStem + row.pot, kana: kanaStem + row.pot, romaji: romajiStem + rMap.pot };
+            case 'volitional':
+                return { kanji: kanjiStem + row.vol, kana: kanaStem + row.vol, romaji: romajiStem + rMap.vol };
+            default:
+                return { kanji: verbEntry.kanji, kana: verbEntry.kana, romaji: verbEntry.romaji };
+        }
+    }
+
+    function conjugateIrregular(verbEntry, form) {
+        const isSuru = (verbEntry.kana === 'する' || verbEntry.kana.endsWith('する'));
+        const isKuru = (verbEntry.kana === 'くる' || verbEntry.kana === 'きます');
+
+        if (isSuru) {
+            // Handle compound する verbs (e.g. 勉強する benkyou suru)
+            const isCompound = verbEntry.kana.length > 2 && verbEntry.kana.endsWith('する');
+            const kanjiPrefix = isCompound ? verbEntry.kanji.slice(0, -2) : '';
+            const kanaPrefix = isCompound ? verbEntry.kana.slice(0, -2) : '';
+            const romajiPrefix = isCompound ? verbEntry.romaji.replace(/suru$/, '') : '';
+
+            const forms = {
+                masu:           { kanji: kanjiPrefix + 'します',         kana: kanaPrefix + 'します',         romaji: romajiPrefix + 'shimasu' },
+                masen:          { kanji: kanjiPrefix + 'しません',       kana: kanaPrefix + 'しません',       romaji: romajiPrefix + 'shimasen' },
+                te:             { kanji: kanjiPrefix + 'して',           kana: kanaPrefix + 'して',           romaji: romajiPrefix + 'shite' },
+                ta:             { kanji: kanjiPrefix + 'した',           kana: kanaPrefix + 'した',           romaji: romajiPrefix + 'shita' },
+                nai:            { kanji: kanjiPrefix + 'しない',         kana: kanaPrefix + 'しない',         romaji: romajiPrefix + 'shinai' },
+                mashita:        { kanji: kanjiPrefix + 'しました',       kana: kanaPrefix + 'しました',       romaji: romajiPrefix + 'shimashita' },
+                masendeshita:   { kanji: kanjiPrefix + 'しませんでした', kana: kanaPrefix + 'しませんでした', romaji: romajiPrefix + 'shimasendeshita' },
+                potential:      { kanji: kanjiPrefix + 'できる',         kana: kanaPrefix + 'できる',         romaji: romajiPrefix + 'dekiru' },
+                volitional:     { kanji: kanjiPrefix + 'しよう',         kana: kanaPrefix + 'しよう',         romaji: romajiPrefix + 'shiyou' },
+            };
+            return forms[form] || { kanji: verbEntry.kanji, kana: verbEntry.kana, romaji: verbEntry.romaji };
+        }
+
+        if (isKuru) {
+            const forms = {
+                masu:           { kanji: '来ます',         kana: 'きます',         romaji: 'kimasu' },
+                masen:          { kanji: '来ません',       kana: 'きません',       romaji: 'kimasen' },
+                te:             { kanji: '来て',           kana: 'きて',           romaji: 'kite' },
+                ta:             { kanji: '来た',           kana: 'きた',           romaji: 'kita' },
+                nai:            { kanji: '来ない',         kana: 'こない',         romaji: 'konai' },
+                mashita:        { kanji: '来ました',       kana: 'きました',       romaji: 'kimashita' },
+                masendeshita:   { kanji: '来ませんでした', kana: 'きませんでした', romaji: 'kimasendeshita' },
+                potential:      { kanji: '来られる',       kana: 'こられる',       romaji: 'korareru' },
+                volitional:     { kanji: '来よう',         kana: 'こよう',         romaji: 'koyou' },
+            };
+            return forms[form] || { kanji: verbEntry.kanji, kana: verbEntry.kana, romaji: verbEntry.romaji };
+        }
+
+        // Unknown irregular — return dictionary form
+        return { kanji: verbEntry.kanji, kana: verbEntry.kana, romaji: verbEntry.romaji };
+    }
+
+    function conjugateVerb(verbEntry, form) {
+        // verbEntry: { kanji, kana, romaji, vclass }
+        // form: 'dict', 'masu', 'masen', 'te', 'ta', 'nai', 'mashita', 'masendeshita', 'potential', 'volitional'
+        // Returns: { kanji, kana, romaji }
+        const vc = verbEntry.vclass;
+        if (!vc) return { kanji: verbEntry.kanji, kana: verbEntry.kana, romaji: verbEntry.romaji };
+        if (form === 'dict') return { kanji: verbEntry.kanji, kana: verbEntry.kana, romaji: verbEntry.romaji };
+
+        if (vc === 'ichidan') return conjugateIchidan(verbEntry, form);
+        if (vc === 'godan') return conjugateGodan(verbEntry, form);
+        if (vc === 'irregular') return conjugateIrregular(verbEntry, form);
+        return { kanji: verbEntry.kanji, kana: verbEntry.kana, romaji: verbEntry.romaji };
+    }
+
+    // Time-word IDs (placed before topic in Japanese, or sentence-initially)
     const TIME_WORD_IDS = new Set([
-        'now','today','tomorrow','yesterday','morning','night'
+        'now', 'today', 'tomorrow', 'yesterday', 'morning', 'night'
     ]);
 
-    // Location mapping — action target → vocab concept for 在+place
+    // Time words — Japanese equivalents
+    const TIME_WORDS = {
+        now:       { kanji: '今',   kana: 'いま',   romaji: 'ima' },
+        today:     { kanji: '今日', kana: 'きょう', romaji: 'kyou' },
+        tomorrow:  { kanji: '明日', kana: 'あした', romaji: 'ashita' },
+        yesterday: { kanji: '昨日', kana: 'きのう', romaji: 'kinou' },
+        morning:   { kanji: '朝',   kana: 'あさ',   romaji: 'asa' },
+        night:     { kanji: '夜',   kana: 'よる',   romaji: 'yoru' },
+    };
+
+    // Location mapping — action target → vocab concept for で/に+place
     const TARGET_LOCATION_MAP = {
         kitchen: 'kitchen', teahouse: 'teahouse', workshop: 'workshop',
         house: 'home', market: 'market', well: 'well2',
@@ -4552,233 +4679,372 @@
         shrine: 'shrine', stable: 'stable', river: 'river',
     };
 
+    // Helper: create a particle grammar word (not from vocab)
+    function _makeParticle(kanji, kana, romaji, de) {
+        return { conceptId: '_p_' + romaji, kanji: kanji, kana: kana, romaji: romaji, de: de || '', type: 'particle', role: 'particle' };
+    }
+
+    // Standard Japanese particles
+    const P_WA    = () => _makeParticle('は', 'は', 'wa', '(Thema)');
+    const P_WO    = () => _makeParticle('を', 'を', 'wo', '(Objekt)');
+    const P_NI    = () => _makeParticle('に', 'に', 'ni', '(Richtung)');
+    const P_DE    = () => _makeParticle('で', 'で', 'de', '(Mittel/Ort)');
+    const P_NO    = () => _makeParticle('の', 'の', 'no', '(Genitiv)');
+    const P_MO    = () => _makeParticle('も', 'も', 'mo', '(auch)');
+    const P_GA    = () => _makeParticle('が', 'が', 'ga', '(Subjekt)');
+    const P_TO    = () => _makeParticle('と', 'と', 'to', '(und/mit)');
+    const P_YO    = () => _makeParticle('よ', 'よ', 'yo', '(Betonung)');
+    const P_NE    = () => _makeParticle('ね', 'ね', 'ne', '(nicht wahr)');
+    const P_KA    = () => _makeParticle('か', 'か', 'ka', '(Frage)');
+
+    // ============================================================
+    //  applyGrammar — Japanese SOV sentence construction
+    // ============================================================
     function applyGrammar(words, tier, action) {
         if (tier <= 0 || words.length === 0) return words;
         let result = words.map(w => ({ ...w }));
-        let majorApplied = false;
 
-        // --- Helper: re-scan types after mutations ---
-        function scan() {
-            return {
-                types: result.map(w => w.type),
-                ids: result.map(w => w.conceptId),
-                hasVerb: result.some(w => w.type === 'verb'),
-                hasMod: result.some(w => w.type === 'mod'),
-                hasNoun: result.some(w => w.type === 'noun'),
-                hasSubj: result[0] && result[0].type === 'pronoun',
-                vIdx: result.findIndex(w => w.type === 'verb'),
-                firstNounIdx: result.findIndex(w => w.type === 'noun'),
-            };
+        // --- Classify template words by role ---
+        // Templates typically come as [pronoun/subject, verb, object/modifier]
+        // or [noun, modifier, modifier] (no verb = adjectival predicate)
+        let subject = null;
+        let verb = null;
+        let objects = [];
+        let modifiers = [];
+        let timeWord = null;
+        let others = [];
+
+        for (const w of result) {
+            if (TIME_WORD_IDS.has(w.conceptId)) {
+                timeWord = w;
+            } else if (w.type === 'pronoun' && !subject) {
+                subject = w;
+            } else if (w.type === 'verb' && !verb) {
+                verb = w;
+            } else if (w.type === 'mod') {
+                modifiers.push(w);
+            } else if (w.type === 'noun') {
+                if (!subject) {
+                    // First noun without a pronoun subject becomes topic
+                    subject = w;
+                } else {
+                    objects.push(w);
+                }
+            } else {
+                others.push(w);
+            }
         }
 
-        // =============================================
-        //  STRUCTURAL REORDERING (before particle insertion)
-        // =============================================
+        // --- Determine verb conjugation form ---
+        let verbForm = 'dict';
+        let verbConjugated = null;
+        if (verb) {
+            const vEntry = vocab[verb.conceptId];
+            if (vEntry && vEntry.vclass) {
+                if (tier === 0) {
+                    verbForm = 'dict';
+                } else if (tier === 1) {
+                    verbForm = 'masu';
+                } else if (tier === 2) {
+                    verbForm = Math.random() < 0.25 ? 'te' : 'masu';
+                } else if (tier === 3) {
+                    const r = Math.random();
+                    if (r < 0.20) verbForm = 'mashita';
+                    else if (r < 0.35) verbForm = 'te';
+                    else verbForm = 'masu';
+                } else {
+                    // Tier 4: mix of plain and polite
+                    const r = Math.random();
+                    if (r < 0.20) verbForm = 'dict';
+                    else if (r < 0.35) verbForm = 'ta';
+                    else if (r < 0.45) verbForm = 'nai';
+                    else if (r < 0.55) verbForm = 'te';
+                    else if (r < 0.70) verbForm = 'mashita';
+                    else verbForm = 'masu';
+                }
+                verbConjugated = conjugateVerb(vEntry, verbForm);
+            }
+        }
 
-        // Tier 1+: Move time words to sentence-initial position (Japanese rule)
-        if (tier >= 1) {
-            for (let i = 1; i < result.length; i++) {
-                if (TIME_WORD_IDS.has(result[i].conceptId)) {
-                    const tw = result.splice(i, 1)[0];
-                    result.splice(0, 0, tw);
-                    break; // only move one
+        // --- Build SOV sentence ---
+        let sentence = [];
+
+        // 1. Time word first (if present, tier 1+)
+        if (timeWord && tier >= 1) {
+            sentence.push(timeWord);
+        }
+
+        // 2. Subject/topic + particle
+        if (subject) {
+            sentence.push(subject);
+            if (tier >= 1) {
+                // は (topic marker) for pronouns, が for new-info subjects at tier 3+
+                if (tier >= 3 && subject.type === 'noun' && Math.random() < 0.25) {
+                    sentence.push(P_GA());
+                } else {
+                    sentence.push(P_WA());
                 }
             }
         }
 
-        // =============================================
-        //  TIER 1: Basic grammar
-        // =============================================
-        let s = scan();
-
-        // 很 before adjective predicates (no verb: 茶很好)
-        if (tier >= 1 && !s.hasVerb && s.hasMod && result.length >= 2) {
-            const adjIdx = result.findIndex((w, i) => i > 0 && w.type === 'mod');
-            if (adjIdx > 0 && Math.random() < 0.55) {
-                result.splice(adjIdx, 0, makeGrammarWord('very'));
-            }
-        }
-        // 也 before verb (我也喝茶)
-        if (tier >= 1 && s.hasVerb && s.vIdx > 0 && Math.random() < 0.13) {
-            result.splice(s.vIdx, 0, makeGrammarWord('also'));
-        }
-
-        // =============================================
-        //  TIER 2: Core particles
-        // =============================================
-        s = scan();
-
-        // 了 after verb (completed: 我吃了饭)
-        if (tier >= 2 && s.hasVerb && !majorApplied && Math.random() < 0.25) {
-            result.splice(s.vIdx + 1, 0, makeGrammarWord('le_perf'));
-            majorApplied = true;
-        }
-        // 的 possessive (pronoun + noun: 我的书)
-        if (tier >= 2 && s.hasSubj && s.types.length >= 2 && s.types[1] === 'noun' && Math.random() < 0.22) {
-            result.splice(1, 0, makeGrammarWord('de_poss'));
-        }
-        // 不 negation for present/future (不好, 不吃)
-        if (tier >= 2 && !majorApplied && Math.random() < 0.10) {
-            s = scan();
-            const tgt = result.findIndex((w, i) => i > 0 && (w.type === 'verb' || w.type === 'mod'));
-            if (tgt > 0) {
-                result.splice(tgt, 0, makeGrammarWord('no'));
-            }
-        }
-        // 没 negation for past (没吃, 没看到) — distinct from 不
-        if (tier >= 2 && s.hasVerb && !majorApplied && Math.random() < 0.08) {
-            s = scan();
-            if (s.vIdx > 0) {
-                result.splice(s.vIdx, 0, makeGrammarWord('mei_neg'));
-                majorApplied = true;
-            }
-        }
-
-        // =============================================
-        //  TIER 2+: Measure words (量词) — one 杯 tea, one 碗 rice
-        // =============================================
-        if (tier >= 2 && s.hasNoun) {
-            // Find a noun that has a measure word, insert 一+MW before it
-            const nIdx = result.findIndex(w => w.type === 'noun' && MEASURE_WORDS[w.conceptId]);
-            if (nIdx >= 0 && Math.random() < 0.25) {
-                const mw = MEASURE_WORDS[result[nIdx].conceptId];
-                const mwWord = { conceptId: '_mw', kanji: '一' + mw.kanji, kana: 'yī ' + mw.kana, de: '', type: 'particle', role: 'particle' };
-                result.splice(nIdx, 0, mwWord);
-            }
-        }
-
-        // =============================================
-        //  TIER 3: Complex structures
-        // =============================================
-        s = scan();
-
-        // 吗 yes/no question
-        if (tier >= 3 && !majorApplied && Math.random() < 0.12) {
-            result.push(makeGrammarWord('ma_q'));
-            majorApplied = true;
-        }
-        // 在...呢 progressive (我在喝茶呢)
-        if (tier >= 3 && s.hasVerb && !majorApplied && Math.random() < 0.15) {
-            s = scan();
-            result.splice(s.vIdx, 0, makeGrammarWord('zai_prog'));
-            result.push(makeGrammarWord('ne_q'));
-            majorApplied = true;
-        }
-        // V + 得 + Adj complement (做得好)
-        if (tier >= 3 && s.hasVerb && s.hasMod && !majorApplied && Math.random() < 0.13) {
-            s = scan();
-            const modIdx = result.findIndex((w, i) => i > s.vIdx && w.type === 'mod');
-            if (modIdx > s.vIdx) {
-                result.splice(modIdx, 0, makeGrammarWord('de_comp'));
-                majorApplied = true;
-            }
-        }
-        // Resultative complement (吃完, 做好, 看到)
-        if (tier >= 3 && s.hasVerb && !majorApplied && Math.random() < 0.18) {
-            s = scan();
-            const verbId = result[s.vIdx] ? result[s.vIdx].conceptId : null;
-            const rc = RESULTATIVES[verbId];
-            if (rc) {
-                const comp = randEl(rc);
-                const rcWord = { conceptId: '_rc', kanji: comp.kanji, kana: comp.kana, de: comp.de, type: 'particle', role: 'particle' };
-                result.splice(s.vIdx + 1, 0, rcWord);
-                majorApplied = true;
-            }
-        }
-        // 都 before verb for emphasis/totality (我们都喝茶)
-        if (tier >= 3 && s.hasVerb && s.vIdx > 0 && Math.random() < 0.10) {
-            s = scan();
-            // Only if subject is plural-ish (我们, 他们) or there's a 'many' concept
-            const subj = result[0] ? result[0].conceptId : '';
-            if (subj === 'we' || subj === 'they' || result.some(w => w.conceptId === 'many' || w.conceptId === 'every')) {
-                result.splice(s.vIdx, 0, makeGrammarWord('dou_all'));
-            }
-        }
-
-        // =============================================
-        //  TIER 3+: Location with 在 (在厨房做饭)
-        // =============================================
-        if (tier >= 3 && action && action.target && !majorApplied && Math.random() < 0.20) {
+        // 3. Location with で (tier 3+)
+        let locationInserted = false;
+        if (tier >= 3 && action && action.target && Math.random() < 0.20) {
             const locId = TARGET_LOCATION_MAP[action.target];
             if (locId && vocab[locId]) {
-                s = scan();
-                if (s.hasVerb && s.vIdx >= 0) {
-                    const locWord = { conceptId: locId, kanji: vocab[locId].kanji, kana: vocab[locId].kana, de: vocab[locId].de, type: 'noun', role: 'noun' };
-                    const zaiWord = makeGrammarWord('zai_prog'); // 在 doubles as locative
-                    // Insert 在+place before verb
-                    result.splice(s.vIdx, 0, zaiWord, locWord);
+                const locWord = {
+                    conceptId: locId,
+                    kanji: vocab[locId].kanji,
+                    kana: vocab[locId].kana,
+                    romaji: vocab[locId].romaji,
+                    de: vocab[locId].de,
+                    type: 'noun',
+                    role: 'noun'
+                };
+                sentence.push(locWord);
+                sentence.push(P_DE());
+                locationInserted = true;
+            }
+        }
+
+        // 4. Modifiers that apply to object nouns — place before the noun
+        // In Japanese, adjectives precede the noun they modify
+        // If there's a verb, modifiers before the object; if no verb, modifiers after subject
+        if (verb) {
+            // With verb: objects + を, then verb at end
+            // Modifiers go before the noun they modify or before the verb as adverbs
+
+            // も (also) — tier 1+, low chance
+            let insertMo = false;
+            if (tier >= 1 && Math.random() < 0.13) {
+                insertMo = true;
+            }
+
+            // Counter insertion (tier 2+)
+            let counterInserted = false;
+
+            for (let i = 0; i < objects.length; i++) {
+                const obj = objects[i];
+
+                // Insert any modifiers that relate to this object before it
+                // Simple heuristic: if modifier appears after object in template, it modifies that object
+                // For Japanese, adj comes before noun: おいしい食べ物
+                const relatedMods = modifiers.filter(m => {
+                    // In templates like [me, eat, food, good] — 'good' modifies 'food'
+                    return true; // For simplicity, attach all remaining modifiers to the first object
+                });
+                if (i === 0) {
+                    for (const mod of relatedMods) {
+                        sentence.push(mod);
+                    }
+                }
+
+                sentence.push(obj);
+
+                // Counter (tier 2+): 一杯のお茶 → counter + の before noun, or number+counter after noun
+                // Simpler: insert 一 + counter + の before noun
+                if (tier >= 2 && !counterInserted && COUNTERS[obj.conceptId] && Math.random() < 0.25) {
+                    const ctr = COUNTERS[obj.conceptId];
+                    const counterWord = {
+                        conceptId: '_counter',
+                        kanji: '一' + ctr.kanji,
+                        kana: 'いち' + ctr.kana,
+                        romaji: 'ichi' + ctr.romaji,
+                        de: '',
+                        type: 'particle',
+                        role: 'particle'
+                    };
+                    // Insert counter before the object (we need to go back)
+                    // Actually, insert 一杯の before the object we just pushed
+                    const objPos = sentence.length - 1;
+                    sentence.splice(objPos, 0, counterWord, P_NO());
+                    counterInserted = true;
+                }
+
+                // Particle after object
+                if (tier >= 1) {
+                    if (insertMo && i === 0) {
+                        sentence.push(P_MO()); // も replaces を
+                        insertMo = false;
+                    } else {
+                        sentence.push(P_WO());
+                    }
                 }
             }
+
+            // If there were no objects, modifiers become adverbial (before verb)
+            if (objects.length === 0) {
+                for (const mod of modifiers) {
+                    sentence.push(mod);
+                }
+            }
+
+            // Negation: insert before verb at tier 2+
+            // In polite form, negation is handled by verb form (masen/masendeshita)
+            // In plain form, nai-form handles it
+            // For explicit negation concepts, we swap verb form
+            if (tier >= 2 && Math.random() < 0.10 && verbConjugated) {
+                const vEntry = vocab[verb.conceptId];
+                if (vEntry && vEntry.vclass) {
+                    if (verbForm === 'masu' || verbForm === 'mashita') {
+                        verbForm = (verbForm === 'mashita') ? 'masendeshita' : 'masen';
+                    } else {
+                        verbForm = 'nai';
+                    }
+                    verbConjugated = conjugateVerb(vEntry, verbForm);
+                }
+            }
+
+            // Verb at end (SOV)
+            if (verbConjugated) {
+                const conjugatedVerbWord = {
+                    conceptId: verb.conceptId,
+                    kanji: verbConjugated.kanji,
+                    kana: verbConjugated.kana,
+                    romaji: verbConjugated.romaji,
+                    de: verb.de,
+                    type: 'verb',
+                    role: 'verb'
+                };
+                sentence.push(conjugatedVerbWord);
+            } else {
+                sentence.push(verb);
+            }
+        } else {
+            // No verb — adjectival/nominal predicate
+            // e.g. 茶は美味しい (Tea is delicious) — SOV with adjective as predicate
+
+            // Objects (really secondary nouns in adjectival predicate)
+            for (const obj of objects) {
+                sentence.push(obj);
+                if (tier >= 2) {
+                    sentence.push(P_WA());
+                }
+            }
+
+            // Modifiers come at end as predicate adjective
+            // At tier 1+, add とても (totemo, very) before adjective occasionally
+            if (tier >= 1 && modifiers.length > 0 && Math.random() < 0.30) {
+                sentence.push(_makeParticle('とても', 'とても', 'totemo', 'sehr'));
+            }
+
+            for (const mod of modifiers) {
+                sentence.push(mod);
+            }
+
+            // If tier 2+ and predicate is い-adjective, it stands alone
+            // If predicate is な-adjective or noun, add です (desu) for politeness
+            if (tier >= 1 && modifiers.length > 0) {
+                // Add です for polite form
+                if (Math.random() < 0.60) {
+                    sentence.push(_makeParticle('です', 'です', 'desu', 'ist'));
+                }
+            }
+        }
+
+        // Add any remaining 'other' words
+        for (const o of others) {
+            // Insert before verb if verb is last, otherwise at end
+            if (verb && sentence.length > 0 && sentence[sentence.length - 1].type === 'verb') {
+                sentence.splice(sentence.length - 1, 0, o);
+            } else {
+                sentence.push(o);
+            }
+        }
+
+        // =============================================
+        //  SENTENCE-FINAL PARTICLES (tier 2+)
+        // =============================================
+        if (tier >= 2) {
+            const last = sentence.length > 0 ? sentence[sentence.length - 1] : null;
+            if (last && last.type !== 'particle') {
+                const r = Math.random();
+                if (r < 0.08) {
+                    sentence.push(P_YO()); // よ — emphasis/assertion
+                } else if (r < 0.16) {
+                    sentence.push(P_NE()); // ね — seeking agreement
+                }
+            }
+        }
+
+        // Question か (tier 3+)
+        if (tier >= 3 && Math.random() < 0.12) {
+            // Remove any trailing よ/ね before adding か
+            const last = sentence[sentence.length - 1];
+            if (last && (last.conceptId === '_p_yo' || last.conceptId === '_p_ne')) {
+                sentence.pop();
+            }
+            sentence.push(P_KA());
         }
 
         // =============================================
         //  TIER 4: Advanced structures
         // =============================================
-        s = scan();
-
-        // 过 experience (我吃过这个)
-        if (tier >= 4 && s.hasVerb && !majorApplied && Math.random() < 0.10) {
-            result.splice(s.vIdx + 1, 0, makeGrammarWord('guo_exp'));
-            majorApplied = true;
-        }
-        // 把 disposal construction (我把饭吃了) — S 把 O V 了
-        if (tier >= 4 && s.hasVerb && s.hasNoun && !majorApplied && Math.random() < 0.10) {
-            s = scan();
-            // Need noun after verb (object) to move before verb
-            const objIdx = result.findIndex((w, i) => i > s.vIdx && w.type === 'noun');
-            if (objIdx > s.vIdx) {
-                const obj = result.splice(objIdx, 1)[0];
-                s = scan(); // rescan after splice
-                result.splice(s.vIdx, 0, makeGrammarWord('ba_disp'), obj);
-                // Add 了 at end
-                result.push(makeGrammarWord('le_perf'));
-                majorApplied = true;
+        if (tier >= 4 && verb) {
+            // の (possessive) — pronoun + の + noun: 私の本 (tier 2+, checked here for safety)
+            // Already handled by P_NO in counter context; also add for possessive
+            if (subject && subject.type === 'pronoun' && objects.length > 0 && Math.random() < 0.15) {
+                // Find subject position and insert の after it (replacing は)
+                const subIdx = sentence.findIndex(w => w.conceptId === subject.conceptId);
+                if (subIdx >= 0 && subIdx + 1 < sentence.length && sentence[subIdx + 1].conceptId === '_p_wa') {
+                    sentence[subIdx + 1] = P_NO();
+                    // The sentence then becomes possessive, not topic-comment
+                }
             }
-        }
-        // 就 (then/immediately: 我就去)
-        if (tier >= 4 && s.hasVerb && s.vIdx > 0 && !majorApplied && Math.random() < 0.10) {
-            s = scan();
-            result.splice(s.vIdx, 0, makeGrammarWord('jiu_then'));
-        }
-        // 因为...所以 causal
-        if (tier >= 4 && result.length >= 4 && !majorApplied && Math.random() < 0.08) {
-            result.splice(0, 0, makeGrammarWord('because'));
-            const midPoint = Math.min(3, result.length);
-            result.splice(midPoint, 0, makeGrammarWord('therefore'));
-            majorApplied = true;
-        }
-        // 如果...就 conditional
-        if (tier >= 4 && result.length >= 4 && !majorApplied && Math.random() < 0.08) {
-            result.splice(0, 0, makeGrammarWord('if'));
-            s = scan();
-            if (s.vIdx > 0) {
-                result.splice(s.vIdx, 0, makeGrammarWord('jiu_then'));
-            }
-            majorApplied = true;
-        }
 
-        // =============================================
-        //  SENTENCE-FINAL MOOD PARTICLES (all tiers 2+)
-        // =============================================
-        if (tier >= 2 && !majorApplied) {
-            const lastType = result.length > 0 ? result[result.length - 1].type : '';
-            // Don't stack mood particles after question particles
-            if (lastType !== 'particle') {
-                const r = Math.random();
-                if (r < 0.08) {
-                    result.push(makeGrammarWord('a_mood'));   // 啊 exclamation
-                } else if (r < 0.14) {
-                    result.push(makeGrammarWord('ba_sug'));   // 吧 suggestion
-                } else if (r < 0.18) {
-                    result.push(makeGrammarWord('la_mood'));  // 啦 joyful
+            // Volitional form: ～よう/～ましょう for suggestions
+            if (Math.random() < 0.10 && verbConjugated) {
+                const vEntry = vocab[verb.conceptId];
+                if (vEntry && vEntry.vclass) {
+                    const volConj = conjugateVerb(vEntry, 'volitional');
+                    // Find the verb in sentence and replace
+                    const vIdx = sentence.findIndex(w => w.conceptId === verb.conceptId && w.type === 'verb');
+                    if (vIdx >= 0) {
+                        sentence[vIdx] = {
+                            conceptId: verb.conceptId,
+                            kanji: volConj.kanji,
+                            kana: volConj.kana,
+                            romaji: volConj.romaji,
+                            de: verb.de,
+                            type: 'verb',
+                            role: 'verb'
+                        };
+                    }
+                }
+            }
+
+            // Potential form: ～できる/～られる/～える
+            if (Math.random() < 0.08 && verbConjugated) {
+                const vEntry = vocab[verb.conceptId];
+                if (vEntry && vEntry.vclass) {
+                    const potConj = conjugateVerb(vEntry, 'potential');
+                    const vIdx = sentence.findIndex(w => w.conceptId === verb.conceptId && w.type === 'verb');
+                    if (vIdx >= 0) {
+                        sentence[vIdx] = {
+                            conceptId: verb.conceptId,
+                            kanji: potConj.kanji,
+                            kana: potConj.kana,
+                            romaji: potConj.romaji,
+                            de: verb.de,
+                            type: 'verb',
+                            role: 'verb'
+                        };
+                        // With potential, direct object particle changes from を to が
+                        for (let i = 0; i < sentence.length; i++) {
+                            if (sentence[i].conceptId === '_p_wo') {
+                                sentence[i] = P_GA();
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        return result;
+        return sentence;
     }
 
-    // Shared helper: draw color-coded kanji characters
+    // Shared helper: draw color-coded kanji characters with optional furigana
     function _drawColorCodedKanji(ctx, words, cx, cy, fontSize, lightBg) {
         if (!words || words.length === 0) return;
         const colors = lightBg ? ROLE_COLORS_LIGHT : ROLE_COLORS;
@@ -4787,17 +5053,31 @@
         // Measure total width
         let totalW = 0;
         const segs = words.map(w => {
-            const hw = w.kanji || '';
-            const width = ctx.measureText(hw).width;
+            const kj = w.kanji || '';
+            const width = ctx.measureText(kj).width;
             totalW += width;
-            return { kanji: hw, width, color: colors[w.type] || colors.unknown };
+            return { kanji: kj, kana: w.kana || '', width, color: colors[w.type] || colors.unknown };
         });
         // Draw left-to-right
         ctx.textAlign = 'left';
         let drawX = cx - totalW / 2;
+        const tier = getGrammarTier();
+        const furiganaSize = Math.round(fontSize * 0.45);
         for (const seg of segs) {
             ctx.fillStyle = seg.color;
+            ctx.font = `bold ${fontSize}px ${CJK_FONT_GRAMMAR}`;
             ctx.fillText(seg.kanji, drawX, cy);
+            // Render furigana (small kana above kanji) at tier 2+
+            // Only show furigana if the kanji differs from the kana (i.e. contains actual kanji)
+            if (tier >= 2 && seg.kana && seg.kanji !== seg.kana && /[\u4e00-\u9faf]/.test(seg.kanji)) {
+                ctx.font = `${furiganaSize}px ${CJK_FONT_GRAMMAR}`;
+                const furiganaY = cy - fontSize * 0.6;
+                // Center furigana above the kanji
+                const kanjiMidX = drawX + seg.width / 2;
+                ctx.textAlign = 'center';
+                ctx.fillText(seg.kana, kanjiMidX, furiganaY);
+                ctx.textAlign = 'left';
+            }
             drawX += seg.width;
         }
         ctx.textAlign = 'center'; // restore
