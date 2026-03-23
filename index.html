@@ -4206,32 +4206,44 @@
                         ctx.stroke();
                     }
                     break;
-                case 'silk_canopy':
-                    // Red silk cloth draped between two poles
-                    ctx.strokeStyle = '#5a3a1a';
-                    ctx.lineWidth = 1.5*s;
+                case 'origami_display':
+                    // Origami figures on a wooden shelf
+                    // Shelf
+                    ctx.fillStyle = '#8a6a3a';
+                    ctx.fillRect(x - 14*s, y + 2*s, 28*s, 2*s);
+                    // Origami crane (left)
+                    ctx.fillStyle = '#e0d0b0';
                     ctx.beginPath();
-                    ctx.moveTo(x - 12*s, y + 6*s); ctx.lineTo(x - 10*s, y - 10*s);
-                    ctx.moveTo(x + 12*s, y + 6*s); ctx.lineTo(x + 10*s, y - 10*s);
-                    ctx.stroke();
-                    // Silk drape
-                    ctx.fillStyle = 'rgba(200,50,50,0.6)';
-                    ctx.beginPath();
-                    ctx.moveTo(x - 10*s, y - 10*s);
-                    ctx.quadraticCurveTo(x, y - 4*s, x + 10*s, y - 10*s);
-                    ctx.lineTo(x + 10*s, y - 8*s);
-                    ctx.quadraticCurveTo(x, y - 2*s, x - 10*s, y - 8*s);
+                    ctx.moveTo(x - 8*s, y + 1*s);
+                    ctx.lineTo(x - 5*s, y - 6*s);
+                    ctx.lineTo(x - 2*s, y - 2*s);
+                    ctx.lineTo(x - 4*s, y + 1*s);
                     ctx.closePath();
                     ctx.fill();
-                    // Gold tassels
-                    ctx.strokeStyle = '#d4a030';
-                    ctx.lineWidth = 0.8*s;
-                    for (let i = -2; i <= 2; i++) {
-                        ctx.beginPath();
-                        ctx.moveTo(x + i*4*s, y - 3*s);
-                        ctx.lineTo(x + i*4*s, y + 1*s);
-                        ctx.stroke();
-                    }
+                    // Wing
+                    ctx.beginPath();
+                    ctx.moveTo(x - 5*s, y - 4*s);
+                    ctx.lineTo(x - 10*s, y - 3*s);
+                    ctx.lineTo(x - 6*s, y - 1*s);
+                    ctx.closePath();
+                    ctx.fill();
+                    // Origami boat (center)
+                    ctx.fillStyle = '#c8a0a0';
+                    ctx.beginPath();
+                    ctx.moveTo(x - 3*s, y + 1*s);
+                    ctx.lineTo(x, y - 4*s);
+                    ctx.lineTo(x + 3*s, y + 1*s);
+                    ctx.closePath();
+                    ctx.fill();
+                    // Origami frog (right)
+                    ctx.fillStyle = '#80c060';
+                    ctx.beginPath();
+                    ctx.moveTo(x + 5*s, y + 1*s);
+                    ctx.lineTo(x + 7*s, y - 4*s);
+                    ctx.lineTo(x + 10*s, y - 2*s);
+                    ctx.lineTo(x + 9*s, y + 1*s);
+                    ctx.closePath();
+                    ctx.fill();
                     break;
                 case 'ceramic_set':
                     // Row of ceramic pots and vases
@@ -7286,11 +7298,11 @@
             ctx.arc(0, -5*s, 5*s, Math.PI, 0);
             ctx.fill();
         } else {
-            // Japanese: black hair
+            // Japanese: black hair with topknot (丁髷 chonmage)
             ctx.beginPath();
             ctx.arc(0, -2*s, 6.5*s, Math.PI, 0);
             ctx.fill();
-            // Topknot (small bun on top)
+            // Topknot bun (髷 mage)
             ctx.beginPath();
             ctx.arc(0, -8*s, 3*s, 0, Math.PI*2);
             ctx.fill();
