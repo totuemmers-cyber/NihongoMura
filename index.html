@@ -7619,11 +7619,11 @@
     // ============================================================
     const DISCOVERY_TYPES = [
         { type: 'ancient_scroll', speech: [['look','book','old'],['find','book','beautiful']],        desc: 'eine alte Schriftrolle' },
-        { type: 'jade_stone',     speech: [['find','thing','beautiful'],['this','good','old']],       desc: 'einen Jade-Stein' },
+        { type: 'lucky_charm',    speech: [['find','thing','beautiful'],['this','good','old']],       desc: 'einen Gluecksbringer' },
         { type: 'old_coins',      speech: [['find','money','old'],['money','many','here']],           desc: 'alte Muenzen' },
-        { type: 'carved_seal',    speech: [['find','thing','red'],['this','old','good']],             desc: 'ein geschnitztes Siegel' },
+        { type: 'hanko_seal',     speech: [['find','thing','red'],['this','old','good']],             desc: 'ein Hanko-Siegel' },
         { type: 'pottery_shards', speech: [['find','thing','old'],['look','this','here']],            desc: 'Keramikscherben' },
-        { type: 'flower_arrangement', speech: [['flower','beautiful','many'],['look','flower','good']], desc: 'ein Blumengesteck' },
+        { type: 'ikebana',        speech: [['flower','beautiful','many'],['look','flower','good']],   desc: 'ein Ikebana-Arrangement' },
     ];
 
     function spawnDiscovery() {
@@ -7755,8 +7755,8 @@
                     ctx.fillRect(x - 5*s, y - 0.5*s, 1*s, 1*s);
                     ctx.fillRect(x - 2*s, y - 0.5*s, 1*s, 1*s);
                     break;
-                case 'jade_stone':
-                    // Polished jade piece (green)
+                case 'lucky_charm':
+                    // Omamori lucky charm (fabric pouch)
                     ctx.fillStyle = '#5aaa5a';
                     ctx.globalAlpha = 0.85 + Math.sin(t * 2) * 0.15;
                     ctx.beginPath();
@@ -7789,8 +7789,8 @@
                         ctx.fillStyle = '#b0a060';
                     }
                     break;
-                case 'carved_seal':
-                    // Stone seal / chop
+                case 'hanko_seal':
+                    // Hanko seal (Japanese name stamp)
                     ctx.fillStyle = '#8a6a4a';
                     ctx.fillRect(x - 3*s, y - 5*s, 6*s, 10*s);
                     // Carved top
@@ -7827,8 +7827,8 @@
                     ctx.arc(x, y - 1*s, 2*s, 0.5, 2.5);
                     ctx.stroke();
                     break;
-                case 'flower_arrangement':
-                    // Vase with flowers
+                case 'ikebana':
+                    // Ikebana flower arrangement
                     ctx.fillStyle = '#c0a060';
                     ctx.beginPath();
                     ctx.ellipse(x, y + 3*s, 3*s, 4*s, 0, 0, Math.PI*2);
