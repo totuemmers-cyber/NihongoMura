@@ -2929,10 +2929,10 @@
             activityDe: 'kocht Reis', visibleConcepts: ['cook','food','rice','hot','fire','salt','oil','taste','burn','fragrant']
         },
         {
-            id: 'make_dumpling', target: 'kitchen', duration: 250,
-            templates: [['me','make','food'],['food','good','small'],['make','meat','food']],
+            id: 'make_onigiri', target: 'kitchen', duration: 250,
+            templates: [['me','make','food'],['food','good','small'],['make','rice','food']],
             effects: { hunger: 30 }, priority: 'productive',
-            activityDe: 'macht Teigtaschen', visibleConcepts: ['make','food','meat','small','hand','full2','method']
+            activityDe: 'macht Onigiri', visibleConcepts: ['make','food','rice','small','hand','full2','method']
         },
         {
             id: 'brew_tea', target: 'teahouse', duration: 200,
@@ -3588,16 +3588,16 @@
             activityDe: 'haengt Festlaternen auf', visibleConcepts: ['celebrate','festival','lantern','red','beautiful','hang','happy','lucky','night']
         },
         {
-            id: 'eat_mooncake', target: 'teahouse', duration: 100,
-            templates: [['eat','mooncake','good'],['mooncake','sweet','round'],['festival','together2','happy']],
+            id: 'eat_mochi', target: 'teahouse', duration: 100,
+            templates: [['eat','mochi','good'],['mochi','sweet','good'],['festival','together2','happy']],
             effects: { hunger: 20 }, priority: 'idle',
-            activityDe: 'isst Mondkuchen', visibleConcepts: ['eat','mooncake','sweet','round','moon','festival','together2','happy','tea']
+            activityDe: 'isst Mochi', visibleConcepts: ['eat','mochi','sweet','round','moon','festival','together2','happy','tea']
         },
         {
-            id: 'watch_dragon_boat', target: 'dock', duration: 150,
-            templates: [['look','dragon','boat'],['dragon','boat','fast'],['celebrate','festival','river']],
+            id: 'fold_origami', target: 'workshop', duration: 200,
+            templates: [['me','make','paper'],['paper','beautiful','small'],['make','bird','paper']],
             effects: {}, priority: 'idle',
-            activityDe: 'schaut Drachenbooten zu', visibleConcepts: ['look','dragon','boat','fast','river','celebrate','festival','water','happy','sound']
+            activityDe: 'faltet Origami', visibleConcepts: ['make','paper','bird','beautiful','small','hand']
         },
         // === EXPANSION: UNDERUTILIZED OBJECT ACTIONS ===
         // lantern_post (was 0 actions)
@@ -4018,7 +4018,7 @@
         { id: 'lantern_circle', req: { make_lantern: 2 },        x: 450, y: 195, desc: 'Rote Laternen schmuecken den Platz.' },
         { id: 'roof_tiles',     req: { make_pottery: 3 },        x: 195, y: 215, desc: 'Neue Dachziegel liegen bereit.' },
         { id: 'rice_sacks',     req: { cook_rice: 5 },           x: 365, y: 195, desc: 'Reissaecke stehen neben der Kueche.' },
-        { id: 'silk_canopy',    req: { weave_silk: 2 },          x: 415, y: 265, desc: 'Ein Seidenbaldachin spannt sich auf.' },
+        { id: 'origami_display', req: { fold_origami: 2 },        x: 415, y: 265, desc: 'Origami-Figuren schmuecken den Raum.' },
         { id: 'ceramic_set',    req: { make_pottery: 2 },        x: 355, y: 195, desc: 'Keramikschalen stehen aufgereiht.' },
     ];
 
@@ -5171,7 +5171,7 @@
     }
 
     // ============================================================
-    //  PROVERB OVERLAY (成语 chéngyǔ — milestone calligraphy)
+    //  PROVERB OVERLAY (ことわざ kotowaza — milestone calligraphy)
     // ============================================================
     class ProverbOverlay {
         constructor(proverb) {
@@ -5305,7 +5305,7 @@
                 ctx.restore();
             }
 
-            // Pinyin (below characters, appears after all revealed)
+            // Kana (below characters, appears after all revealed)
             const allRevealed = elapsed > this.charCount * this.revealPerChar;
             if (allRevealed) {
                 const textAlpha = Math.min(1, (elapsed - this.charCount * this.revealPerChar) / 40);
@@ -9015,7 +9015,7 @@
             return words.join('') + randEl(['！','。','？','~','……']);
         }
         // Fallback — sensible generic phrases
-        return randEl(['好！','嗯。','是啊。','哈哈！','对！','不错！','真好。','走吧。']);
+        return randEl(['いいね！','うん。','そうだね。','ははは！','そう！','すごい！','いいよ。','行こう。']);
     }
 
     // Get routine target based on time of day and NPC affinities
@@ -10494,7 +10494,7 @@
         ctx.fillStyle = 'rgba(20,18,12,0.9)';
         ctx.fill();
 
-        // Chinese word
+        // Japanese word
         ctx.font = `bold ${Math.round(12 * s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
         ctx.fillStyle = '#d4a030';
         ctx.textAlign = 'center';
