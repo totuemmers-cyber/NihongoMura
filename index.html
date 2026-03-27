@@ -7779,9 +7779,8 @@
         'me': 'Ich', 'you': 'Du', 'he': 'Er', 'she': 'Sie', 'we': 'Wir', 'they': 'Sie',
     };
 
-    // Noun articles (simplified — all accusative for objects)
+    // Noun articles: concept → [nom, akk]
     const DE_NOUN_ARTICLE = {
-        // Common nouns with articles: concept → [nom, akk]
         'food': ['das','das'], 'tea': ['der','den'], 'water': ['das','das'],
         'rice': ['der','den'], 'fish': ['der','den'], 'book': ['das','das'],
         'brush': ['der','den'], 'ink': ['die','die'], 'paper': ['das','das'],
@@ -7794,6 +7793,73 @@
         'wine': ['der','den'], 'soup': ['die','die'], 'moon': ['der','den'],
         'star': ['der','den'], 'rain': ['der','den'], 'wind': ['der','den'],
         'snow': ['der','den'], 'bamboo': ['der','den'], 'song': ['das','das'],
+        // Extended nouns
+        'sky': ['der','den'], 'sun': ['die','die'], 'cloud': ['die','die'],
+        'road': ['die','die'], 'field': ['das','das'], 'village': ['das','das'],
+        'room': ['das','das'], 'table': ['der','den'], 'bowl': ['die','die'],
+        'candle': ['die','die'], 'lantern': ['die','die'], 'bell': ['die','die'],
+        'boat': ['das','das'], 'rope': ['das','das'], 'needle': ['die','die'],
+        'hat': ['der','den'], 'clothes': ['die','die'], 'fan': ['der','den'],
+        'egg': ['das','das'], 'fruit': ['die','die'], 'grain': ['das','das'],
+        'noodle': ['die','die'], 'mochi': ['der','den'], 'sugar': ['der','den'],
+        'milk': ['die','die'], 'money': ['das','das'], 'gift': ['das','das'],
+        'medicine': ['die','die'], 'music': ['die','die'], 'poem': ['das','das'],
+        'story': ['die','die'], 'lesson': ['die','die'], 'question': ['die','die'],
+        'answer': ['die','die'], 'name': ['der','den'], 'sound': ['der','den'],
+        'hand': ['die','die'], 'eye': ['das','das'], 'body': ['der','den'],
+        'heart': ['das','das'], 'child': ['das','das'], 'friend': ['der','den'],
+        'student': ['der','den'], 'teacher': ['der','den'], 'dog': ['der','den'],
+        'chicken': ['das','das'], 'frog': ['der','den'], 'snake': ['die','die'],
+        'butterfly': ['der','den'], 'lotus': ['die','die'], 'grass': ['das','das'],
+        'incense': ['das','das'], 'basket': ['der','den'],
+        'father': ['der','den'], 'mother': ['die','die'], 'brother': ['der','den'],
+        'sister': ['die','die'], 'son': ['der','den'], 'daughter': ['die','die'],
+        'morning': ['der','den'], 'night': ['die','die'], 'day': ['der','den'],
+        'time': ['die','die'], 'weather': ['das','das'], 'wish': ['der','den'],
+        'hope': ['die','die'], 'thing': ['das','das'], 'news': ['die','die'],
+        'character': ['das','das'], 'habit': ['die','die'], 'festival': ['das','das'],
+        'pagoda': ['die','die'], 'god': ['der','den'], 'year': ['das','das'],
+    };
+
+    // Location phrases for で particle
+    const DE_LOCATION = {
+        'kitchen': 'in der Küche', 'teahouse': 'im Teehaus',
+        'workshop': 'in der Werkstatt', 'home': 'zu Hause',
+        'house': 'im Haus', 'market': 'auf dem Markt',
+        'well2': 'am Brunnen', 'bridge': 'auf der Brücke',
+        'garden': 'im Garten', 'fish_pond': 'am Teich',
+        'shrine': 'am Schrein', 'stable': 'im Stall',
+        'river': 'am Fluss',
+    };
+
+    // Verbs using 'sein' (not 'haben') as Perfekt auxiliary
+    const SEIN_VERBS = new Set([
+        'gehen', 'kommen', 'laufen', 'rennen', 'schwimmen', 'fliegen',
+        'fallen', 'eintreten', 'ankommen', 'aufstehen', 'zurückkehren',
+        'sterben', 'wachsen', 'werden', 'sein', 'bleiben',
+    ]);
+
+    // Past participle map (irregular verbs)
+    const DE_PP_MAP = {
+        'essen':'gegessen','trinken':'getrunken','schlafen':'geschlafen',
+        'schreiben':'geschrieben','lesen':'gelesen','sehen':'gesehen',
+        'finden':'gefunden','kommen':'gekommen','gehen':'gegangen',
+        'helfen':'geholfen','geben':'gegeben','stehen':'gestanden',
+        'sitzen':'gesessen','nehmen':'genommen','tragen':'getragen',
+        'halten':'gehalten','waschen':'gewaschen','schneiden':'geschnitten',
+        'rufen':'gerufen','schwimmen':'geschwommen','fliegen':'geflogen',
+        'brennen':'gebrannt','ziehen':'gezogen','fangen':'gefangen',
+        'singen':'gesungen','rennen':'gerannt','denken':'gedacht',
+        'wissen':'gewusst','schließen':'geschlossen','beginnen':'begonnen',
+        'fallen':'gefallen','werden':'geworden','laufen':'gelaufen',
+        // Inseparable prefix verbs (no ge-)
+        'vergessen':'vergessen','verstehen':'verstanden',
+        'benutzen':'benutzt','verkaufen':'verkauft',
+        'erinnern':'erinnert','erlauben':'erlaubt','versuchen':'versucht',
+        // Separable prefix verbs
+        'ankommen':'angekommen','aufstehen':'aufgestanden',
+        'zurückkehren':'zurückgekehrt','zurückgeben':'zurückgegeben',
+        'aufhängen':'aufgehängt','aufräumen':'aufgeräumt',
     };
 
     // Japanese particle → German effect
@@ -7833,33 +7899,52 @@
     function buildGermanResponse(words, learner) {
         if (!words || words.length === 0) return { text: '...', anyKnown: false };
 
-        // Collect known content words and detect particles
-        const parts = [];
+        // --- Pre-pass: extract location noun (noun before で particle) ---
+        let locationWord = null;
+        const filtered = [];
+        for (let i = 0; i < words.length; i++) {
+            if (words[i].conceptId === '_p_de' && filtered.length > 0) {
+                const prev = filtered[filtered.length - 1];
+                if (prev.type === 'noun') {
+                    locationWord = filtered.pop();
+                    continue;
+                }
+            }
+            filtered.push(words[i]);
+        }
+
+        // --- Classify words ---
         let subject = null, verb = null, objects = [], modifiers = [];
         let effects = new Set();
-        let anyKnown = false;
-        let allKnown = true;
+        let anyKnown = false, hasUnknown = false;
 
-        for (const w of words) {
+        for (const w of filtered) {
             if (w.type === 'particle') {
                 const eff = DE_PARTICLE_EFFECT[w.conceptId];
                 if (eff) effects.add(eff);
                 continue;
             }
+            // Synthesized grammar words (とても, counters) — always include
+            if (w.conceptId && w.conceptId.startsWith('_')) {
+                if (w.type === 'mod' && w.de) modifiers.push(w);
+                continue;
+            }
             const known = learner.knownWords.has(w.conceptId);
-            if (!known) { allKnown = false; parts.push({ w, known: false }); continue; }
+            if (!known) { hasUnknown = true; continue; }
             anyKnown = true;
-            parts.push({ w, known: true });
 
             if (w.type === 'pronoun' && !subject) subject = w;
             else if (w.type === 'verb' && !verb) verb = w;
-            else if (w.type === 'noun') objects.push(w);
+            else if (w.type === 'noun') {
+                if (!subject) subject = w;
+                else objects.push(w);
+            }
             else if (w.type === 'mod') modifiers.push(w);
         }
 
         if (!anyKnown) return { text: '...', anyKnown: false };
 
-        // Detect tense/negation from conjugated verb romaji
+        // --- Detect tense/negation from conjugated verb romaji ---
         if (verb && verb.romaji) {
             const r = verb.romaji;
             if (r.endsWith('masendeshita')) effects.add('neg_past');
@@ -7869,127 +7954,129 @@
             else if (r.endsWith('ta') && !r.endsWith('masu')) effects.add('past');
         }
 
-        // Build German sentence
-        const tokens = [];
-        const conjKey = subject ? (DE_PRONOUN_CONJ[subject.conceptId] || 'er') : 'er';
+        // --- Helpers ---
+        function nounWithArticle(noun, kasus) {
+            const art = DE_NOUN_ARTICLE[noun.conceptId];
+            if (art) return (kasus === 'akk' ? art[1] : art[0]) + ' ' + noun.de;
+            return noun.de;
+        }
 
-        // Suggestion pattern: 吧 → "Lass uns..."
-        if (effects.has('suggest') && verb) {
-            tokens.push('Lass uns');
-            tokens.push(verb.de); // infinitive
-            for (const o of objects) tokens.push(o.de);
-            for (const m of modifiers) tokens.push(m.de);
-        } else {
-            // Subject
-            if (subject) {
-                tokens.push(DE_PRONOUN_SUBJ[subject.conceptId] || subject.de);
+        function locPhrase() {
+            if (!locationWord) return null;
+            if (learner.knownWords.has(locationWord.conceptId)) {
+                return DE_LOCATION[locationWord.conceptId] || ('bei ' + locationWord.de);
             }
+            return null;
+        }
 
-            // Progressive: "gerade"
-            if (effects.has('prog') && verb) tokens.push('gerade');
-
-            // Verb (conjugated)
-            if (verb) {
-                let verbForm;
-                if (effects.has('past') || effects.has('neg_past')) {
-                    // Perfekt: auxiliary (haben/sein) + past participle
-                    const SEIN_VERBS = new Set([
-                        'gehen', 'kommen', 'laufen', 'rennen', 'schwimmen', 'fliegen',
-                        'fallen', 'eintreten', 'ankommen', 'aufstehen', 'zurückkehren',
-                        'sterben', 'wachsen', 'werden', 'sein', 'bleiben',
-                    ]);
-                    if (subject) {
-                        const auxVerb = SEIN_VERBS.has(verb.de) ? 'sein' : 'haben';
-                        const aux = conjugateGermanVerb(auxVerb, conjKey);
-                        tokens.push(aux);
-                    }
-                    // Past participle
-                    let pp = verb.de;
-                    const ppMap = {
-                        'essen':'gegessen','trinken':'getrunken','schlafen':'geschlafen',
-                        'schreiben':'geschrieben','lesen':'gelesen','sehen':'gesehen',
-                        'finden':'gefunden','kommen':'gekommen','gehen':'gegangen',
-                        'helfen':'geholfen','geben':'gegeben','stehen':'gestanden',
-                        'sitzen':'gesessen','nehmen':'genommen','tragen':'getragen',
-                        'halten':'gehalten','waschen':'gewaschen','schneiden':'geschnitten',
-                        'rufen':'gerufen','schwimmen':'geschwommen','fliegen':'geflogen',
-                        'brennen':'gebrannt','ziehen':'gezogen','fangen':'gefangen',
-                        'singen':'gesungen','rennen':'gerannt','denken':'gedacht',
-                        'wissen':'gewusst','schließen':'geschlossen','beginnen':'begonnen',
-                        'fallen':'gefallen','werden':'geworden',
-                        // Inseparable prefix verbs (no ge-)
-                        'vergessen':'vergessen','verstehen':'verstanden',
-                        'benutzen':'benutzt','verkaufen':'verkauft',
-                        'erinnern':'erinnert','erlauben':'erlaubt','versuchen':'versucht',
-                        'beschäftigt':'beschäftigt',
-                        // Separable prefix verbs
-                        'ankommen':'angekommen','aufstehen':'aufgestanden',
-                        'zurückkehren':'zurückgekehrt','zurückgeben':'zurückgegeben',
-                        'aufhängen':'aufgehängt','aufräumen':'aufgeräumt',
-                    };
-                    if (ppMap[verb.de]) {
-                        pp = ppMap[verb.de];
-                    } else {
-                        let stem = verb.de;
-                        if (stem.endsWith('en')) stem = stem.slice(0, -2);
-                        else if (stem.endsWith('n')) stem = stem.slice(0, -1);
-                        // Inseparable prefixes: no ge-
-                        const insep = ['be', 'emp', 'ent', 'er', 'ge', 'miss', 'ver', 'zer'];
-                        if (insep.some(p => verb.de.startsWith(p) && verb.de.length > p.length + 2)) {
-                            pp = stem + 't';
-                        } else {
-                            pp = 'ge' + stem + 't';
-                        }
-                    }
-                    // Negation
-                    if (effects.has('neg_past')) tokens.push('nicht');
-                    // Objects before participle in German
-                    for (const o of objects) {
-                        const art = DE_NOUN_ARTICLE[o.conceptId];
-                        if (art) tokens.push(art[1]); // accusative
-                        tokens.push(o.de);
-                    }
-                    for (const m of modifiers) tokens.push(m.de);
-                    tokens.push(pp);
-                    objects = []; modifiers = []; // consumed
-                } else if (effects.has('exp')) {
-                    // Experience: "schon einmal gegessen"
-                    verbForm = conjugateGermanVerb(verb.de, conjKey);
-                    tokens.push('schon einmal');
-                    tokens.push(verbForm);
-                } else if (effects.has('neg')) {
-                    // Present tense negation: "isst nicht"
-                    verbForm = conjugateGermanVerb(verb.de, conjKey);
-                    tokens.push(verbForm);
-                    tokens.push('nicht');
+        // Join modifiers: "sehr" attaches to next adjective, rest joined with "und"
+        function modPhrase(mods) {
+            if (mods.length === 0) return null;
+            const parts = [];
+            for (let i = 0; i < mods.length; i++) {
+                if (mods[i].de === 'sehr' && i + 1 < mods.length) {
+                    parts.push('sehr ' + mods[i + 1].de);
+                    i++;
                 } else {
-                    verbForm = conjugateGermanVerb(verb.de, conjKey);
-                    tokens.push(verbForm);
+                    parts.push(mods[i].de);
                 }
             }
-
-            // Remaining objects with articles
-            for (const o of objects) {
-                const art = DE_NOUN_ARTICLE[o.conceptId];
-                if (art) tokens.push(art[1]); // accusative
-                tokens.push(o.de);
-            }
-
-            // Modifiers
-            for (const m of modifiers) tokens.push(m.de);
-
-            // Unknown placeholders
-            for (const p of parts) {
-                if (!p.known && p.w.type !== 'particle') tokens.push('...');
-            }
+            if (parts.length === 1) return parts[0];
+            return parts.slice(0, -1).join(', ') + ' und ' + parts[parts.length - 1];
         }
+
+        function pastParticiple(verbDe) {
+            if (DE_PP_MAP[verbDe]) return DE_PP_MAP[verbDe];
+            let stem = verbDe;
+            if (stem.endsWith('en')) stem = stem.slice(0, -2);
+            else if (stem.endsWith('n')) stem = stem.slice(0, -1);
+            const insep = ['be', 'emp', 'ent', 'er', 'ge', 'miss', 'ver', 'zer'];
+            if (insep.some(p => verbDe.startsWith(p) && verbDe.length > p.length + 2)) {
+                return stem + 't';
+            }
+            return 'ge' + stem + 't';
+        }
+
+        // --- Build sentence ---
+        const tokens = [];
+        const conjKey = subject ? (DE_PRONOUN_CONJ[subject.conceptId] || 'er') : 'er';
+        const isQuestion = effects.has('question');
+
+        // Subject phrase
+        const subj = subject
+            ? (subject.type === 'pronoun'
+                ? (DE_PRONOUN_SUBJ[subject.conceptId] || subject.de)
+                : nounWithArticle(subject, 'nom'))
+            : null;
+
+        if (verb) {
+            // === Verb-based sentence ===
+            if (effects.has('past') || effects.has('neg_past')) {
+                // Perfekt: "Ich habe den Tee getrunken" / "Hat er den Tee getrunken?"
+                const auxVerb = SEIN_VERBS.has(verb.de) ? 'sein' : 'haben';
+                const aux = conjugateGermanVerb(auxVerb, conjKey);
+                if (isQuestion) {
+                    tokens.push(aux.charAt(0).toUpperCase() + aux.slice(1));
+                    if (subj) tokens.push(subj.toLowerCase());
+                } else {
+                    if (subj) tokens.push(subj);
+                    tokens.push(aux);
+                }
+                if (effects.has('neg_past')) tokens.push('nicht');
+                const loc = locPhrase();
+                if (loc) tokens.push(loc);
+                for (const o of objects) tokens.push(nounWithArticle(o, 'akk'));
+                const mp = modPhrase(modifiers);
+                if (mp) tokens.push(mp);
+                tokens.push(pastParticiple(verb.de));
+            } else {
+                // Present: "Ich esse den Tee" / "Esse ich den Tee?"
+                const vf = conjugateGermanVerb(verb.de, conjKey);
+                if (isQuestion) {
+                    tokens.push(vf.charAt(0).toUpperCase() + vf.slice(1));
+                    if (subj) tokens.push(subj.toLowerCase());
+                } else {
+                    if (subj) tokens.push(subj);
+                    tokens.push(vf);
+                }
+                if (effects.has('neg')) tokens.push('nicht');
+                if (effects.has('prog')) tokens.push('gerade');
+                const loc = locPhrase();
+                if (loc) tokens.push(loc);
+                for (const o of objects) tokens.push(nounWithArticle(o, 'akk'));
+                const mp = modPhrase(modifiers);
+                if (mp) tokens.push(mp);
+            }
+        } else {
+            // === Copula sentence: "Das Essen ist heiß und gut" ===
+            const cop = conjugateGermanVerb('sein', conjKey);
+            if (isQuestion) {
+                tokens.push(cop.charAt(0).toUpperCase() + cop.slice(1));
+                if (subj) tokens.push(subj.toLowerCase());
+            } else {
+                if (subj) tokens.push(subj);
+                tokens.push(cop);
+            }
+            const loc = locPhrase();
+            if (loc) tokens.push(loc);
+            // Secondary nouns in copula context — use nominative
+            for (const o of objects) tokens.push(nounWithArticle(o, 'nom'));
+            const mp = modPhrase(modifiers);
+            if (mp) tokens.push(mp);
+        }
+
+        // Unknown word placeholder (single ... instead of per-word)
+        if (hasUnknown && tokens.length > 0) tokens.push('...');
 
         let text = tokens.join(' ');
         if (!text.trim() || text.trim() === '...') return { text: '...', anyKnown: false };
 
+        // Capitalize first letter
+        text = text.charAt(0).toUpperCase() + text.slice(1);
+
         // Punctuation
-        if (effects.has('question')) text += '?';
-        else if (allKnown) text += '!';
+        if (isQuestion) text += '?';
+        else text += '.';
 
         return { text, anyKnown };
     }
