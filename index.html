@@ -7561,24 +7561,6 @@
             ctx.fill();
         }
 
-        // Mood indicator (small symbol above head)
-        if (!isSleeping && person.mood) {
-            const moodY = -32 * s;
-            const bobY = Math.sin(gameTick * 0.03) * 1.5 * s;
-            ctx.font = `${Math.round(10*s)}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.globalAlpha = 0.7;
-            let sym = '';
-            switch (person.mood) {
-                case 'happy':    sym = '\u2665'; ctx.fillStyle = '#ff8888'; break; // ♥
-                case 'content':  sym = '\u266A'; ctx.fillStyle = '#aaddaa'; break; // ♪
-                case 'cold':     sym = '\u2744'; ctx.fillStyle = '#88ccff'; break; // ❄
-                case 'tired':    sym = '\u00B7\u00B7'; ctx.fillStyle = '#aaaacc'; break; // ··
-                case 'surprised':sym = '!';      ctx.fillStyle = '#ffdd66'; break;
-            }
-            if (sym) ctx.fillText(sym, 0, moodY + bobY);
-            ctx.globalAlpha = 1;
-        }
 
         ctx.restore();
 
@@ -11916,7 +11898,6 @@
             }
         }
         drawFreezeIndicator(ctx, persons[1]);
-        drawRelationshipIndicators(ctx);
         for (const f of learnFlashes) f.draw(ctx);
         drawMicroEventEffects(ctx);
         for (const b of npcBubbles) b.draw(ctx);
