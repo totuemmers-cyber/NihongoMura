@@ -137,6 +137,24 @@
                 radial-gradient(ellipse at 30% 20%, rgba(200,180,140,0.03) 0%, transparent 60%),
                 radial-gradient(ellipse at 70% 80%, rgba(200,180,140,0.02) 0%, transparent 50%);
         }
+        /* Scrollbar styling for panel */
+        #panel ::-webkit-scrollbar {
+            width: 6px;
+        }
+        #panel ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #panel ::-webkit-scrollbar-thumb {
+            background: var(--border-section);
+            border-radius: 3px;
+        }
+        #panel ::-webkit-scrollbar-thumb:hover {
+            background: var(--bg-button-hover);
+        }
+        #panel {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-section) transparent;
+        }
         #panel-toggle {
             display: none;
             position: fixed;
