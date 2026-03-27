@@ -2772,9 +2772,9 @@
         { id: 'shrine1',    type: 'shrine',       x: 150, y: 450, w: 40, h: 50, label: '神社',   romaji: 'jinja' },
         { id: 'lantern1',   type: 'lantern_post', x: 440, y: 180, w: 15, h: 35, label: '灯籠',   romaji: 'tourou' },
         { id: 'rice1',      type: 'rice_paddy',   x: 560, y: 560, w: 60, h: 45, label: '田んぼ', romaji: 'tanbo' },
-        { id: 'river1',     type: 'river',        x: 420, y: 560, w: 70, h: 50, label: '川',     romaji: 'kawa' },
+        { id: 'pond1',      type: 'fish_pond',    x: 420, y: 560, w: 70, h: 50, label: '池',     romaji: 'ike' },
         { id: 'dock1',      type: 'dock',         x: 720, y: 530, w: 40, h: 30, label: '船着場', romaji: 'funatsukiba' },
-        { id: 'lotus1',     type: 'lotus_pond',   x: 120, y: 530, w: 50, h: 35, label: '蓮池',   romaji: 'hasuchi' },
+        { id: 'lotus1',     type: 'lotus_pond',   x: 120, y: 530, w: 50, h: 35, label: '蓮池',   romaji: 'hasuike' },
         { id: 'flower1',    type: 'flower',       x: 200, y: 380, w: 30, h: 30, label: '花',     romaji: 'hana' },
         { id: 'tree1',      type: 'willow',       x: 650, y: 350, w: 45, h: 65, label: '柳',     romaji: 'yanagi' },
         { id: 'tree2',      type: 'willow',       x: 130, y: 140, w: 45, h: 65, label: '柳',     romaji: 'yanagi' },
@@ -5151,11 +5151,11 @@
             // No verb — adjectival/nominal predicate
             // e.g. 茶は美味しい (Tea is delicious) — SOV with adjective as predicate
 
-            // Objects (really secondary nouns in adjectival predicate)
-            for (const obj of objects) {
-                sentence.push(obj);
-                if (tier >= 2) {
-                    sentence.push(P_WA());
+            // Secondary nouns joined with と (and) — avoid double は
+            for (let i = 0; i < objects.length; i++) {
+                sentence.push(objects[i]);
+                if (tier >= 1 && i < objects.length - 1) {
+                    sentence.push(P_TO()); // と = and
                 }
             }
 
@@ -6852,7 +6852,7 @@
             }
 
             case 'river': {
-                // Small pond south of the village
+                // River/water body
                 ctx.fillStyle = '#2a5a8a';
                 ctx.beginPath();
                 ctx.ellipse(x, y, w/2, h/2, 0.1, 0, Math.PI * 2);
@@ -7795,6 +7795,12 @@
         'verstehen': { ich: 'verstehe', du: 'verstehst',  er: 'versteht',  wir: 'verstehen', sie: 'verstehen' },
         'fallen':    { ich: 'falle',    du: 'fällst',    er: 'fällt',     wir: 'fallen',    sie: 'fallen' },
         'werden':    { ich: 'werde',    du: 'wirst',     er: 'wird',      wir: 'werden',    sie: 'werden' },
+        'blasen':    { ich: 'blase',    du: 'bläst',     er: 'bläst',     wir: 'blasen',    sie: 'blasen' },
+        'empfangen': { ich: 'empfange', du: 'empfängst',  er: 'empfängt',  wir: 'empfangen', sie: 'empfangen' },
+        'leihen':    { ich: 'leihe',    du: 'leihst',    er: 'leiht',     wir: 'leihen',    sie: 'leihen' },
+        'riechen':   { ich: 'rieche',   du: 'riechst',   er: 'riecht',    wir: 'riechen',   sie: 'riechen' },
+        'erzählen':  { ich: 'erzähle',  du: 'erzählst',  er: 'erzählt',   wir: 'erzählen',  sie: 'erzählen' },
+        'ändern':    { ich: 'ändere',   du: 'änderst',   er: 'ändert',    wir: 'ändern',    sie: 'ändern' },
     };
 
     // Map pronoun concept → German conjugation key
@@ -7888,6 +7894,11 @@
         'ankommen':'angekommen','aufstehen':'aufgestanden',
         'zurückkehren':'zurückgekehrt','zurückgeben':'zurückgegeben',
         'aufhängen':'aufgehängt','aufräumen':'aufgeräumt',
+        'anziehen':'angezogen','eintreten':'eingetreten',
+        'hinausgehen':'hinausgegangen','einschenken':'eingeschenkt',
+        // Additional irregular
+        'blasen':'geblasen','leihen':'geliehen','riechen':'gerochen',
+        'empfangen':'empfangen','erzählen':'erzählt',
     };
 
     // Japanese particle → German effect
@@ -8067,13 +8078,13 @@
                     if (subj) tokens.push(subj);
                     tokens.push(vf);
                 }
-                if (effects.has('neg')) tokens.push('nicht');
                 if (effects.has('prog')) tokens.push('gerade');
                 const loc = locPhrase();
                 if (loc) tokens.push(loc);
                 for (const o of objects) tokens.push(nounWithArticle(o, 'akk'));
                 const mp = modPhrase(modifiers);
                 if (mp) tokens.push(mp);
+                if (effects.has('neg')) tokens.push('nicht');
             }
         } else {
             // === Copula sentence: "Das Essen ist heiß und gut" ===
