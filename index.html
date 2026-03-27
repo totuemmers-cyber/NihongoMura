@@ -5270,23 +5270,10 @@
         // Draw left-to-right
         ctx.textAlign = 'left';
         let drawX = cx - totalW / 2;
-        const tier = getGrammarTier();
-        const furiganaSize = Math.round(fontSize * 0.45);
         for (const seg of segs) {
             ctx.fillStyle = seg.color;
             ctx.font = `bold ${fontSize}px ${CJK_FONT_GRAMMAR}`;
             ctx.fillText(seg.kanji, drawX, cy);
-            // Render furigana (small kana above kanji) at tier 2+
-            // Only show furigana if the kanji differs from the kana (i.e. contains actual kanji)
-            if (tier >= 2 && seg.kana && seg.kanji !== seg.kana && /[\u4e00-\u9faf]/.test(seg.kanji)) {
-                ctx.font = `${furiganaSize}px ${CJK_FONT_GRAMMAR}`;
-                const furiganaY = cy - fontSize * 0.6;
-                // Center furigana above the kanji
-                const kanjiMidX = drawX + seg.width / 2;
-                ctx.textAlign = 'center';
-                ctx.fillText(seg.kana, kanjiMidX, furiganaY);
-                ctx.textAlign = 'left';
-            }
             drawX += seg.width;
         }
         ctx.textAlign = 'center'; // restore
