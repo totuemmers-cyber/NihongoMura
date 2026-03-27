@@ -2883,8 +2883,8 @@
                 return { dx: sdx, dy: sdy };
             }
         }
-        // All angles blocked: stay put (don't push into walls)
-        return { dx: 0, dy: 0 };
+        // All angles blocked: nudge backward to unstick
+        return { dx: -dirX * 0.3, dy: -dirY * 0.3 };
     }
 
     // Check if a line segment from (x1,y1) to (x2,y2) intersects a rectangle
@@ -4628,7 +4628,7 @@
                 if (this.currentAction.target && typeof this.currentAction.target === 'string') tType = this.currentAction.target;
                 else { const a = ACTION_DEFS.find(a => a.id === this.currentAction.id); if (a) tType = a.target; }
             }
-            return moveEntityToward(this, tx, ty, dt, this.moveSpeed, 0.4, 80, tType);
+            return moveEntityToward(this, tx, ty, dt, this.moveSpeed, 0.45, 120, tType);
         }
     }
     // ============================================================
@@ -8693,7 +8693,7 @@
                             learner.activityDe = 'Schaut sich um';
                         }
                         // Sociable learners re-check sooner (shorter follow timer)
-                        learner.followTimer = randInt(300, 800) / (0.5 + learner.geselligkeit * 0.08);
+                        learner.followTimer = randInt(600, 1200) / (0.5 + learner.geselligkeit * 0.08);
                     }
                     break;
 
@@ -8711,7 +8711,7 @@
                     // Sociable learners come back closer
                     if (distToSpeaker < learner.hearingRange * 0.5) {
                         learner.followMode = 'following';
-                        learner.followTimer = randInt(300, 800) / (0.5 + learner.geselligkeit * 0.08);
+                        learner.followTimer = randInt(600, 1200) / (0.5 + learner.geselligkeit * 0.08);
                     }
                     break;
             }
@@ -8725,33 +8725,30 @@
                         ? 'Kehrt zurück zu ' + speaker.name
                         : 'Folgt ' + speaker.name;
 
-                    if (distToSpeaker > learner.hearingRange * 0.5) {
-                        // Move toward speaker — only recalculate target when speaker moved significantly
+                    if (distToSpeaker > learner.hearingRange * 0.6) {
+                        // Move toward speaker — recalculate only when speaker moved far
                         const angle = Math.atan2(speaker.y - learner.y, speaker.x - learner.x);
-                        const followDist = 30 + Math.random() * 25;
+                        const followDist = 40;
                         let ftx = Math.max(30, Math.min(WORLD_W - 30, speaker.x - Math.cos(angle) * followDist));
                         let fty = Math.max(30, Math.min(WORLD_H - 30, speaker.y - Math.sin(angle) * followDist));
-                        const targetChanged = Math.abs(ftx - learner.targetX) > 30 || Math.abs(fty - learner.targetY) > 30;
+                        const targetChanged = Math.abs(ftx - learner.targetX) > 50 || Math.abs(fty - learner.targetY) > 50;
                         if (targetChanged || learner.waypoints.length === 0) {
                             setTargetWithPath(learner, ftx, fty);
                         }
                         learner.moveToward(learner.targetX, learner.targetY, dt);
                         learner.facing = angle;
-                    } else if (distToSpeaker > 25) {
-                        // Near speaker: wander gently around them
-                        if (Math.random() < 0.003 * dt) {
-                            let gtx = Math.max(30, Math.min(WORLD_W - 30, speaker.x + randFloat(-45, 45)));
-                            let gty = Math.max(30, Math.min(WORLD_H - 30, speaker.y + randFloat(-45, 45)));
-                            setTargetWithPath(learner, gtx, gty);
-                        }
-                        learner.moveToward(learner.targetX, learner.targetY, dt);
+                    } else if (distToSpeaker > 20) {
+                        // Near speaker: face them and stand calmly (no jittering)
+                        learner.facing = Math.atan2(speaker.y - learner.y, speaker.x - learner.x);
+                        learner.activityDe = 'Hört zu';
                     }
+                    // Within 20px: fully idle, do nothing
                 } else if (learner.followMode === 'wandering') {
                     learner.activityDe = 'Schaut sich um';
-                    // Move to wander target, pick new one when reached
-                    if (learner.distTo(learner.targetX, learner.targetY) < 10) {
-                        let wtx2 = Math.max(40, Math.min(WORLD_W - 40, learner.x + randFloat(-80, 80)));
-                        let wty2 = Math.max(40, Math.min(WORLD_H - 40, learner.y + randFloat(-60, 60)));
+                    // Move to wander target; pick new one only when reached
+                    if (learner.distTo(learner.targetX, learner.targetY) < 12) {
+                        let wtx2 = Math.max(40, Math.min(WORLD_W - 40, learner.x + randFloat(-60, 60)));
+                        let wty2 = Math.max(40, Math.min(WORLD_H - 40, learner.y + randFloat(-40, 40)));
                         setTargetWithPath(learner, wtx2, wty2);
                     }
                     learner.moveToward(learner.targetX, learner.targetY, dt);
