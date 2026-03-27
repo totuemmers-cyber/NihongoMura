@@ -2829,7 +2829,7 @@
     // Check if a position is blocked (river without bridge, or building)
     function isBlocked(x, y, targetType) {
         // River check (allow on bridge with generous corridor)
-        if (isInRiver(x) && Math.abs(y - BRIDGE.y) > BRIDGE.halfH + 25) {
+        if (isInRiver(x) && Math.abs(y - BRIDGE.y) > BRIDGE.halfH + 35) {
             return true;
         }
         // Building check
@@ -2857,8 +2857,8 @@
                 return { dx: sdx, dy: sdy };
             }
         }
-        // All angles blocked: move in original direction anyway (prevents freezing)
-        return { dx: dirX, dy: dirY };
+        // All angles blocked: stay put (don't push into walls)
+        return { dx: 0, dy: 0 };
     }
 
     // Check if a line segment from (x1,y1) to (x2,y2) intersects a rectangle
@@ -2991,7 +2991,7 @@
 
     function setTargetWithPath(character, tx, ty) {
         // Clamp target out of the river to prevent characters from targeting positions inside it
-        tx = clampOutOfRiver(tx);
+        tx = clampOutOfRiver(tx, ty);
         character.targetX = tx;
         character.targetY = ty;
         // Determine what type of building the character is going to (so we don't avoid it)
@@ -3031,7 +3031,9 @@
     }
 
     // Ensure positions don't land inside the river
-    function clampOutOfRiver(x) {
+    function clampOutOfRiver(x, y) {
+        // Allow targets on the bridge itself (within the bridge corridor)
+        if (y !== undefined && Math.abs(y - BRIDGE.y) <= BRIDGE.halfH + 25) return x;
         if (x > RIVER_LEFT && x < BRIDGE.x) return RIVER_LEFT - 10;
         if (x >= BRIDGE.x && x < RIVER_RIGHT) return RIVER_RIGHT + 10;
         return x;
@@ -9054,7 +9056,7 @@
     function clampLandAnimal(x, y) {
         // Push out of river zone (RIVER_LEFT..RIVER_RIGHT), except near bridge (wide tolerance)
         if (x > RIVER_LEFT && x < RIVER_RIGHT) {
-            if (y > BRIDGE.y - BRIDGE.halfH - 30 && y < BRIDGE.y + BRIDGE.halfH + 30) return { x, y }; // bridge corridor OK
+            if (y > BRIDGE.y - BRIDGE.halfH - 35 && y < BRIDGE.y + BRIDGE.halfH + 35) return { x, y }; // bridge corridor OK
             // Push to nearest bank
             x = (x - RIVER_LEFT < RIVER_RIGHT - x) ? RIVER_LEFT - 5 : RIVER_RIGHT + 5;
         }
@@ -11949,12 +11951,12 @@
             const allMovers = [...persons, ...npcs];
             for (const c of allMovers) {
                 // River: push toward nearest bank decisively
-                if (isInRiver(c.x) && Math.abs(c.y - BRIDGE.y) > BRIDGE.halfH + 15) {
+                if (isInRiver(c.x) && Math.abs(c.y - BRIDGE.y) > BRIDGE.halfH + 35) {
                     const pushDir = c.x < BRIDGE.x ? -1 : 1;
-                    c.x += pushDir * 2.5 * dt;
+                    c.x += pushDir * 4 * dt;
                     // Snap out if close to edge to prevent oscillation
-                    if (pushDir < 0 && c.x > RIVER_LEFT && c.x < RIVER_LEFT + 8) c.x = RIVER_LEFT - 5;
-                    if (pushDir > 0 && c.x < RIVER_RIGHT && c.x > RIVER_RIGHT - 8) c.x = RIVER_RIGHT + 5;
+                    if (pushDir < 0 && c.x > RIVER_LEFT && c.x < RIVER_LEFT + 12) c.x = RIVER_LEFT - 5;
+                    if (pushDir > 0 && c.x < RIVER_RIGHT && c.x > RIVER_RIGHT - 12) c.x = RIVER_RIGHT + 5;
                 }
             }
 
