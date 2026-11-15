@@ -8417,10 +8417,10 @@
         drawObjectAnim(ctx, obj, 'over');
 
         // Window glow at night
-        if ((gameHour >= 19 || gameHour < 6) && (obj.type === 'house' || obj.type === 'teahouse' || obj.type === 'school')) {
-            const nightA = gameHour >= 19 && gameHour < 20 ? (gameHour - 19) : gameHour >= 5 && gameHour < 6 ? (6 - gameHour) : 1;
-            const glowA = 0.25 * nightA;
-            ctx.fillStyle = `rgba(255,200,100,${glowA})`;
+        const nightF = gradeAt(gameHour + gameMinute / 60).night;
+        if (nightF > 0.05 && (obj.type === 'house' || obj.type === 'teahouse' || obj.type === 'school')) {
+            const glowA = 0.6 * nightF;
+            ctx.fillStyle = `rgba(255,196,110,${glowA})`;
             if (obj.type === 'house') {
                 // Door glow
                 ctx.fillRect(x - 4*canvasScale, y - h/4 + 6*canvasScale, 8*canvasScale, h/2 - 2*canvasScale);
@@ -8469,8 +8469,10 @@
         villager: { font: `700 8px ${FONT_UI}`,   h: 10, bg: 'rgba(43,38,34,0.55)',  border: null, fg: '#f3ead8' },
     };
     // Draws `text` on a tag centred at (cx, cy) in canvas pixels; sizes in the style are world units
+    let _tagQueue = null;     // while non-null, tags are queued instead of drawn (see game loop)
     function drawTag(ctx, text, cx, cy, st, alpha) {
         if (!text) return;
+        if (_tagQueue) { _tagQueue.push([text, cx, cy, st, alpha]); return; }
         const s = canvasScale;
         const px = parseFloat(st.font.match(/([\d.]+)px/)[1]) * s;
         ctx.save();
@@ -11326,6 +11328,17 @@
         }
     }
 
+    // Is this world point on open water (the river or a pond)?
+    function isWaterAt(x, y) {
+        if (y > HORIZON_Y) { const b = riverBanksAt(y); if (x > b.l + 1 && x < b.r - 1) return true; }
+        for (const o of worldObjects) {
+            if (o.type !== 'fish_pond' && o.type !== 'lotus_pond') continue;
+            const dx = (x - o.x) / (o.w / 2), dy = (y - o.y) / (o.h / 2);
+            if (dx * dx + dy * dy < 0.85) return true;
+        }
+        return false;
+    }
+
     function updateWeather(dt) {
         nextWeatherChange -= dt;
         if (nextWeatherChange <= 0) changeWeather();
@@ -11342,12 +11355,12 @@
         if (currentWeather === 'clear' && weatherIntensity < 0.05) { weatherParticles = []; return; }
 
         const vw = viewWorldRect();
-        const spawnRate = weatherIntensity * (currentWeather === 'rain' ? 3 : currentWeather === 'snow' ? 2 : 1);
+        const spawnRate = weatherIntensity * (currentWeather === 'rain' ? 9 : currentWeather === 'snow' ? 2 : 1);
         for (let i = 0; i < spawnRate * dt * 0.3; i++) {
-            if (weatherParticles.length > 300) break;
+            if (weatherParticles.length > (currentWeather === 'rain' ? 520 : 300)) break;
             switch(currentWeather) {
                 case 'rain':
-                    weatherParticles.push({ x: randFloat(vw.x0-20, vw.x1+20), y: randFloat(vw.y0-40, vw.y0-5), vx: randFloat(-0.5,-0.2), vy: randFloat(3,5), size: randFloat(1,2) });
+                    weatherParticles.push({ x: randFloat(vw.x0-20, vw.x1+20), y: randFloat(vw.y0-40, vw.y0-5), vx: randFloat(-0.5,-0.2), vy: randFloat(3,5), size: randFloat(1,2) , gy: randFloat(Math.max(vw.y0, HORIZON_Y) + 4, vw.y1)});
                     break;
                 case 'snow':
                     weatherParticles.push({ x: randFloat(vw.x0-20, vw.x1+20), y: randFloat(vw.y0-20, vw.y0-5), vx: randFloat(-0.3,0.3), vy: randFloat(0.3,0.8), size: randFloat(1.5,3.5), phase: randFloat(0,Math.PI*2) });
@@ -11373,8 +11386,11 @@
             if (p.life !== undefined && p.life <= 0) return false;
             if (p.x < vw.x0-30 || p.x > vw.x1+30 || p.y < vw.y0-40) return false;
             // Rain splash on ground
-            if (currentWeather === 'rain' && p.y >= vw.y1 - 10 && rainSplashes.length < 30) {
-                rainSplashes.push({ x: p.x, y: vw.y1 - 5 + randFloat(-3, 3), life: 10, maxLife: 10 });
+            if (currentWeather === 'rain' && p.gy !== undefined && p.y >= p.gy) {
+                if (rainSplashes.length < 90) {
+                    const water = isWaterAt(p.x, p.gy);
+                    rainSplashes.push({ x: p.x, y: p.gy, water, life: water ? 34 : 12, maxLife: water ? 34 : 12 });
+                }
                 return false;
             }
             return p.y <= vw.y1 + 20;
@@ -11391,14 +11407,15 @@
         ctx.globalAlpha = weatherIntensity;
         switch(currentWeather) {
             case 'rain':
-                ctx.strokeStyle = 'rgba(150,180,220,0.6)';
-                ctx.lineWidth = canvasScale * 0.8;
+                ctx.strokeStyle = 'rgba(196,214,236,0.55)';
+                ctx.lineWidth = canvasScale * 0.75;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
                 for (const p of weatherParticles) {
-                    ctx.beginPath();
                     ctx.moveTo(p.x*canvasScale, p.y*canvasScale);
-                    ctx.lineTo((p.x+p.vx*2)*canvasScale, (p.y+p.vy*2)*canvasScale);
-                    ctx.stroke();
+                    ctx.lineTo((p.x+p.vx*3.2)*canvasScale, (p.y+p.vy*3.2)*canvasScale);
                 }
+                ctx.stroke();
                 break;
             case 'snow':
                 ctx.fillStyle = '#fff';
@@ -11432,153 +11449,286 @@
                 break;
         }
 
-        // Rain splashes on ground
+        // Rain landing: expanding rings on water, little crowns of spray on the ground
         if (rainSplashes.length > 0) {
-            ctx.strokeStyle = 'rgba(150,180,220,0.5)';
-            ctx.lineWidth = canvasScale * 0.5;
+            const s = canvasScale;
+            ctx.lineCap = 'round';
             for (const sp of rainSplashes) {
-                const progress = 1 - sp.life / sp.maxLife;
-                const r = (2 + progress * 6) * canvasScale;
-                ctx.globalAlpha = weatherIntensity * (1 - progress) * 0.5;
-                ctx.beginPath();
-                ctx.arc(sp.x * canvasScale, sp.y * canvasScale, r, 0, Math.PI * 2);
-                ctx.stroke();
+                const k = 1 - sp.life / sp.maxLife;
+                if (sp.water) {
+                    ctx.strokeStyle = `rgba(225,238,250,${(1 - k) * 0.6 * weatherIntensity})`;
+                    ctx.lineWidth = 0.6 * s;
+                    ctx.beginPath();
+                    ctx.ellipse(sp.x * s, sp.y * s, (1.2 + k * 7) * s, (0.5 + k * 3) * s, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else {
+                    ctx.strokeStyle = `rgba(210,225,240,${(1 - k) * 0.7 * weatherIntensity})`;
+                    ctx.lineWidth = 0.55 * s;
+                    ctx.beginPath();
+                    for (const ang of [-2.3, -1.57, -0.84]) {
+                        const r0 = k * 1.2, r1 = 1 + k * 3;
+                        ctx.moveTo((sp.x + Math.cos(ang) * r0) * s, (sp.y + Math.sin(ang) * r0 * 0.7) * s);
+                        ctx.lineTo((sp.x + Math.cos(ang) * r1) * s, (sp.y + Math.sin(ang) * r1 * 0.7) * s);
+                    }
+                    ctx.stroke();
+                }
             }
         }
 
         ctx.restore();
     }
 
-    function drawDayNightOverlay(ctx) {
-        // Runs under the world transform: cover the visible area, wherever the camera is
-        const vr = viewPxRect();
-        const cw = vr.w, ch = vr.h;
-        const s = canvasScale;
+    // ============================================================
+    //  LIGHT & ATMOSPHERE — time-of-day colour grade, night light map, sky, mist
+    // ============================================================
+    // Multiply colour through the day (white = untouched) and how "night" it is (drives lamps).
+    const GRADE_KEYS = [
+        [0.0,  [62, 72, 122],  1.0],
+        [4.3,  [62, 72, 122],  1.0],
+        [5.2,  [122, 120, 162], 0.6],   // cool dawn
+        [6.2,  [238, 198, 172], 0.12],  // warm sunrise
+        [7.3,  [255, 238, 216], 0],
+        [8.6,  [255, 255, 255], 0],     // neutral day
+        [16.0, [255, 255, 255], 0],
+        [17.2, [255, 236, 202], 0],     // golden hour
+        [18.2, [242, 192, 168], 0.15],  // rose dusk
+        [19.2, [128, 118, 166], 0.6],   // blue hour
+        [20.3, [70, 78, 128],  0.95],
+        [24.0, [62, 72, 122],  1.0],
+    ];
+    function gradeAt(t) {
+        let i = 0;
+        while (i < GRADE_KEYS.length - 2 && t >= GRADE_KEYS[i + 1][0]) i++;
+        const [t0, c0, n0] = GRADE_KEYS[i], [t1, c1, n1] = GRADE_KEYS[i + 1];
+        let k = (t - t0) / ((t1 - t0) || 1);
+        k = Math.max(0, Math.min(1, k));
+        k = k * k * (3 - 2 * k);                     // smoothstep
+        let col = c0.map((v, j) => v + (c1[j] - v) * k);
+        let night = n0 + (n1 - n0) * k;
+        // Moonlight: a full moon lifts the night a little, a new moon deepens it
+        if (night > 0) {
+            const phase = gameDay % 8, moonLight = 1 - Math.abs(phase - 4) / 4;   // 0 new … 1 full
+            const lift = (moonLight - 0.5) * 22 * night;
+            col = col.map((v, j) => v + lift * (j === 2 ? 0.8 : 1));
+        }
+        // Overcast skies flatten and cool the light
+        const overcast = currentWeather === 'rain' || currentWeather === 'fog' ? weatherIntensity * 0.42
+                       : currentWeather === 'snow' ? weatherIntensity * 0.2 : 0;
+        if (overcast > 0) col = col.map((v, j) => v + ([168, 174, 188][j] * (v / 255) - v) * overcast);
+        return { col: col.map(v => Math.max(0, Math.min(255, Math.round(v)))), night };
+    }
 
-        // Night overlay — gradient: darker sky, lighter ground (village glow)
-        if (gameHour >= 20 || gameHour < 5) {
-            let alpha = 0.45;
-            if (gameHour >= 20 && gameHour < 21) alpha = 0.45 * (gameHour - 20);
-            if (gameHour >= 4 && gameHour < 5) alpha = 0.45 * (5 - gameHour);
-            if (alpha > 0.01) {
-                ctx.save();
-                const grad = ctx.createLinearGradient(0, vr.y, 0, vr.y + ch);
-                grad.addColorStop(0, `rgba(10,10,50,${alpha})`);
-                grad.addColorStop(0.6, `rgba(20,20,60,${alpha * 0.9})`);
-                grad.addColorStop(1, `rgba(30,25,50,${alpha * 0.7})`);
-                ctx.fillStyle = grad;
-                ctx.fillRect(vr.x, vr.y, cw, ch);
-                ctx.restore();
+    // Light sources (world units); flicker for flames
+    function nightLights() {
+        const L = [];
+        for (const o of worldObjects) {
+            switch (o.type) {
+                case 'lantern_post': L.push({ x: o.x + 8, y: o.y - o.h / 3 + 4, r: 62, i: 0.95, c: [255, 196, 130], flame: true }); break;
+                case 'kitchen':      L.push({ x: o.x, y: o.y + 6, r: 66, i: 1.0, c: [255, 168, 96], flame: true }); break;
+                case 'teahouse':     L.push({ x: o.x, y: o.y, r: 80, i: 0.85, c: [255, 206, 140] }); break;
+                case 'house':        L.push({ x: o.x, y: o.y + 4, r: 52, i: 0.62, c: [255, 200, 130] }); break;
+                case 'school':       L.push({ x: o.x, y: o.y - 2, r: 46, i: 0.5, c: [255, 210, 150] }); break;
+                case 'shrine':       L.push({ x: o.x, y: o.y, r: 44, i: 0.55, c: [255, 184, 110], flame: true }); break;
             }
         }
+        for (const d of campDecorations) if (d.id === 'lantern_circle') L.push({ x: d.x, y: d.y, r: 56, i: 0.8, c: [255, 170, 110], flame: true });
+        return L;
+    }
 
-        // Sunrise — warm gradient near horizon
-        if (gameHour >= 5 && gameHour < 7) {
-            const alpha = 0.18 * (1 - (gameHour - 5) / 2);
-            if (alpha > 0.01) {
-                ctx.save();
-                const grad = ctx.createLinearGradient(0, vr.y, 0, vr.y + ch);
-                grad.addColorStop(0, `rgba(220,160,80,${alpha * 0.3})`);
-                grad.addColorStop(0.4, `rgba(240,130,60,${alpha})`);
-                grad.addColorStop(1, `rgba(200,100,40,${alpha * 0.5})`);
-                ctx.fillStyle = grad;
-                ctx.fillRect(vr.x, vr.y, cw, ch);
-                ctx.restore();
-            }
+    const _lightMap = { canvas: null, ctx: null };
+    function drawGrading(ctx) {
+        const g = gradeAt(gameHour + gameMinute / 60);
+        const [r, gg, b] = g.col;
+        if (r > 252 && gg > 252 && b > 252 && g.night < 0.01) return;
+        const vr = viewPxRect(), s = canvasScale;
+        ctx.save();
+        ctx.globalCompositeOperation = 'multiply';
+        if (g.night < 0.02) {
+            ctx.fillStyle = `rgb(${r},${gg},${b})`;
+            ctx.fillRect(vr.x, vr.y, vr.w, vr.h);
+            ctx.restore();
+            return;
         }
-
-        // Sunset — warm gradient, stronger near horizon
-        if (gameHour >= 18 && gameHour < 20) {
-            const alpha = 0.22 * ((gameHour - 18) / 2);
-            if (alpha > 0.01) {
-                ctx.save();
-                const grad = ctx.createLinearGradient(0, vr.y, 0, vr.y + ch);
-                grad.addColorStop(0, `rgba(180,60,30,${alpha * 0.4})`);
-                grad.addColorStop(0.3, `rgba(220,90,30,${alpha})`);
-                grad.addColorStop(0.7, `rgba(200,70,20,${alpha * 0.8})`);
-                grad.addColorStop(1, `rgba(180,80,40,${alpha * 0.5})`);
-                ctx.fillStyle = grad;
-                ctx.fillRect(vr.x, vr.y, cw, ch);
-                ctx.restore();
-            }
+        // Light map at quarter resolution: the night colour with warm pools punched in by the lamps
+        const q = 4, lw = Math.ceil(vr.w / q), lh = Math.ceil(vr.h / q);
+        if (!_lightMap.canvas) { _lightMap.canvas = document.createElement('canvas'); _lightMap.ctx = _lightMap.canvas.getContext('2d'); }
+        const lc = _lightMap.ctx;
+        if (_lightMap.canvas.width !== lw || _lightMap.canvas.height !== lh) { _lightMap.canvas.width = lw; _lightMap.canvas.height = lh; }
+        lc.globalCompositeOperation = 'source-over';
+        lc.fillStyle = `rgb(${r},${gg},${b})`;
+        lc.fillRect(0, 0, lw, lh);
+        lc.globalCompositeOperation = 'lighter';
+        const lights = nightLights();
+        for (let n = 0; n < lights.length; n++) {
+            const L = lights[n];
+            const flick = L.flame ? 0.9 + Math.sin(gameTick * 0.21 + n * 1.7) * 0.06 + Math.sin(gameTick * 0.53 + n) * 0.04 : 1;
+            const cx = (L.x * s - vr.x) / q, cy = (L.y * s - vr.y) / q, rad = L.r * s * flick / q;
+            if (cx < -rad || cy < -rad || cx > lw + rad || cy > lh + rad) continue;
+            const a = L.i * g.night * flick;
+            const grd = lc.createRadialGradient(cx, cy, 0, cx, cy, rad);
+            grd.addColorStop(0, `rgba(${L.c[0]},${L.c[1]},${L.c[2]},${a})`);
+            grd.addColorStop(0.45, `rgba(${L.c[0]},${L.c[1] * 0.9 | 0},${L.c[2] * 0.75 | 0},${a * 0.45})`);
+            grd.addColorStop(1, 'rgba(0,0,0,0)');
+            lc.fillStyle = grd;
+            lc.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
         }
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(_lightMap.canvas, 0, 0, lw, lh, vr.x, vr.y, lw * q, lh * q);
+        // A soft bloom right at each flame / window
+        ctx.globalCompositeOperation = 'lighter';
+        for (let n = 0; n < lights.length; n++) {
+            const L = lights[n];
+            const flick = L.flame ? 0.85 + Math.sin(gameTick * 0.27 + n * 2.3) * 0.15 : 1;
+            const rad = (L.flame ? 16 : 22) * s;
+            const grd = ctx.createRadialGradient(L.x * s, L.y * s, 0, L.x * s, L.y * s, rad);
+            grd.addColorStop(0, `rgba(${L.c[0]},${L.c[1] * 0.85 | 0},${L.c[2] * 0.6 | 0},${0.22 * g.night * L.i * flick})`);
+            grd.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(L.x * s - rad, L.y * s - rad, rad * 2, rad * 2);
+        }
+        ctx.restore();
+    }
 
-        // Moon + Stars at night
-        if (gameHour >= 21 || gameHour < 4) {
-            const nightAlpha = gameHour >= 21 ? Math.min(1, (gameHour - 21) / 2) : gameHour < 3 ? 1 : (4 - gameHour);
-            ctx.save();
-
-            // Moon — simple lunar cycle based on game day
-            const moonPhase = gameDay % 8; // 0=new, 2=quarter, 4=full, 6=three-quarter
-            const moonX = 140 * s;
-            const moonY = 40 * s;
-            const moonR = 8 * s;
-            if (moonPhase !== 0) { // skip new moon
-                ctx.globalAlpha = nightAlpha * 0.7;
-                // Moon glow
-                const moonGrad = ctx.createRadialGradient(moonX, moonY, moonR * 0.5, moonX, moonY, moonR * 3);
-                moonGrad.addColorStop(0, 'rgba(200,210,230,0.12)');
-                moonGrad.addColorStop(1, 'rgba(200,210,230,0)');
-                ctx.fillStyle = moonGrad;
-                ctx.fillRect(moonX - moonR * 3, moonY - moonR * 3, moonR * 6, moonR * 6);
-                // Moon disc
-                ctx.globalAlpha = nightAlpha * 0.85;
-                ctx.fillStyle = '#e8e4d8';
-                ctx.beginPath();
-                ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
-                ctx.fill();
-                // Crescent shadow (for non-full phases)
-                if (moonPhase !== 4) {
-                    const shadowOff = (moonPhase < 4 ? 1 : -1) * moonR * (1 - Math.abs(moonPhase - 4) / 4) * 1.5;
-                    ctx.fillStyle = 'rgba(10,10,50,0.85)';
-                    ctx.beginPath();
-                    ctx.arc(moonX + shadowOff, moonY, moonR * 0.92, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-
-            // Milky Way band (very faint)
-            ctx.globalAlpha = nightAlpha * 0.04;
-            ctx.fillStyle = '#c0c8e0';
-            ctx.save();
-            ctx.translate(WORLD_W * s * 0.5, 20 * s);
-            ctx.rotate(-0.3);
+    // Stars are scattered over a fixed sky area; only those above the horizon are ever drawn
+    const SKY_STARS = (() => {
+        const rnd = mulberry32(4242), out = [];
+        for (let i = 0; i < 170; i++) out.push([-300 + rnd() * 1600, -160 + rnd() * (HORIZON_Y - 12 + 160), rnd(), rnd() < 0.06]);
+        return out;
+    })();
+    function drawSky(ctx) {
+        const g = gradeAt(gameHour + gameMinute / 60);
+        if (g.night < 0.25) return;
+        const vis = Math.min(1, (g.night - 0.25) / 0.5);
+        const s = canvasScale, vw = viewWorldRect();
+        ctx.save();
+        // Clip to the sky above the hills
+        ctx.beginPath();
+        ctx.rect(vw.x0 * s, vw.y0 * s, (vw.x1 - vw.x0) * s, (HORIZON_Y - 10 - vw.y0) * s);
+        ctx.clip();
+        // Milky Way haze
+        ctx.globalAlpha = vis * 0.07;
+        ctx.fillStyle = '#c8d0ec';
+        ctx.beginPath();
+        ctx.ellipse(560 * s, -10 * s, 620 * s, 26 * s, -0.12, 0, Math.PI * 2);
+        ctx.fill();
+        // Stars
+        ctx.fillStyle = '#fffaf0';
+        for (let i = 0; i < SKY_STARS.length; i++) {
+            const [sx, sy, m, bright] = SKY_STARS[i];
+            if (sx < vw.x0 || sx > vw.x1 || sy < vw.y0) continue;
+            const tw = Math.sin(gameTick * 0.03 + i * 1.37) * 0.5 + 0.5;
+            ctx.globalAlpha = vis * (bright ? 0.9 : 0.35 + m * 0.35) * (0.55 + tw * 0.45);
             ctx.beginPath();
-            ctx.ellipse(0, 0, cw * 0.45, 20 * s, 0, 0, Math.PI * 2);
+            ctx.arc(sx * s, sy * s, (bright ? 1.4 : 0.6 + m * 0.5) * s, 0, Math.PI * 2);
             ctx.fill();
-            ctx.restore();
-
-            // Stars — 40 positions
-            ctx.fillStyle = '#fff';
-            const stars = [
-                [50,20],[180,45],[340,15],[500,30],[650,50],[780,25],[120,60],[400,55],
-                [600,10],[820,45],[70,35],[250,8],[460,48],[580,22],[720,55],[850,12],
-                [160,52],[380,38],[530,5],[690,42],[30,50],[910,18],[280,28],[440,12],
-                [560,55],[740,8],[100,42],[320,52],[480,35],[620,58],[800,38],[950,30],
-                [200,15],[360,45],[510,20],[670,32],[760,52],[880,8],[140,30],[420,8]
-            ];
-            for (let i = 0; i < stars.length; i++) {
-                const [sx, sy] = stars[i];
-                const twinkle = Math.sin(gameTick * 0.03 + sx * 0.1 + i * 0.7) * 0.5 + 0.5;
-                // A few brighter "planet" stars
-                const isBright = i === 3 || i === 15 || i === 28;
-                const brightness = isBright ? 0.7 : 0.4;
-                ctx.globalAlpha = nightAlpha * brightness * twinkle;
-                const r = (isBright ? 1.5 + twinkle * 0.5 : 0.8 + twinkle * 0.7) * s;
+        }
+        // Moon with phase, a halo, and a clean crescent cut
+        const phase = gameDay % 8;
+        if (phase !== 0) {
+            const mx = 170 * s, my = 14 * s, mr = 7 * s;
+            const halo = ctx.createRadialGradient(mx, my, mr, mx, my, mr * 5);
+            halo.addColorStop(0, `rgba(230,232,250,${0.22 * vis})`);
+            halo.addColorStop(1, 'rgba(230,232,250,0)');
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = halo;
+            ctx.fillRect(mx - mr * 5, my - mr * 5, mr * 10, mr * 10);
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(mx, my, mr, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.globalAlpha = vis;
+            ctx.fillStyle = '#f4f0dc';
+            ctx.fillRect(mx - mr, my - mr, mr * 2, mr * 2);
+            if (phase !== 4) {
+                const off = (phase < 4 ? -1 : 1) * mr * (2 - Math.abs(phase - 4) / 2) * 0.9;
+                ctx.fillStyle = 'rgba(28,34,70,0.92)';
                 ctx.beginPath();
-                ctx.arc(sx * s, sy * s, r, 0, Math.PI * 2);
+                ctx.arc(mx + off, my - mr * 0.1, mr * 1.02, 0, Math.PI * 2);
                 ctx.fill();
             }
             ctx.restore();
         }
+        ctx.restore();
+    }
 
-        // Rain darkening
-        if (currentWeather === 'rain' && weatherIntensity > 0.1) {
-            ctx.save();
-            ctx.fillStyle = `rgba(30,40,50,${weatherIntensity * 0.15})`;
-            ctx.fillRect(vr.x, vr.y, cw, ch);
-            ctx.restore();
+    // Moonlight breaking on the river: shimmering horizontal glints in a loose column
+    function drawRiverMoonlight(ctx) {
+        const g = gradeAt(gameHour + gameMinute / 60);
+        const phase = gameDay % 8;
+        if (g.night < 0.3 || phase === 0) return;
+        const vis = Math.min(1, (g.night - 0.3) / 0.4) * (0.45 + 0.55 * (1 - Math.abs(phase - 4) / 4));
+        const s = canvasScale;
+        ctx.save();
+        ctx.scale(s, s);
+        if (_riverAnimPath) ctx.clip(_riverAnimPath);
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 26; i++) {
+            const y = 70 + i * 9 + Math.sin(i * 2.7) * 3;
+            const b = riverBanksAt(y);
+            const mid = (b.l + b.r) / 2 + Math.sin(i * 1.9 + gameTick * 0.01) * 6;
+            const spread = 1 - i / 30;
+            const len = (5 + (i * 7) % 9) * spread;
+            const a = vis * (0.25 + 0.55 * (Math.sin(gameTick * 0.09 + i * 1.3) * 0.5 + 0.5)) * spread;
+            ctx.strokeStyle = `rgba(255,246,214,${a})`;
+            ctx.lineWidth = 1.1;
+            ctx.beginPath();
+            ctx.moveTo(mid - len, y);
+            ctx.lineTo(mid + len, y);
+            ctx.stroke();
         }
+        ctx.restore();
+    }
+
+    // Mist: soft horizontal bands that drift; thick at dawn, gone by mid-morning, faint at dusk, heavy in fog
+    let _mistTex = null;
+    function _getMistTexture() {
+        if (_mistTex) return _mistTex;
+        const c = document.createElement('canvas');
+        c.width = 512; c.height = 96;
+        const g = c.getContext('2d');
+        const rnd = mulberry32(99);
+        for (let i = 0; i < 46; i++) {
+            const x = rnd() * 512, y = 34 + rnd() * 28, rx = 26 + rnd() * 60, ry = 14 + rnd() * 16;
+            if (rnd() < 0.35) continue;   // leave gaps so the band breaks up
+            for (const dx of [-512, 0, 512]) {          // wrap so the band tiles seamlessly
+                const grd = g.createRadialGradient(x + dx, y, 0, x + dx, y, rx);
+                grd.addColorStop(0, 'rgba(255,255,255,0.32)');
+                grd.addColorStop(1, 'rgba(255,255,255,0)');
+                g.fillStyle = grd;
+                g.save();
+                g.translate(x + dx, y); g.scale(1, ry / rx); g.translate(-(x + dx), -y);
+                g.fillRect(x + dx - rx, y - rx, rx * 2, rx * 2);
+                g.restore();
+            }
+        }
+        _mistTex = c;
+        return c;
+    }
+    function mistAmount() {
+        const t = gameHour + gameMinute / 60;
+        const dawn = t >= 3.5 && t < 9.5 ? (t < 5 ? (t - 3.5) / 1.5 : t < 7 ? 1 : 1 - (t - 7) / 2.5) : 0;
+        const dusk = t >= 19 && t < 23.5 ? 0.35 * Math.min(1, (t - 19) / 1.5, (23.5 - t) / 1.5) : 0;
+        const fog = currentWeather === 'fog' ? weatherIntensity * 0.9 : 0;
+        return Math.min(1, Math.max(dawn, dusk) + fog);
+    }
+    function drawMist(ctx) {
+        const amt = mistAmount();
+        if (amt < 0.02) return;
+        // Drawn before the colour grade, so the mist takes on the light (warm at sunrise, blue at night)
+        const tex = _getMistTexture(), s = canvasScale, vw = viewWorldRect();
+        const bands = [ // world y, height, drift speed, opacity, tile offset
+            [HORIZON_Y + 26, 64, 0.05, 0.75, 0],
+            [300, 150, -0.03, 0.42, 190],
+            [540, 170, 0.022, 0.5, 377],
+        ];
+        ctx.save();
+        for (const [by, bh, sp, op, off] of bands) {
+            const tileW = 512 * (bh / 96) * 1.6;
+            let x = vw.x0 - ((gameTick * sp + off) % tileW + tileW) % tileW;
+            ctx.globalAlpha = amt * op;
+            for (; x < vw.x1; x += tileW) ctx.drawImage(tex, x * s, (by - bh / 2) * s, tileW * s, bh * s);
+        }
+        ctx.restore();
     }
 
     // ============================================================
@@ -11629,20 +11779,6 @@
                     rot: randFloat(0, Math.PI*2), rotSpeed: randFloat(-0.04, 0.04),
                     size: randFloat(3, 5), color: randEl(['#c86830','#d89040','#b84020','#c8a030','#a06028'])
                 });
-            }
-        }
-
-        // --- Morning mist wisps (dawn) ---
-        if (isDawn && atmosParticles.filter(p => p.kind === 'mist').length < 12) {
-            if (Math.random() < 0.05 * dt) {
-                atmosParticles.push({
-                    kind: 'mist', x: randFloat(0, WORLD_W), y: randFloat(WORLD_H * 0.5, WORLD_H * 0.85),
-                    vx: randFloat(-0.08, 0.08), size: randFloat(50, 100),
-                    alpha: randFloat(0.04, 0.10), phase: randFloat(0, Math.PI*2),
-                    life: randFloat(200, 400), maxLife: 0
-                });
-                const p = atmosParticles[atmosParticles.length-1];
-                p.maxLife = p.life;
             }
         }
 
@@ -11702,8 +11838,11 @@
         });
     }
 
-    function drawAtmosphericEffects(ctx) {
+    // layer 'ambient' = petals & leaves (drawn before the colour grade, so night darkens them);
+    // layer 'glow' = fireflies & embers (drawn after it, so they shine in the dark)
+    function drawAtmosphericEffects(ctx, layer) {
         const s = canvasScale;
+        const glowLayer = layer === 'glow';
         const season = getSeason();
         const isNight = gameHour >= 20 || gameHour < 5;
         const isDusk  = gameHour >= 18 && gameHour < 20;
@@ -11712,7 +11851,7 @@
 
         // --- Fireflies ---
         for (const p of atmosParticles) {
-            if (p.kind !== 'firefly') continue;
+            if (p.kind !== 'firefly' || !glowLayer) continue;
             const glow = Math.sin(p.phase * 3.5) * 0.5 + 0.5; // pulsing
             const fadeIn = Math.min(1, (p.maxLife - p.life) / 60);
             const fadeOut = Math.min(1, p.life / 60);
@@ -11735,7 +11874,7 @@
 
         // --- Cherry blossoms ---
         for (const p of atmosParticles) {
-            if (p.kind !== 'blossom') continue;
+            if (p.kind !== 'blossom' || glowLayer) continue;
             ctx.save();
             ctx.translate(p.x*s, p.y*s);
             ctx.rotate(p.rot);
@@ -11755,7 +11894,7 @@
 
         // --- Autumn leaves ---
         for (const p of atmosParticles) {
-            if (p.kind !== 'leaf') continue;
+            if (p.kind !== 'leaf' || glowLayer) continue;
             ctx.save();
             ctx.translate(p.x*s, p.y*s);
             ctx.rotate(p.rot);
@@ -11777,23 +11916,9 @@
             ctx.restore();
         }
 
-        // --- Morning mist ---
-        for (const p of atmosParticles) {
-            if (p.kind !== 'mist') continue;
-            const fadeIn = Math.min(1, (p.maxLife - p.life) / 80);
-            const fadeOut = Math.min(1, p.life / 80);
-            const a = p.alpha * fadeIn * fadeOut;
-            ctx.globalAlpha = a;
-            ctx.fillStyle = '#d8d0c0';
-            ctx.beginPath();
-            const wobble = Math.sin(p.phase) * p.size * 0.15;
-            ctx.ellipse((p.x + wobble)*s, p.y*s, p.size*s, p.size*0.35*s, 0, 0, Math.PI*2);
-            ctx.fill();
-        }
-
         // --- Dusk embers ---
         for (const p of atmosParticles) {
-            if (p.kind !== 'ember') continue;
+            if (p.kind !== 'ember' || !glowLayer) continue;
             const fadeOut = Math.min(1, p.life / 40);
             const a = p.alpha * fadeOut;
             ctx.globalAlpha = a;
@@ -11805,44 +11930,6 @@
 
         ctx.restore();
 
-        // --- Enhanced light sources at night / dusk ---
-        if (isNight || isDusk) {
-            const nightFactor = isNight ? 1.0 : (gameHour - 18) / 2;
-            ctx.save();
-            for (const obj of worldObjects) {
-                let lx, ly, r, col;
-                if (obj.type === 'lantern_post') {
-                    lx = (obj.x + 8) * s;
-                    ly = (obj.y - obj.h/3 + 4) * s;
-                    r = 30 * s * nightFactor;
-                    col = [255, 120, 40];
-                } else if (obj.type === 'kitchen') {
-                    lx = obj.x * s;
-                    ly = (obj.y - 5) * s;
-                    r = 40 * s * nightFactor;
-                    col = [255, 140, 50];
-                } else if (obj.type === 'teahouse') {
-                    lx = obj.x * s;
-                    ly = (obj.y - 8) * s;
-                    r = 35 * s * nightFactor;
-                    col = [255, 160, 80];
-                } else if (obj.type === 'shrine') {
-                    lx = obj.x * s;
-                    ly = (obj.y - 5) * s;
-                    r = 25 * s * nightFactor;
-                    col = [255, 100, 30];
-                } else {
-                    continue;
-                }
-                const grad = ctx.createRadialGradient(lx, ly, 0, lx, ly, r);
-                grad.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.18 * nightFactor})`);
-                grad.addColorStop(0.5, `rgba(${col[0]},${col[1]-30},${col[2]-10},${0.06 * nightFactor})`);
-                grad.addColorStop(1, `rgba(${col[0]},${col[1]-30},${col[2]-20},0)`);
-                ctx.fillStyle = grad;
-                ctx.fillRect(lx - r, ly - r, r*2, r*2);
-            }
-            ctx.restore();
-        }
     }
 
     function getWeatherLabel() {
@@ -13346,6 +13433,7 @@
         for (const npc of npcs) drawList.push({ sortY: npc.y + CHAR_FOOT_Y, type: 'char', ref: npc });
         for (const p of persons) drawList.push({ sortY: p.y + CHAR_FOOT_Y, type: 'char', ref: p });
         drawList.sort((a, b) => a.sortY - b.sortY);
+        _tagQueue = [];                       // tags are collected and drawn after the lighting
         for (const item of drawList) {
             switch (item.type) {
                 case 'obj': drawObject(ctx, item.ref); break;
@@ -13355,11 +13443,9 @@
                 case 'char': drawPerson(ctx, item.ref); break;
             }
         }
-        drawFreezeIndicator(ctx, persons[1]);
-        for (const f of learnFlashes) f.draw(ctx);
+        const deferredTags = _tagQueue;
+        _tagQueue = null;
         drawMicroEventEffects(ctx);
-        for (const b of npcBubbles) b.draw(ctx);
-        for (const b of speechBubbles) b.draw(ctx);
 
         // Draw hearing range circle around speaker (subtle)
         ctx.beginPath();
@@ -13370,17 +13456,24 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Day/night overlay
-        drawDayNightOverlay(ctx);
-
-        // Atmospheric effects (under weather)
-        drawAtmosphericEffects(ctx);
-
-        // Weather effects (on top of scene)
+        // Atmosphere that should take on the light: mist, rain, snow
+        drawAtmosphericEffects(ctx, 'ambient');
+        drawMist(ctx);
         drawWeatherEffects(ctx);
 
-        // Festival effects
+        // Time-of-day colour grade + night light map, then what shines through it
+        drawGrading(ctx);
+        drawSky(ctx);
+        drawRiverMoonlight(ctx);
+        drawAtmosphericEffects(ctx, 'glow');
         drawFestivalEffects(ctx);
+
+        // Readable UI over the world: tags, learn flashes, speech
+        for (const t of deferredTags) drawTag(ctx, t[0], t[1], t[2], t[3], t[4]);
+        drawFreezeIndicator(ctx, persons[1]);
+        for (const f of learnFlashes) f.draw(ctx);
+        for (const b of npcBubbles) b.draw(ctx);
+        for (const b of speechBubbles) b.draw(ctx);
 
         // --- Screen layer ---
         setScreenTransform(ctx);
