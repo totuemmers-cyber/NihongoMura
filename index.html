@@ -122,9 +122,6 @@
         .seg button.active { background: var(--ink-4); color: var(--washi); box-shadow: inset 0 -2px 0 var(--kin); }
         .icon-btn { border: 1px solid var(--line); background: var(--ink-2); padding: 0; width: 40px; }
         #btn-sound .snd-off { display: none; }
-        #btn-fullscreen .fs-exit { display: none; }
-        #btn-fullscreen.on .fs-enter { display: none; }
-        #btn-fullscreen.on .fs-exit { display: inline; }
         #btn-sound.off .snd-on { display: none; }
         #btn-sound.off .snd-off { display: inline; }
         #btn-sound.off { color: var(--text-faint); }
@@ -395,8 +392,8 @@
             white-space: pre; pointer-events: none;
         }
 
-        /* ---------- Narrow / portrait / landscape tablets: map full screen, panel slides over it ---------- */
-        @media (max-width: 800px), (orientation: portrait), (pointer: coarse) and (orientation: landscape) and (max-width: 1400px) {
+        /* ---------- Narrow / portrait: map full screen, panel as a bottom sheet ---------- */
+        @media (max-width: 800px), (orientation: portrait) {
             #panel {
                 position: fixed;
                 left: 0; right: 0; bottom: 0;
@@ -446,22 +443,6 @@
             #panel-toggle svg.i { width: 22px; height: 22px; }
             #panel-toggle[aria-expanded="true"] { transform: scale(0.6); opacity: 0; pointer-events: none; }
         }
-        /* Landscape tablets (iPad): the overview is a drawer from the right instead of a bottom sheet */
-        @media (pointer: coarse) and (orientation: landscape) and (min-width: 801px) and (max-width: 1400px) {
-            #panel {
-                top: 0; left: auto; right: 0; bottom: 0;
-                width: min(360px, 42vw);
-                height: auto;
-                padding: env(safe-area-inset-top) calc(10px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) 10px;
-                border-top: none;
-                border-left: 1px solid var(--line-strong);
-                border-radius: 0;
-                box-shadow: -12px 0 32px rgba(0,0,0,0.45);
-                transform: translateX(105%);
-            }
-            .sheet-bar::before { display: none; }
-            .sheet-bar svg.i { transform: rotate(-90deg); }
-        }
         @media (max-width: 560px) {
             #header { padding: 6px 10px; min-height: 48px; gap: 8px; }
             .brand-en { display: none; }
@@ -502,7 +483,6 @@
             </div>
             <button class="icon-btn" id="btn-sound" onclick="toggleSound()" aria-label="Ton an/aus" aria-pressed="true" title="Ton (M)"><svg class="i snd-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6"/><path d="M18.2 6.5a8 8 0 0 1 0 11"/></svg><svg class="i snd-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button>
             <button class="icon-btn" id="btn-save" onclick="manualSave()" aria-label="Speichern" title="Speichern"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9.5L19 7.5V19a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8.5 4v4.5h6V4"/><rect x="8" y="13" width="8" height="5" rx="0.8"/></svg></button>
-            <button class="icon-btn" id="btn-fullscreen" onclick="toggleFullscreen()" aria-label="Vollbild" aria-pressed="false" title="Vollbild (F)" hidden><svg class="i fs-enter" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15"/></svg><svg class="i fs-exit" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5V9H4.5M19.5 9H15V4.5M15 19.5V15h4.5M4.5 15H9v4.5"/></svg></button>
             <button class="icon-btn" id="btn-new" onclick="newGame()" aria-label="Neues Spiel" title="Neues Spiel"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg></button>
         </div>
     </header>
@@ -601,39 +581,6 @@
     // Start audio on first user interaction (autoplay policy)
     ['click','touchstart','keydown'].forEach(evt => {
         document.addEventListener(evt, resumeAudio, { once: true, passive: true });
-    });
-
-    // ---- Fullscreen (iPad Safari needs the webkit-prefixed API; iPhone Safari has none, so the button stays hidden)
-    const _fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-    function fullscreenSupported() {
-        const d = document.documentElement;
-        return !!(d.requestFullscreen || d.webkitRequestFullscreen) && (document.fullscreenEnabled !== false || document.webkitFullscreenEnabled);
-    }
-    function toggleFullscreen() {
-        const d = document.documentElement;
-        try {
-            if (_fsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-            else {
-                const r = (d.requestFullscreen || d.webkitRequestFullscreen).call(d, { navigationUI: 'hide' });
-                if (r && r.catch) r.catch(() => {});
-            }
-        } catch (e) { /* not allowed here (e.g. inside a frame) */ }
-    }
-    function syncFullscreenButton() {
-        const btn = document.getElementById('btn-fullscreen');
-        if (!btn) return;
-        const on = !!_fsEl();
-        btn.classList.toggle('on', on);
-        btn.setAttribute('aria-pressed', String(on));
-        btn.setAttribute('aria-label', on ? 'Vollbild beenden' : 'Vollbild');
-    }
-    document.addEventListener('fullscreenchange', syncFullscreenButton);
-    document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
-    document.addEventListener('DOMContentLoaded', () => {
-        const btn = document.getElementById('btn-fullscreen');
-        // Already running as an installed home-screen app: the whole screen is ours
-        const standalone = window.navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches);
-        if (btn && fullscreenSupported() && !standalone) btn.hidden = false;
     });
 
     function toggleSound() {
@@ -7101,13 +7048,15 @@
     function configureCamera(w, h) {
         camera.viewW = w;
         camera.viewH = h;
-        // The village always fills the whole view (no empty margins on any screen shape).
-        // When the screen's shape differs from the world's, part of it is off-screen:
-        // the camera follows the characters and can be dragged.
         const contain = Math.min(w / WORLD_W, h / WORLD_H);
         const cover = Math.max(w / WORLD_W, h / WORLD_H);
-        canvasScale = cover;
-        camera.mode = cover / contain <= 1.03 ? 'fit' : 'pan';   // ≤3% cut off: just centre it
+        if (cover / contain <= 1.5) {
+            camera.mode = 'fit';
+            canvasScale = contain;
+        } else {
+            camera.mode = 'pan';
+            canvasScale = Math.min(cover, Math.max(contain, 1.4));
+        }
         canvas.classList.toggle('pannable', camera.mode === 'pan');
         if (camera.mode === 'pan' && persons.length > 1) {
             const f = cameraFocus();
@@ -14026,7 +13975,6 @@
         if (e.key === '2') setSpeed(2);
         if (e.key === '3') setSpeed(3);
         if (e.key === 'm' || e.key === 'M') toggleSound();
-        if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey && e.target === document.body) toggleFullscreen();
         if (e.key === 'p' || e.key === 'P') togglePerfHud();
     });
     // Phones have no keyboard: ?perf or #perf in the URL turns the readout on
