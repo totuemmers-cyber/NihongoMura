@@ -58,8 +58,10 @@
             user-select: none;
             overscroll-behavior: none;
             -webkit-font-smoothing: antialiased;
-            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
+        /* Notch, status bar and home indicator: the bars pad themselves and the map runs under the
+           remaining edges, so no empty strips appear above, below or beside the game. */
+        :root { --sa-t: env(safe-area-inset-top, 0px); --sa-r: env(safe-area-inset-right, 0px); --sa-b: env(safe-area-inset-bottom, 0px); --sa-l: env(safe-area-inset-left, 0px); }
         button { font: inherit; color: inherit; }
         svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
         :focus { outline: none; }
@@ -71,8 +73,8 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: 8px 14px;
-            min-height: 54px;
+            padding: calc(8px + var(--sa-t)) calc(14px + var(--sa-r)) 8px calc(14px + var(--sa-l));
+            min-height: calc(54px + var(--sa-t));
             flex-shrink: 0;
             background: linear-gradient(180deg, var(--ink-2), var(--ink-1));
             border-bottom: 1px solid var(--line);
@@ -132,7 +134,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 8px 14px;
+            padding: 8px calc(14px + var(--sa-r)) 8px calc(14px + var(--sa-l));
             background: var(--ink-1);
             border-bottom: 1px solid var(--line);
             flex-shrink: 0;
@@ -212,7 +214,7 @@
         #gameCanvas.dragging { cursor: grabbing; }
         .time-chip {
             position: absolute;
-            top: 12px; left: 12px;
+            top: 12px; left: calc(12px + var(--sa-l));
             z-index: 2;
             display: flex; align-items: center; gap: 8px;
             padding: 6px 12px 6px 9px;
@@ -241,7 +243,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            padding: 10px;
+            padding: 10px calc(10px + var(--sa-r)) calc(10px + var(--sa-b)) 10px;
             background: var(--ink-1);
             border-left: 1px solid var(--line);
             overflow-y: auto;
@@ -444,7 +446,7 @@
             #panel-toggle[aria-expanded="true"] { transform: scale(0.6); opacity: 0; pointer-events: none; }
         }
         @media (max-width: 560px) {
-            #header { padding: 6px 10px; min-height: 48px; gap: 8px; }
+            #header { padding: calc(6px + var(--sa-t)) calc(10px + var(--sa-r)) 6px calc(10px + var(--sa-l)); min-height: calc(48px + var(--sa-t)); gap: 8px; }
             .brand-en { display: none; }
             .brand-jp { font-size: 15px; }
             .brand-seal { width: 30px; height: 30px; font-size: 17px; }
@@ -452,8 +454,8 @@
             .seg { padding: 2px; }
             .seg button { min-width: 32px; height: 32px; padding: 0 6px; font-size: 13px; }
             .icon-btn { width: 34px; min-width: 34px; height: 34px; }
-            #command-bar { padding: 7px 10px; gap: 8px; }
-            .time-chip { top: 8px; left: 8px; font-size: 12px; padding: 5px 10px 5px 8px; }
+            #command-bar { padding: 7px calc(10px + var(--sa-r)) 7px calc(10px + var(--sa-l)); gap: 8px; }
+            .time-chip { top: 8px; left: calc(8px + var(--sa-l)); font-size: 12px; padding: 5px 10px 5px 8px; }
             .time-chip .tc-meta { font-size: 11px; }
         }
         @media (max-width: 380px) {
