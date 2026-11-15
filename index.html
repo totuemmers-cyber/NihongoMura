@@ -22,43 +22,32 @@
             --shu: #c8442f;
             --kin: #c99a3a;
             --matsu: #3f5a3a;
+            /* UI surfaces: warm ink, from page to raised */
+            --ink-0: #13110e;
+            --ink-1: #1b1814;
+            --ink-2: #231f1a;
+            --ink-3: #2e2922;
+            --ink-4: #3a332a;
+            --line: rgba(243,234,216,0.08);
+            --line-strong: rgba(243,234,216,0.16);
+            --text: #ece2cb;
+            --text-dim: #ad9f86;
+            --text-faint: #786d5c;
+            --good: #86ab6f;
+            --warn: #cfa84f;
+            --bad: #c9694f;
+            --radius: 10px;
             /* Type — mincho for kanji & headings, rounded gothic for UI */
             --font-mincho: 'Shippori Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
             --font-ui: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
-
-            --bg-primary: #1a1a1a;
-            --bg-header-top: #1a1008;
-            --bg-header-bottom: #12100a;
-            --bg-panel: #1e1a14;
-            --bg-panel-mid: #221c12;
-            --bg-canvas: #2d2d1a;
-            --bg-input: #0a0a08;
-            --bg-button: #2a2420;
-            --bg-button-hover: #3a3226;
-            --bg-button-active: #4a3e30;
-            --text-primary: #d4c8a8;
-            --text-secondary: #8a7e6a;
-            --text-muted: #5a5a4a;
-            --text-dim: #6a6a5a;
-            --text-bright: #e0d8c0;
-            --text-activity: #a0a080;
-            --accent-gold: #d4a030;
-            --accent-red: #2b4068;
-            --accent-red-dark: #1e3050;
-            --accent-red-stamp: #a03020;
-            --accent-green: #6a8a5a;
-            --accent-kana: #a09070;
-            --border-primary: #4a3e30;
-            --border-section: #3a2a1a;
-            --border-input: #3a3020;
-            --border-divider: #1a1612;
-            --border-progress: #2a2018;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            font-family: 'Courier New', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Microsoft YaHei', monospace;
+            background: var(--ink-0);
+            color: var(--text);
+            font-family: var(--font-ui);
+            font-size: 14px;
+            line-height: 1.4;
             overflow: hidden;
             height: 100%;
             height: 100dvh;
@@ -69,71 +58,148 @@
             -webkit-user-select: none;
             user-select: none;
             overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
+        button { font: inherit; color: inherit; }
+        svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+        :focus { outline: none; }
+        :focus-visible { outline: 2px solid var(--kin); outline-offset: 2px; border-radius: 8px; }
+
+        /* ---------- Header ---------- */
         #header {
-            background: linear-gradient(180deg, var(--bg-header-top) 0%, var(--bg-header-bottom) 100%);
-            border-bottom: 2px solid #2b4068;
-            border-image: linear-gradient(90deg, #1e3050, #3a5580, #1e3050) 1;
-            padding: 6px 16px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            min-height: 44px;
+            gap: 12px;
+            padding: 8px 14px;
+            min-height: 54px;
+            flex-shrink: 0;
+            background: linear-gradient(180deg, var(--ink-2), var(--ink-1));
+            border-bottom: 1px solid var(--line);
+        }
+        .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .brand-seal {
+            width: 34px; height: 34px;
+            display: grid; place-items: center;
+            border-radius: 7px;
+            background: var(--shu);
+            color: #fbefe0;
+            font-family: var(--font-mincho);
+            font-weight: 800;
+            font-size: 20px;
+            box-shadow: inset 0 0 0 2px rgba(251,239,224,0.25), 0 2px 6px rgba(0,0,0,0.35);
+            transform: rotate(-3deg);
             flex-shrink: 0;
         }
-        #header h1 {
-            font-size: 14px;
-            color: var(--accent-gold);
-            letter-spacing: 1px;
-            white-space: nowrap;
-        }
-        #controls {
+        .brand-text { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+        .brand-jp { font-family: var(--font-mincho); font-weight: 700; font-size: 17px; letter-spacing: 0.08em; color: var(--washi); white-space: nowrap; }
+        .brand-en { font-size: 11px; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; }
+        #controls { display: flex; align-items: center; gap: 6px; }
+        .seg {
             display: flex;
-            align-items: center;
-            gap: 4px;
+            padding: 3px;
+            gap: 2px;
+            background: var(--ink-0);
+            border: 1px solid var(--line);
+            border-radius: 10px;
         }
-        #controls button {
-            background: var(--bg-button);
-            border: 1px solid var(--border-primary);
-            color: var(--accent-gold);
-            min-width: 44px;
-            min-height: 44px;
-            padding: 4px 10px;
-            font-family: 'Courier New', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Microsoft YaHei', monospace;
-            font-size: 14px;
+        .seg button, .icon-btn {
+            min-width: 40px; height: 36px;
+            padding: 0 10px;
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            background: transparent;
+            border: none;
+            border-radius: 7px;
+            color: var(--text-dim);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
             cursor: pointer;
-            border-radius: 4px;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s, color 0.15s;
         }
-        #controls button:hover { background: var(--bg-button-hover); }
-        #controls button:active { background: var(--bg-button-active); }
-        #controls button.active {
-            background: var(--bg-button-active);
-            border-color: var(--accent-gold);
-            color: #fff;
-        }
-        #time-display {
-            color: var(--text-secondary);
-            font-size: 12px;
-            margin-left: 8px;
-            white-space: nowrap;
-        }
-        #main {
+        .seg button:hover, .icon-btn:hover { background: var(--ink-3); color: var(--text); }
+        .seg button.active { background: var(--ink-4); color: var(--washi); box-shadow: inset 0 -2px 0 var(--kin); }
+        .icon-btn { border: 1px solid var(--line); background: var(--ink-2); padding: 0; width: 40px; }
+        #btn-sound .snd-off { display: none; }
+        #btn-sound.off .snd-on { display: none; }
+        #btn-sound.off .snd-off { display: inline; }
+        #btn-sound.off { color: var(--text-faint); }
+        #btn-save.saved { color: var(--good); border-color: rgba(134,171,111,0.6); }
+
+        /* ---------- Command bar ---------- */
+        #command-bar {
             display: flex;
-            flex: 1;
-            overflow: hidden;
-            min-height: 0;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            background: var(--ink-1);
+            border-bottom: 1px solid var(--line);
+            flex-shrink: 0;
         }
-        #canvas-wrap {
+        #command-label {
+            font-family: var(--font-mincho);
+            font-weight: 700;
+            font-size: 13px;
+            color: #fbefe0;
+            background: var(--ai);
+            padding: 5px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.1em;
+            flex-shrink: 0;
+        }
+        .cmd-field {
             flex: 1;
-            position: relative;
-            background: var(--bg-canvas);
+            display: flex;
+            align-items: center;
             min-width: 0;
-            min-height: 0;
+            background: var(--ink-0);
+            border: 1px solid var(--line-strong);
+            border-radius: 10px;
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
-        #canvas-wrap { overflow: hidden; }
+        .cmd-field:focus-within { border-color: var(--kin); box-shadow: 0 0 0 3px rgba(201,154,58,0.18); }
+        #command-input {
+            flex: 1;
+            min-width: 0;
+            padding: 9px 12px;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font: inherit;
+            font-size: 14px;
+            outline: none;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        #command-input::placeholder, #vocab-search::placeholder { color: var(--text-faint); }
+        #command-send {
+            width: 36px; height: 32px;
+            margin-right: 3px;
+            display: grid; place-items: center;
+            background: var(--kin);
+            color: var(--ink-0);
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        #command-send:hover { filter: brightness(1.08); }
+        #command-feedback {
+            display: none;
+            padding: 6px 14px;
+            font-size: 12.5px;
+            color: var(--text-dim);
+            background: var(--ink-1);
+            border-bottom: 1px solid var(--line);
+            flex-shrink: 0;
+        }
+        #command-feedback.visible { display: block; }
+
+        /* ---------- World ---------- */
+        #main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+        #canvas-wrap { flex: 1; position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--ink-0); }
         /* Print-style darkened margins; a CSS layer so the compositor draws it, not the canvas */
         #canvas-wrap::after {
             content: '';
@@ -142,389 +208,308 @@
             pointer-events: none;
             background: radial-gradient(ellipse at center, rgba(40,26,12,0) 58%, rgba(40,26,12,0.10) 80%, rgba(40,26,12,0.26) 100%);
         }
-        #gameCanvas {
-            display: block;
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            touch-action: none;
-        }
+        #gameCanvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
         #gameCanvas.pannable { cursor: grab; }
         #gameCanvas.dragging { cursor: grabbing; }
+        .time-chip {
+            position: absolute;
+            top: 12px; left: 12px;
+            z-index: 2;
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px 6px 9px;
+            background: rgba(27,24,20,0.72);
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+            border: 1px solid var(--line-strong);
+            border-radius: 999px;
+            color: var(--text);
+            font-size: 13px;
+            font-variant-numeric: tabular-nums;
+            pointer-events: none;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+        }
+        .time-chip b { font-weight: 700; color: var(--washi); }
+        .time-chip .tc-meta { color: var(--text-dim); font-size: 12px; padding-left: 8px; border-left: 1px solid var(--line-strong); }
+        .time-chip svg.i { width: 17px; height: 17px; }
+        .time-chip[data-phase="sun"] svg { color: #f0c463; }
+        .time-chip[data-phase="dawn"] svg, .time-chip[data-phase="dusk"] svg { color: #f09a6a; }
+        .time-chip[data-phase="moon"] svg { color: #c9d3f0; }
+
+        /* ---------- Panel ---------- */
         #panel {
-            width: 360px;
-            background: linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-panel-mid) 50%, var(--bg-panel) 100%);
-            border-left: 2px solid var(--accent-red-dark);
+            width: 340px;
+            flex-shrink: 0;
             display: flex;
             flex-direction: column;
-            overflow-y: hidden;
-            padding: 0;
-            font-size: 16px;
-            flex-shrink: 0;
-            background-image:
-                linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-panel-mid) 50%, var(--bg-panel) 100%),
-                radial-gradient(ellipse at 30% 20%, rgba(200,180,140,0.03) 0%, transparent 60%),
-                radial-gradient(ellipse at 70% 80%, rgba(200,180,140,0.02) 0%, transparent 50%);
-        }
-        /* Scrollbar styling for panel */
-        #panel ::-webkit-scrollbar {
-            width: 6px;
-        }
-        #panel ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        #panel ::-webkit-scrollbar-thumb {
-            background: var(--border-section);
-            border-radius: 3px;
-        }
-        #panel ::-webkit-scrollbar-thumb:hover {
-            background: var(--bg-button-hover);
-        }
-        #panel {
-            scrollbar-width: thin;
-            scrollbar-color: var(--border-section) transparent;
-        }
-        #panel-toggle {
-            display: none;
-            position: fixed;
-            bottom: 12px;
-            right: 12px;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: var(--bg-button-hover);
-            border: 2px solid var(--accent-gold);
-            color: var(--accent-gold);
-            font-size: 20px;
-            z-index: 100;
-            cursor: pointer;
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-            align-items: center;
-            justify-content: center;
-        }
-        /* Portrait / narrow screens: stack vertically */
-        @media (max-width: 800px), (orientation: portrait) {
-            #main {
-                flex-direction: column;
-            }
-            #panel {
-                width: 100%;
-                border-left: none;
-                border-top: 2px solid var(--bg-button-hover);
-                max-height: 45%;
-                display: none;
-            }
-            #panel.open {
-                display: block;
-            }
-            #panel-toggle {
-                display: flex;
-            }
-            #header h1 {
-                font-size: 11px;
-                letter-spacing: 0;
-            }
-        }
-        /* Very small screens */
-        @media (max-width: 500px) {
-            #header { padding: 4px 8px; min-height: 40px; }
-            #controls button { min-width: 38px; min-height: 38px; font-size: 12px; }
-            #time-display { font-size: 10px; margin-left: 4px; }
-        }
-        .panel-section {
-            border-bottom: 1px solid var(--bg-button);
-            border-image: linear-gradient(90deg, transparent, var(--border-section), #4a3020, var(--border-section), transparent) 1;
-            padding: 10px 12px;
-            position: relative;
-            flex-shrink: 0;
-        }
-        .panel-section h2 {
-            font-size: 16px;
-            color: var(--accent-gold);
-            margin-bottom: 8px;
-            letter-spacing: 2px;
-            text-align: center;
-            position: relative;
-        }
-        .panel-section h2::before, .panel-section h2::after {
-            content: '◆';
-            font-size: 6px;
-            color: var(--accent-red);
-            vertical-align: middle;
-            margin: 0 6px;
-        }
-        .char-header {
-            display: flex;
-            align-items: center;
             gap: 10px;
-            margin-bottom: 8px;
-        }
-        .char-portrait {
-            width: 40px;
-            height: 40px;
-            border-radius: 2px;
-            border: 2px solid var(--accent-red);
-            box-shadow: inset 0 0 8px rgba(160,120,60,0.15), 0 0 4px rgba(100,40,20,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-        .char-name {
-            font-size: 14px;
-            color: var(--text-bright);
-            font-weight: bold;
-        }
-        .char-role {
-            font-size: 10px;
-            color: var(--text-secondary);
-        }
-        .stat-row {
-            display: flex;
-            align-items: center;
-            margin: 3px 0;
-            gap: 6px;
-        }
-        .stat-label {
-            width: 75px;
-            color: var(--text-secondary);
-            font-size: 11px;
-        }
-        .stat-bar-bg {
-            flex: 1;
-            height: 8px;
-            background: var(--bg-input);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        .stat-bar {
-            height: 100%;
-            border-radius: 2px;
-            transition: width 0.3s;
-        }
-        .stat-val {
-            width: 24px;
-            text-align: right;
-            font-size: 10px;
-            color: var(--text-secondary);
-        }
-        .activity {
-            color: var(--text-activity);
-            font-size: 11px;
-            font-style: italic;
-            margin-top: 4px;
-        }
-        .need-row {
-            display: flex;
-            align-items: center;
-            margin: 2px 0;
-            gap: 6px;
-        }
-        .need-label {
-            width: 55px;
-            color: var(--text-secondary);
-            font-size: 10px;
-        }
-        .need-bar-bg {
-            flex: 1;
-            height: 6px;
-            background: var(--bg-input);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        .need-bar {
-            height: 100%;
-            border-radius: 2px;
-            transition: width 0.5s;
-        }
-        #vocab-search {
-            width: 100%;
-            padding: 5px 8px;
-            margin-bottom: 6px;
-            background: var(--bg-input);
-            border: 1px solid var(--border-input);
-            border-radius: 2px;
-            color: var(--text-primary);
-            font-family: 'Courier New', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Microsoft YaHei', monospace;
-            font-size: 11px;
-            outline: none;
-            box-sizing: border-box;
-        }
-        #vocab-search:focus {
-            border-color: var(--accent-gold);
-        }
-        #vocab-search::placeholder {
-            color: var(--text-muted);
-            font-style: italic;
-        }
-        .vocab-list {
-            max-height: 200px;
+            padding: 10px;
+            background: var(--ink-1);
+            border-left: 1px solid var(--line);
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: var(--ink-4) transparent;
         }
-        .vocab-word {
-            display: flex;
-            padding: 6px 4px;
-            font-size: 12px;
-            border-bottom: 1px solid var(--border-divider);
-            line-height: 1.4;
+        #panel::-webkit-scrollbar, #panel ::-webkit-scrollbar { width: 6px; }
+        #panel::-webkit-scrollbar-thumb, #panel ::-webkit-scrollbar-thumb { background: var(--ink-4); border-radius: 3px; }
+        #panel::-webkit-scrollbar-track, #panel ::-webkit-scrollbar-track { background: transparent; }
+        .sheet-bar { display: none; }
+        .card {
+            background: var(--ink-2);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 12px;
+            flex-shrink: 0;
         }
-        .vocab-word .pseudo { color: var(--accent-gold); width: 42px; flex-shrink: 0; }
-        .vocab-word .kana { color: var(--accent-kana); font-size: 10px; width: 70px; flex-shrink: 0; text-align: center; }
-        .vocab-word .meaning { color: var(--accent-green); flex: 1; text-align: right; }
-        .vocab-word.new { animation: flashGreen 1s; }
-        @keyframes flashGreen {
-            0% { background: #2a4a2a; }
-            100% { background: transparent; }
-        }
-        .progress-text {
-            color: var(--text-secondary);
-            font-size: 11px;
-            margin-bottom: 6px;
-        }
-        .progress-bar-bg {
-            width: 100%;
-            height: 10px;
-            background: var(--bg-input);
-            border: 1px solid var(--border-progress);
-            border-radius: 1px;
-            overflow: hidden;
-            margin-bottom: 8px;
-        }
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #4a6a3a, #6a8a5a, #4a6a3a);
-            border-radius: 1px;
-            transition: width 0.5s;
+        .card-title {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px;
+            font-family: var(--font-mincho);
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.06em;
+            color: var(--washi);
         }
         .seal-stamp {
-            display: inline-block;
-            color: var(--accent-red-stamp);
-            border: 1.5px solid var(--accent-red-stamp);
-            border-radius: 50%;
-            padding: 2px 3px;
-            font-size: 9px;
+            display: inline-grid; place-items: center;
+            width: 20px; height: 20px;
+            border: 1.5px solid var(--shu);
+            border-radius: 5px;
+            color: var(--shu);
+            font-family: var(--font-mincho);
+            font-weight: 800;
+            font-size: 12px;
             line-height: 1;
-            margin-left: 6px;
-            transform: rotate(-3deg);
-            opacity: 0.7;
-            font-family: 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif;
+            transform: rotate(-4deg);
+            opacity: 0.9;
         }
-        .panel-section:last-child {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            min-height: 0;
-        }
-        #event-log {
-            flex: 1;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        .log-entry {
-            padding: 2px 0;
-            font-size: 12px;
-            color: var(--text-dim);
-            border-bottom: 1px solid var(--border-divider);
-        }
-        .log-entry .log-time { color: #4a4a3a; margin-right: 6px; }
-        .log-entry.learn { color: var(--accent-green); }
-        .log-entry.speak { color: var(--text-activity); }
-        #command-bar {
-            background: linear-gradient(180deg, var(--bg-header-bottom) 0%, var(--bg-header-top) 100%);
-            border-top: 1px solid var(--border-section);
-            padding: 4px 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+
+        /* Character cards */
+        .char-header { display: flex; align-items: center; gap: 11px; margin-bottom: 11px; }
+        .char-portrait {
+            width: 42px; height: 42px;
+            display: grid; place-items: center;
+            border-radius: 50%;
+            font-family: var(--font-mincho);
+            font-weight: 800;
+            font-size: 21px;
+            color: #fbefe0;
+            box-shadow: inset 0 0 0 2px rgba(251,239,224,0.22);
             flex-shrink: 0;
         }
-        #command-label {
-            color: var(--accent-red);
+        .char-portrait.role-speaker { background: var(--ai); }
+        .char-portrait.role-learner { background: #a83a28; }
+        .char-id { min-width: 0; flex: 1; }
+        .char-name { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; color: var(--washi); }
+        .char-role { font-size: 12px; color: var(--text-dim); }
+        .stat-row { display: grid; grid-template-columns: 82px 1fr 18px; align-items: center; gap: 8px; margin: 4px 0; }
+        .stat-label { font-size: 12.5px; color: var(--text-dim); }
+        .pips { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+        .pips i { height: 7px; border-radius: 2px; background: var(--ink-4); }
+        .pips.hi i.on { background: var(--good); }
+        .pips.mid i.on { background: var(--warn); }
+        .pips.lo i.on { background: var(--bad); }
+        .stat-val { font-size: 12px; color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; }
+        .needs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+        .need { display: flex; align-items: center; gap: 7px; min-width: 0; }
+        .need-k {
+            width: 22px; height: 22px;
+            display: grid; place-items: center;
+            border-radius: 6px;
+            background: var(--ink-3);
+            font-family: var(--font-mincho);
+            font-weight: 700;
+            font-size: 12.5px;
+            color: var(--washi-deep);
+            flex-shrink: 0;
+        }
+        .need-bar { flex: 1; height: 5px; border-radius: 3px; background: var(--ink-4); overflow: hidden; }
+        .need-bar > i { display: block; height: 100%; border-radius: 3px; transition: width 0.5s; }
+        .activity {
+            display: flex; align-items: center; gap: 6px;
+            margin-top: 11px;
+            padding: 6px 10px;
+            border-radius: 7px;
+            background: var(--ink-3);
+            font-size: 12.5px;
+            color: var(--text);
+        }
+        .activity::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--kin); flex-shrink: 0; }
+
+        /* Vocabulary */
+        .progress-text { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-dim); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+        .progress-text b { color: var(--washi); font-weight: 700; }
+        .progress-bar-bg { height: 6px; border-radius: 3px; background: var(--ink-4); overflow: hidden; }
+        .progress-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #5f8a4f, var(--good)); transition: width 0.5s; }
+        #vocab-search {
+            width: 100%;
+            margin: 10px 0 6px;
+            padding: 8px 11px;
+            background: var(--ink-0);
+            border: 1px solid var(--line-strong);
+            border-radius: 8px;
+            color: var(--text);
+            font: inherit;
             font-size: 13px;
-            font-family: 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif;
-            flex-shrink: 0;
-        }
-        #command-input {
-            flex: 1;
-            padding: 5px 8px;
-            background: var(--bg-input);
-            border: 1px solid var(--border-input);
-            border-radius: 2px;
-            color: var(--text-primary);
-            font-family: 'Courier New', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Microsoft YaHei', monospace;
-            font-size: 12px;
             outline: none;
-            min-width: 0;
+            -webkit-user-select: text;
+            user-select: text;
         }
-        #command-input:focus { border-color: var(--accent-gold); }
-        #command-input::placeholder { color: var(--text-muted); font-style: italic; }
-        #command-send {
-            background: var(--bg-button);
-            border: 1px solid var(--border-primary);
-            color: var(--accent-gold);
-            min-width: 36px;
-            min-height: 32px;
-            font-size: 14px;
+        #vocab-search:focus { border-color: var(--kin); box-shadow: 0 0 0 3px rgba(201,154,58,0.16); }
+        .vocab-list { max-height: 236px; overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+        .vocab-word {
+            display: grid;
+            grid-template-columns: minmax(44px, auto) 1fr auto;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 6px;
+            border-radius: 7px;
             cursor: pointer;
-            border-radius: 2px;
-            flex-shrink: 0;
+            transition: background 0.15s;
         }
-        #command-send:hover { background: var(--bg-button-hover); }
-        #command-send:active { background: var(--bg-button-active); }
-        #command-feedback {
-            color: var(--text-secondary);
-            font-size: 10px;
-            padding: 2px 12px 2px;
-            background: var(--bg-header-bottom);
-            display: none;
-            flex-shrink: 0;
+        .vocab-word:hover { background: var(--ink-3); }
+        .vocab-word + .vocab-word { border-top: 1px solid var(--line); }
+        .vw-kanji { font-family: var(--font-mincho); font-weight: 700; font-size: 21px; color: var(--washi); line-height: 1.2; white-space: nowrap; }
+        .vw-reading { font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .vw-meaning { font-size: 13px; color: var(--good); text-align: right; }
+        .vocab-word.new { animation: flashNew 1.2s; }
+        @keyframes flashNew { from { background: rgba(134,171,111,0.28); } to { background: transparent; } }
+        .empty { padding: 10px 6px; font-size: 12.5px; color: var(--text-faint); }
+
+        /* Event log */
+        .log-card { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 180px; }
+        #event-log { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+        .log-entry { display: flex; gap: 9px; padding: 5px 4px; font-size: 12.5px; color: var(--text-dim); border-top: 1px solid var(--line); }
+        .log-entry:first-child { border-top: none; }
+        .log-entry .log-time { color: var(--text-faint); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 11.5px; padding-top: 1px; }
+        .log-entry.learn { color: var(--good); }
+        .log-entry.speak { color: var(--text); }
+
+        #panel-toggle { display: none; }
+
+        /* ---------- Narrow / portrait: map full screen, panel as a bottom sheet ---------- */
+        @media (max-width: 800px), (orientation: portrait) {
+            #panel {
+                position: fixed;
+                left: 0; right: 0; bottom: 0;
+                width: auto;
+                height: min(64dvh, 600px);
+                z-index: 40;
+                padding: 0 10px calc(10px + env(safe-area-inset-bottom));
+                border-left: none;
+                border-top: 1px solid var(--line-strong);
+                border-radius: 18px 18px 0 0;
+                box-shadow: 0 -12px 32px rgba(0,0,0,0.45);
+                transform: translateY(105%);
+                transition: transform 0.28s cubic-bezier(.2,.8,.2,1);
+                visibility: hidden;
+            }
+            #panel.open { transform: none; visibility: visible; }
+            .sheet-bar {
+                display: flex; align-items: center; justify-content: space-between;
+                position: sticky; top: 0; z-index: 1;
+                margin: 0 -10px;
+                padding: 8px 14px 6px;
+                background: var(--ink-1);
+                border: none;
+                color: var(--text-dim);
+                cursor: pointer;
+                font-size: 12.5px;
+            }
+            .sheet-bar::before { content: ''; position: absolute; left: 50%; top: 6px; width: 38px; height: 4px; margin-left: -19px; border-radius: 2px; background: var(--ink-4); }
+            .sheet-bar span { padding-top: 8px; }
+            #panel-toggle {
+                display: grid; place-items: center;
+                position: fixed;
+                right: calc(16px + env(safe-area-inset-right));
+                bottom: calc(16px + env(safe-area-inset-bottom));
+                width: 52px; height: 52px;
+                z-index: 30;
+                border-radius: 50%;
+                background: var(--shu);
+                color: #fbefe0;
+                border: none;
+                box-shadow: 0 6px 18px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(251,239,224,0.22);
+                cursor: pointer;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
+                transition: transform 0.2s, opacity 0.2s;
+            }
+            #panel-toggle svg.i { width: 22px; height: 22px; }
+            #panel-toggle[aria-expanded="true"] { transform: scale(0.6); opacity: 0; pointer-events: none; }
         }
-        #command-feedback.visible { display: block; }
-    </style>
+        @media (max-width: 560px) {
+            #header { padding: 6px 10px; min-height: 48px; gap: 8px; }
+            .brand-en { display: none; }
+            .brand-jp { font-size: 15px; }
+            .brand-seal { width: 30px; height: 30px; font-size: 17px; }
+            #controls { gap: 4px; }
+            .seg { padding: 2px; }
+            .seg button { min-width: 32px; height: 32px; padding: 0 6px; font-size: 13px; }
+            .icon-btn { width: 34px; min-width: 34px; height: 34px; }
+            #command-bar { padding: 7px 10px; gap: 8px; }
+            .time-chip { top: 8px; left: 8px; font-size: 12px; padding: 5px 10px 5px 8px; }
+            .time-chip .tc-meta { font-size: 11px; }
+        }
+        @media (max-width: 380px) {
+            .brand-text { display: none; }
+            .time-chip .tc-meta { display: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+        }
+        </style>
 </head>
 <body>
-    <div id="header">
-        <h1>NIHONGO MURA 日本語村 — JAPANISCH-SPRACHSIMULATION</h1>
-        <div id="controls">
-            <button id="btn-pause" onclick="setSpeed(0)" aria-label="Pause">II</button>
-            <button id="btn-1x" class="active" onclick="setSpeed(1)" aria-label="Normalgeschwindigkeit">1x</button>
-            <button id="btn-2x" onclick="setSpeed(2)" aria-label="Doppelte Geschwindigkeit">2x</button>
-            <button id="btn-3x" onclick="setSpeed(3)" aria-label="Dreifache Geschwindigkeit">3x</button>
-            <button id="btn-sound" onclick="toggleSound()" aria-label="Ton an/aus">♪</button>
-            <button id="btn-save" onclick="manualSave()" title="Speichern" aria-label="Speichern">&#128190;</button>
-            <button id="btn-new" onclick="newGame()" title="Neues Spiel" aria-label="Neues Spiel">&#9733;</button>
-            <span id="time-display">Tag 1 — 06:00</span>
+    <header id="header">
+        <div class="brand">
+            <span class="brand-seal" aria-hidden="true">村</span>
+            <div class="brand-text">
+                <span class="brand-jp">日本語村</span>
+                <span class="brand-en">Nihongo Mura · Sprachsimulation</span>
+            </div>
         </div>
-    </div>
-    <button id="panel-toggle" onclick="togglePanel()" aria-label="Seitenpanel umschalten">i</button>
+        <div id="controls">
+            <div class="seg" id="speed-group" role="group" aria-label="Geschwindigkeit">
+                <button id="btn-pause" onclick="setSpeed(0)" aria-label="Pause" title="Pause (Leertaste)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="5" width="3.5" height="14" rx="1"/><rect x="13.5" y="5" width="3.5" height="14" rx="1"/></svg></button>
+                <button id="btn-1x" class="active" onclick="setSpeed(1)" aria-label="Normalgeschwindigkeit" title="1× (Taste 1)">1×</button>
+                <button id="btn-2x" onclick="setSpeed(2)" aria-label="Doppelte Geschwindigkeit" title="2× (Taste 2)">2×</button>
+                <button id="btn-3x" onclick="setSpeed(3)" aria-label="Dreifache Geschwindigkeit" title="3× (Taste 3)">3×</button>
+            </div>
+            <button class="icon-btn" id="btn-sound" onclick="toggleSound()" aria-label="Ton an/aus" aria-pressed="true" title="Ton (M)"><svg class="i snd-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6"/><path d="M18.2 6.5a8 8 0 0 1 0 11"/></svg><svg class="i snd-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button>
+            <button class="icon-btn" id="btn-save" onclick="manualSave()" aria-label="Speichern" title="Speichern"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9.5L19 7.5V19a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8.5 4v4.5h6V4"/><rect x="8" y="13" width="8" height="5" rx="0.8"/></svg></button>
+            <button class="icon-btn" id="btn-new" onclick="newGame()" aria-label="Neues Spiel" title="Neues Spiel"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg></button>
+        </div>
+    </header>
     <div id="command-bar">
-        <span id="command-label">命令</span>
-        <input type="text" id="command-input" placeholder="Befehl eingeben (Romaji/Kana)..." autocomplete="off">
-        <button id="command-send" onclick="submitCommand()" aria-label="Befehl senden">▶</button>
+        <label id="command-label" for="command-input">命令</label>
+        <div class="cmd-field">
+            <input type="text" id="command-input" placeholder="Befehl an den Lernenden (Romaji / Kana) …" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <button id="command-send" onclick="submitCommand()" aria-label="Befehl senden"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13"/><path d="M13 6.5l5.5 5.5-5.5 5.5"/></svg></button>
+        </div>
     </div>
     <div id="main">
         <div id="canvas-wrap">
             <canvas id="gameCanvas" role="img" aria-label="Nihongo Mura Spielwelt — japanisches Dorf mit Charakteren"></canvas>
+            <div id="time-display" class="time-chip"></div>
         </div>
-        <div id="panel">
-            <div id="char1-panel" class="panel-section"></div>
-            <div id="char2-panel" class="panel-section"></div>
-            <div id="vocab-panel" class="panel-section">
-                <h2>Vokabular<span class="seal-stamp">語</span></h2>
+        <aside id="panel" aria-label="Dorf-Übersicht">
+            <button class="sheet-bar" onclick="togglePanel()" aria-label="Übersicht schließen"><span>Übersicht</span><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></button>
+            <section id="char1-panel" class="panel-section card"></section>
+            <section id="char2-panel" class="panel-section card"></section>
+            <section id="vocab-panel" class="panel-section card">
+                <h2 class="card-title"><span>Vokabular</span><span class="seal-stamp">語</span></h2>
                 <div class="progress-text" id="vocab-progress">0 / 0 Wörter gelernt</div>
                 <div class="progress-bar-bg"><div class="progress-bar" id="vocab-bar" style="width:0%"></div></div>
-                <input type="text" id="vocab-search" placeholder="Suche (Romaji / Deutsch)..." autocomplete="off">
+                <input type="search" id="vocab-search" placeholder="Suche (Romaji / Kana / Deutsch) …" autocomplete="off" autocapitalize="off" spellcheck="false">
                 <div class="vocab-list" id="vocab-list"></div>
-            </div>
-            <div class="panel-section">
-                <h2>Ereignisse<span class="seal-stamp">録</span></h2>
+            </section>
+            <section class="panel-section card log-card">
+                <h2 class="card-title"><span>Ereignisse</span><span class="seal-stamp">録</span></h2>
                 <div id="event-log"></div>
-            </div>
-        </div>
+            </section>
+        </aside>
     </div>
+    <button id="panel-toggle" onclick="togglePanel()" aria-label="Übersicht öffnen" aria-expanded="false" aria-controls="panel"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5c-2-1.6-4.6-2-7.5-1.5v13c2.9-.5 5.5-.1 7.5 1.5 2-1.6 4.6-2 7.5-1.5V5c-2.9-.5-5.5-.1-7.5 1.5z"/><path d="M12 6.5v13"/></svg></button>
 
     <script>
     // ============================================================
@@ -576,8 +561,8 @@
     function toggleSound() {
         soundEnabled = !soundEnabled;
         const btn = document.getElementById('btn-sound');
-        btn.textContent = soundEnabled ? '♪' : '♪̶';
-        btn.classList.toggle('active', soundEnabled);
+        btn.classList.toggle('off', !soundEnabled);
+        btn.setAttribute('aria-pressed', String(soundEnabled));
         if (soundEnabled) {
             resumeAudio();
             if (audioStarted && !musicPlaying) startJapaneseMusic();
@@ -6884,6 +6869,7 @@
     //  OBJECT SPRITES — each type's static drawing is rendered once, then given the
     //  woodblock treatment (ink outline, one light direction, ground contact shade, washi grain)
     // ============================================================
+    const REDUCED_MOTION = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     let _swayK = 1;                    // multiplies built-in sway; 0 while a sprite is being rendered
     const SWAY_TYPES = {               // whole-sprite sway (amplitude in world units at the top)
         bamboo: { amp: wind => 2 + wind * 6, f: 0.02,  k: 0.05, h: 62 },
@@ -6990,7 +6976,7 @@
         const s = canvasScale;
         const dx = (obj.x + spr.ox) * s, dy = (obj.y + spr.oy) * s, dw = spr.w * s, dh = spr.h * s;
         const sw = SWAY_TYPES[obj.type];
-        if (!sw) { ctx.drawImage(spr.canvas, dx, dy, dw, dh); return; }
+        if (!sw || REDUCED_MOTION) { ctx.drawImage(spr.canvas, dx, dy, dw, dh); return; }
         // Bend the sprite about its base: the top moves by `sway`, the base stays planted
         const wind = currentWeather === 'wind' ? weatherIntensity : 0;
         const sway = Math.sin(gameTick * sw.f + obj.x * sw.k) * sw.amp(wind);
@@ -10029,52 +10015,37 @@
         if (_panelFingerprints[panelId] === fp) return;
         _panelFingerprints[panelId] = fp;
 
-        const statColor = v => v >= 7 ? '#6a8a5a' : v >= 4 ? '#a0a060' : '#a05a4a';
-        const needColor = v => v >= 50 ? '#6a8a5a' : v >= 25 ? '#a0a060' : '#a05a4a';
+        const tier = v => v >= 7 ? 'hi' : v >= 4 ? 'mid' : 'lo';
+        const needColor = v => v >= 50 ? 'var(--good)' : v >= 25 ? 'var(--warn)' : 'var(--bad)';
+        const stat = (label, v) => `
+            <div class="stat-row">
+                <span class="stat-label">${label}</span>
+                <span class="pips ${tier(v)}" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${v}">${
+                    Array.from({ length: 10 }, (_, i) => `<i${i < v ? ' class="on"' : ''}></i>`).join('')}</span>
+                <span class="stat-val">${v}</span>
+            </div>`;
+        const need = (k, label, v) => `
+            <div class="need" title="${label}: ${Math.round(v)}%">
+                <span class="need-k" aria-hidden="true">${k}</span>
+                <span class="need-bar" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(v)}"><i style="width:${Math.max(0, Math.min(100, v))}%;background:${needColor(v)}"></i></span>
+            </div>`;
 
         el.innerHTML = `
             <div class="char-header">
-                <div class="char-portrait" style="background:${portraitBg};color:#1a1a10;font-weight:bold;">
-                    ${person.name.charAt(0)}
-                </div>
-                <div>
-                    <div class="char-name">${person.name}<span class="seal-stamp">${isLearner ? '学' : '师'}</span></div>
+                <div class="char-portrait ${isLearner ? 'role-learner' : 'role-speaker'}" aria-hidden="true">${person.name.charAt(0)}</div>
+                <div class="char-id">
+                    <div class="char-name">${person.name}<span class="seal-stamp" title="${isLearner ? 'Lernender' : 'Lehrer'}">${isLearner ? '学' : '師'}</span></div>
                     <div class="char-role">${roleLabel}</div>
                 </div>
             </div>
-            <div class="stat-row">
-                <span class="stat-label">Geschick</span>
-                <div class="stat-bar-bg"><div class="stat-bar" style="width:${person.geschick*10}%;background:${statColor(person.geschick)}"></div></div>
-                <span class="stat-val">${person.geschick}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Neugier</span>
-                <div class="stat-bar-bg"><div class="stat-bar" style="width:${person.neugier*10}%;background:${statColor(person.neugier)}"></div></div>
-                <span class="stat-val">${person.neugier}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Geselligk.</span>
-                <div class="stat-bar-bg"><div class="stat-bar" style="width:${person.geselligkeit*10}%;background:${statColor(person.geselligkeit)}"></div></div>
-                <span class="stat-val">${person.geselligkeit}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Wahrnehm.</span>
-                <div class="stat-bar-bg"><div class="stat-bar" style="width:${person.wahrnehmung*10}%;background:${statColor(person.wahrnehmung)}"></div></div>
-                <span class="stat-val">${person.wahrnehmung}</span>
-            </div>
-            <div style="margin-top:6px;">
-                <div class="need-row">
-                    <span class="need-label">Hunger</span>
-                    <div class="need-bar-bg"><div class="need-bar" style="width:${person.hunger}%;background:${needColor(person.hunger)}"></div></div>
-                </div>
-                <div class="need-row">
-                    <span class="need-label">Durst</span>
-                    <div class="need-bar-bg"><div class="need-bar" style="width:${person.thirst}%;background:${needColor(person.thirst)}"></div></div>
-                </div>
-                <div class="need-row">
-                    <span class="need-label">Energie</span>
-                    <div class="need-bar-bg"><div class="need-bar" style="width:${person.energy}%;background:${needColor(person.energy)}"></div></div>
-                </div>
+            ${stat('Geschick', person.geschick)}
+            ${stat('Neugier', person.neugier)}
+            ${stat('Geselligkeit', person.geselligkeit)}
+            ${stat('Wahrnehmung', person.wahrnehmung)}
+            <div class="needs">
+                ${need('食', 'Hunger', person.hunger)}
+                ${need('水', 'Durst', person.thirst)}
+                ${need('気', 'Energie', person.energy)}
             </div>
             <div class="activity">${person.activityDe}</div>
         `;
@@ -10086,7 +10057,7 @@
         const known = learner.knownWords.size;
         const pct = total > 0 ? Math.round(known / total * 100) : 0;
 
-        document.getElementById('vocab-progress').textContent = `${known} / ${total} Wörter gelernt (${pct}%)`;
+        document.getElementById('vocab-progress').innerHTML = `<span><b>${known}</b> / ${total} Wörter gelernt</span><span>${pct}%</span>`;
         document.getElementById('vocab-bar').style.width = pct + '%';
 
         // Sparkline — words learned per game-day
@@ -10094,9 +10065,10 @@
         if (!sparkCanvas) {
             sparkCanvas = document.createElement('canvas');
             sparkCanvas.id = 'vocab-sparkline';
-            sparkCanvas.width = 260;
-            sparkCanvas.height = 28;
-            sparkCanvas.style.cssText = 'width:100%;height:28px;margin:4px 0 2px;display:block;';
+            sparkCanvas.width = 600;
+            sparkCanvas.height = 64;
+            sparkCanvas.style.cssText = 'width:100%;height:32px;margin:8px 0 0;display:block;';
+            sparkCanvas.setAttribute('aria-hidden', 'true');
             const barBg = document.querySelector('#vocab-panel .progress-bar-bg');
             if (barBg) barBg.parentNode.insertBefore(sparkCanvas, barBg.nextSibling);
         }
@@ -10110,9 +10082,10 @@
             const days = Object.keys(dayCounts).map(Number).sort((a, b) => a - b);
             if (days.length >= 2) {
                 const maxC = Math.max(...days.map(d => dayCounts[d]), 1);
-                const pad = 4;
-                sCtx.strokeStyle = '#6a8a5a';
-                sCtx.lineWidth = 1.5;
+                const pad = 6;
+                sCtx.strokeStyle = '#86ab6f';
+                sCtx.lineWidth = 3;
+                sCtx.lineJoin = 'round';
                 sCtx.beginPath();
                 for (let i = 0; i < days.length; i++) {
                     const px = pad + (i / (days.length - 1)) * (sw - pad * 2);
@@ -10124,7 +10097,7 @@
                 sCtx.lineTo(pad + (sw - pad * 2), sh - pad);
                 sCtx.lineTo(pad, sh - pad);
                 sCtx.closePath();
-                sCtx.fillStyle = 'rgba(106,138,90,0.15)';
+                sCtx.fillStyle = 'rgba(134,171,111,0.16)';
                 sCtx.fill();
             }
         }
@@ -10142,12 +10115,12 @@
                 const matchKanji = v.kanji.includes(query);
                 if (!matchKana && !matchDe && !matchKanji) continue;
             }
-            html += `<div class="vocab-word" data-cid="${cid}" style="cursor:pointer;" title="Klicken für Kalligraphie"><span class="pseudo">${v.kanji}</span><span class="kana">${v.kana}</span><span class="meaning">${v.de}</span></div>`;
+            html += `<div class="vocab-word" data-cid="${cid}" title="Klicken für Kalligraphie"><span class="vw-kanji">${v.kanji}</span><span class="vw-reading">${v.kana}</span><span class="vw-meaning">${v.de}</span></div>`;
         }
         if (known === 0) {
-            html = '<div style="color:#5a5a4a;font-style:italic;">Noch keine Wörter gelernt</div>';
+            html = '<div class="empty">Noch keine Wörter gelernt — hör den Dorfbewohnern zu.</div>';
         } else if (query && !html) {
-            html = '<div style="color:#5a5a4a;font-style:italic;">Keine Treffer</div>';
+            html = '<div class="empty">Keine Treffer</div>';
         }
         listEl.innerHTML = html;
     }
@@ -10196,12 +10169,26 @@
         ).join('');
     }
 
+    const TIME_ICONS = {
+        sun:  '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>',
+        dawn: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 16a4.5 4.5 0 0 1 9 0"/><path d="M3 19.5h18M12 6.5v3M5.6 10.6l1.8 1.8M18.4 10.6l-1.8 1.8"/></svg>',
+        moon: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z"/></svg>',
+    };
+    let _timeFp = '';
     function updateTimeDisplay() {
         const h = Math.floor(gameHour).toString().padStart(2, '0');
         const m = Math.floor(gameMinute).toString().padStart(2, '0');
         const weather = getWeatherLabel();
         const season = getSeasonLabel();
-        document.getElementById('time-display').textContent = `Tag ${gameDay} — ${h}:${m} | ${season} | ${weather}`;
+        const t = gameHour + gameMinute / 60;
+        const phase = t >= 5 && t < 7.5 ? 'dawn' : t >= 7.5 && t < 17.5 ? 'sun' : t >= 17.5 && t < 19.5 ? 'dusk' : 'moon';
+        const fp = [gameDay, h, m, weather, season, phase].join('|');
+        if (fp === _timeFp) return;
+        _timeFp = fp;
+        const el = document.getElementById('time-display');
+        el.dataset.phase = phase;
+        el.setAttribute('aria-label', `Tag ${gameDay}, ${h}:${m} Uhr, ${season}, ${weather}`);
+        el.innerHTML = `${TIME_ICONS[phase === 'dusk' ? 'dawn' : phase]}<span><b>Tag ${gameDay}</b> · ${h}:${m}</span><span class="tc-meta">${season} · ${weather}</span>`;
     }
 
     // ============================================================
@@ -10209,9 +10196,9 @@
     // ============================================================
     function setSpeed(s) {
         gameSpeed = s;
-        document.querySelectorAll('#controls button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#speed-group button').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
         const btn = document.getElementById(`btn-${s === 0 ? 'pause' : s + 'x'}`);
-        if (btn) btn.classList.add('active');
+        if (btn) { btn.classList.add('active'); btn.setAttribute('aria-pressed', 'true'); }
     }
 
     // ============================================================
@@ -13168,8 +13155,8 @@
         if (saveGame()) {
             addLog('Spielstand gespeichert.', 'speak');
             const btn = document.getElementById('btn-save');
-            btn.style.borderColor = '#6a8a5a';
-            setTimeout(() => { btn.style.borderColor = ''; }, 800);
+            btn.classList.add('saved');
+            setTimeout(() => btn.classList.remove('saved'), 900);
         }
     }
 
@@ -13301,9 +13288,8 @@
 
     function togglePanel() {
         const panel = document.getElementById('panel');
-        panel.classList.toggle('open');
-        const btn = document.getElementById('panel-toggle');
-        btn.textContent = panel.classList.contains('open') ? 'x' : 'i';
+        const open = panel.classList.toggle('open');
+        document.getElementById('panel-toggle').setAttribute('aria-expanded', String(open));
     }
 
     // ============================================================
