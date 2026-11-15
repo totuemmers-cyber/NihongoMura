@@ -7,8 +7,25 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Nihongo Mura">
     <title>Nihongo Mura — Japanisch-Sprachsimulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Zen+Maru+Gothic:wght@400;500;700&display=swap">
     <style>
         :root {
+            /* Woodblock / washi palette — mirrored by PALETTE in the script */
+            --sumi: #2b2622;
+            --washi: #f3ead8;
+            --washi-deep: #e6d8bb;
+            --ai: #2e4a6b;
+            --ai-deep: #1f3550;
+            --ai-light: #6f93b5;
+            --shu: #c8442f;
+            --kin: #c99a3a;
+            --matsu: #3f5a3a;
+            /* Type — mincho for kanji & headings, rounded gothic for UI */
+            --font-mincho: 'Shippori Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
+            --font-ui: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
+
             --bg-primary: #1a1a1a;
             --bg-header-top: #1a1008;
             --bg-header-bottom: #12100a;
@@ -116,12 +133,25 @@
             min-width: 0;
             min-height: 0;
         }
+        #canvas-wrap { overflow: hidden; }
+        /* Print-style darkened margins; a CSS layer so the compositor draws it, not the canvas */
+        #canvas-wrap::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(ellipse at center, rgba(40,26,12,0) 58%, rgba(40,26,12,0.10) 80%, rgba(40,26,12,0.26) 100%);
+        }
         #gameCanvas {
             display: block;
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
             touch-action: none;
         }
+        #gameCanvas.pannable { cursor: grab; }
+        #gameCanvas.dragging { cursor: grabbing; }
         #panel {
             width: 360px;
             background: linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-panel-mid) 50%, var(--bg-panel) 100%);
@@ -4072,7 +4102,8 @@
         // Festival banner at top
         if (activeFestival) {
             const bannerAlpha = 0.6 + Math.sin(gameTick * 0.03) * 0.1;
-            const cw = canvas.width / dpr;
+            const cw = camera.viewW;
+            setScreenTransform(ctx);
             ctx.globalAlpha = bannerAlpha;
             ctx.font = `bold ${Math.round(10*s)}px 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif`;
             ctx.fillStyle = '#d4a030';
@@ -5890,204 +5921,855 @@
     // ============================================================
     //  RENDERING
     // ============================================================
-    function drawTerrain(ctx) {
-        const cw = canvas.width / dpr;
-        const ch = canvas.height / dpr;
-        const s = canvasScale;
+    // ============================================================
+    //  PALETTE — woodblock / washi colour tokens (CSS mirrors these in :root)
+    // ============================================================
+    const PALETTE = {
+        sumi: '#2b2622',
+        washi: '#f3ead8',
+        washiDeep: '#e6d8bb',
+        ai: '#2e4a6b',
+        aiDeep: '#1f3550',
+        aiLight: '#6f93b5',
+        shu: '#c8442f',
+        kin: '#c99a3a',
+        matsu: '#3f5a3a',
+        stone: '#9c978b',
+        stoneLight: '#cfc9bb',
+    };
+    const FONT_MINCHO = "'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',serif";
+    const FONT_UI = "'Zen Maru Gothic','Hiragino Maru Gothic ProN','Hiragino Sans','Noto Sans JP',system-ui,sans-serif";
 
-        // Base green landscape with subtle gradient (darker at top/distance)
-        const terrainGrad = ctx.createLinearGradient(0, 0, 0, ch);
-        terrainGrad.addColorStop(0, '#3e6e28');
-        terrainGrad.addColorStop(0.5, '#4a7a30');
-        terrainGrad.addColorStop(1, '#508035');
-        ctx.fillStyle = terrainGrad;
-        ctx.fillRect(0, 0, cw, ch);
+    // Per-season landscape colours. Everything the terrain painter uses lives here.
+    const SEASON_PALETTES = {
+        spring: {
+            skyTop: '#5b80a6', skyHorizon: '#efe3ca', cloud: '#f6eedc',
+            mountFar: '#a3b3c0', mountNear: '#76918b', peak: '#8fa2b4', peakSnow: 0.42, treeline: '#4e6a48',
+            groundTop: '#86a160', groundBottom: '#93ad69',
+            blotches: ['#9cb675', '#77945a', '#8aa665', '#a7bd80', '#6f8c54'],
+            tuft: '#53703c', sand: '#dccaa2', sandEdge: '#c3ad84', path: '#c6b08a',
+            bank: '#7a7a58', reed: '#55703f', reedHead: '#7a5a3a',
+            water: ['#5f8db0', '#3c6a90', '#2a5276'],
+            scatter: { kind: 'petal', colors: ['#f1c6ce', '#f8e1e5', '#e8a9b7'], count: 150 },
+        },
+        summer: {
+            skyTop: '#3d6fa3', skyHorizon: '#f1e7cf', cloud: '#fbf5e8',
+            mountFar: '#8ea8ba', mountNear: '#5a7f6e', peak: '#7e97ab', peakSnow: 0.22, treeline: '#3d5c39',
+            groundTop: '#6c9449', groundBottom: '#7aa253',
+            blotches: ['#82aa5b', '#5c8440', '#719a4c', '#8db463', '#567d3c'],
+            tuft: '#42632f', sand: '#ddc99c', sandEdge: '#c2aa7c', path: '#c5ad84',
+            bank: '#6c6e4a', reed: '#47662f', reedHead: '#6e4e30',
+            water: ['#4f86ad', '#2f6189', '#214b70'],
+            scatter: { kind: 'flower', colors: ['#f4e3a1', '#ffffff', '#e9c5e8', '#f2b65c'], count: 90 },
+        },
+        autumn: {
+            skyTop: '#687ea0', skyHorizon: '#f2dcc0', cloud: '#f7ecdc',
+            mountFar: '#a9a2a6', mountNear: '#8b6c52', peak: '#9a9aa6', peakSnow: 0.35, treeline: '#7a4e32',
+            groundTop: '#93955c', groundBottom: '#9f9f64',
+            blotches: ['#b09c5c', '#7d8a50', '#a5884f', '#b8a86c', '#86904f'],
+            tuft: '#6f6a38', sand: '#dec79c', sandEdge: '#c4aa7e', path: '#c9ae86',
+            bank: '#7d6b4c', reed: '#8a7a45', reedHead: '#6a4a2c',
+            water: ['#5d849f', '#3d6382', '#2c4e6c'],
+            scatter: { kind: 'leaf', colors: ['#c9582f', '#d98a2f', '#a8402a', '#e0b048'], count: 170 },
+        },
+        winter: {
+            skyTop: '#7489a0', skyHorizon: '#ebe8e2', cloud: '#f4f2ee',
+            mountFar: '#bcc5ce', mountNear: '#8794a0', peak: '#aab6c2', peakSnow: 0.62, treeline: '#4b5a52',
+            groundTop: '#aab2a2', groundBottom: '#b7beac',
+            blotches: ['#c2c8ba', '#9ca690', '#b0b8a4', '#d6dad0', '#949e8a'],
+            tuft: '#7c8670', sand: '#d9d0bc', sandEdge: '#bfb39a', path: '#c6bca6',
+            bank: '#7f8070', reed: '#9a9070', reedHead: '#6e5a42',
+            water: ['#6c8aa3', '#4b6a86', '#36536e'],
+            scatter: { kind: 'snow', colors: ['#f6f7f8', '#e9edf0'], count: 46 },
+        },
+    };
 
-        // Ground texture variation — subtle tonal circles
-        const groundSpots = [
-            [60,90,'#467428'],[200,150,'#4e7e32'],[340,420,'#3e7228'],[480,100,'#508030'],
-            [100,350,'#447228'],[550,480,'#3a6a24'],[720,550,'#4a7a2e'],[850,200,'#467428'],
-            [300,530,'#508030'],[180,480,'#3e6e28'],[630,350,'#447228'],[800,100,'#467428'],
-            [420,560,'#3a6a24'],[250,250,'#4e7e32'],[500,380,'#3e7228'],[150,60,'#447228'],
-            [750,480,'#508030'],[900,400,'#3e6e28'],[380,80,'#467428'],[650,560,'#4a7a2e'],
-        ];
-        for (const [gx, gy, gc] of groundSpots) {
-            ctx.beginPath();
-            ctx.ellipse(gx * s, gy * s, (20 + gx % 15) * s, (12 + gy % 10) * s, (gx * 0.01), 0, Math.PI * 2);
-            ctx.fillStyle = gc;
-            ctx.fill();
-        }
+    function hexToRgba(hex, a) {
+        const n = parseInt(hex.slice(1), 16);
+        return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+    }
 
-        // Distant mountain silhouettes (水墨画 ink wash style)
-        ctx.save();
-        // Far mountains — very faint, bluish-grey
-        ctx.fillStyle = 'rgba(60,80,70,0.18)';
-        ctx.beginPath();
-        ctx.moveTo(0, 30 * s);
-        ctx.quadraticCurveTo(60 * s, -20 * s, 150 * s, 25 * s);
-        ctx.quadraticCurveTo(200 * s, -10 * s, 280 * s, 20 * s);
-        ctx.quadraticCurveTo(350 * s, -30 * s, 420 * s, 15 * s);
-        ctx.lineTo(420 * s, 50 * s);
-        ctx.lineTo(0, 50 * s);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = 'rgba(50,70,60,0.15)';
-        ctx.beginPath();
-        ctx.moveTo(400 * s, 25 * s);
-        ctx.quadraticCurveTo(500 * s, -25 * s, 600 * s, 18 * s);
-        ctx.quadraticCurveTo(680 * s, -15 * s, 780 * s, 22 * s);
-        ctx.quadraticCurveTo(880 * s, -20 * s, 1000 * s, 20 * s);
-        ctx.lineTo(1000 * s, 55 * s);
-        ctx.lineTo(400 * s, 55 * s);
-        ctx.closePath();
-        ctx.fill();
-        // Mist between mountains and village
-        const mistGrad = ctx.createLinearGradient(0, 20 * s, 0, 70 * s);
-        mistGrad.addColorStop(0, 'rgba(200,200,190,0.08)');
-        mistGrad.addColorStop(0.5, 'rgba(200,200,190,0.12)');
-        mistGrad.addColorStop(1, 'rgba(200,200,190,0)');
-        ctx.fillStyle = mistGrad;
-        ctx.fillRect(0, 20 * s, cw, 50 * s);
-        ctx.restore();
-
-        // Rolling green hills in foreground
-        const hills = [
-            { x: 80, y: 60, rx: 140, ry: 50, c: '#3e6e28' },
-            { x: 350, y: 40, rx: 180, ry: 60, c: '#447228' },
-            { x: 650, y: 50, rx: 120, ry: 45, c: '#3a6a24' },
-            { x: 200, y: 80, rx: 100, ry: 35, c: '#4a7a30' },
-        ];
-        for (const h of hills) {
-            ctx.beginPath();
-            ctx.ellipse(h.x * s, h.y * s, h.rx * s, h.ry * s, 0, Math.PI, 0);
-            ctx.fillStyle = h.c;
-            ctx.fill();
-        }
-
-        // Golden-tan courtyard area (center, slightly irregular ellipse)
-        ctx.beginPath();
-        ctx.ellipse(420 * s, 300 * s, 180 * s, 120 * s, -0.06, 0, Math.PI * 2);
-        ctx.fillStyle = '#c8b080';
-        ctx.fill();
-        ctx.beginPath();
-        ctx.ellipse(418 * s, 302 * s, 160 * s, 105 * s, 0.04, 0, Math.PI * 2);
-        ctx.fillStyle = '#baa870';
-        ctx.fill();
-
-        // Subtle dirt paths with soft edges
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        const drawPath = (x1, y1, x2, y2, w, alpha) => {
-            // Soft outer edge
-            ctx.globalAlpha = alpha * 0.3;
-            ctx.strokeStyle = '#9a8868';
-            ctx.lineWidth = (w + 4) * s;
-            ctx.beginPath();
-            ctx.moveTo(x1 * s, y1 * s);
-            ctx.lineTo(x2 * s, y2 * s);
-            ctx.stroke();
-            // Main path
-            ctx.globalAlpha = alpha;
-            ctx.strokeStyle = '#a89878';
-            ctx.lineWidth = w * s;
-            ctx.beginPath();
-            ctx.moveTo(x1 * s, y1 * s);
-            ctx.lineTo(x2 * s, y2 * s);
-            ctx.stroke();
+    // Deterministic PRNG so the landscape is identical every rebuild
+    function mulberry32(seed) {
+        return function() {
+            seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+            let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+            t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
         };
-        // Main crossroads
-        drawPath(200, 300, 640, 300, 14, 0.35);
-        drawPath(420, 155, 420, 475, 12, 0.3);
-        // Diagonal
-        drawPath(285, 205, 555, 395, 10, 0.25);
-        // Side path to river
-        drawPath(580, 300, 700, 300, 8, 0.2);
-        // Pebble dots along main path
-        ctx.globalAlpha = 0.15;
-        ctx.fillStyle = '#8a7a60';
-        const pebbles = [[230,298],[280,303],[330,297],[380,301],[450,299],[520,302],[570,297],[620,300],
-                          [418,180],[422,220],[419,260],[421,340],[418,380],[420,420],[422,460]];
-        for (const [px, py] of pebbles) {
-            ctx.beginPath();
-            ctx.arc(px * s, py * s, (1 + (px % 3) * 0.5) * s, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.globalAlpha = 1.0;
-        ctx.lineCap = 'butt';
+    }
 
-        // River on right side (gentle meander) — gradient fill
-        const riverGrad = ctx.createLinearGradient(705 * s, 0, 800 * s, 0);
-        riverGrad.addColorStop(0, '#2a5a78');
-        riverGrad.addColorStop(0.3, '#3a7090');
-        riverGrad.addColorStop(0.7, '#3a7090');
-        riverGrad.addColorStop(1, '#2a5a78');
-        ctx.fillStyle = riverGrad;
-        ctx.beginPath();
-        ctx.moveTo(725 * s, 0);
-        ctx.bezierCurveTo(720 * s, 120 * s, 715 * s, 280 * s, 710 * s, 400 * s);
-        ctx.bezierCurveTo(705 * s, 500 * s, 708 * s, 560 * s, 705 * s, ch);
-        ctx.lineTo(800 * s, ch);
-        ctx.bezierCurveTo(798 * s, 540 * s, 793 * s, 420 * s, 795 * s, 300 * s);
-        ctx.bezierCurveTo(797 * s, 180 * s, 790 * s, 80 * s, 785 * s, 0);
-        ctx.closePath();
-        ctx.fill();
-        // Shore highlight — left bank
-        ctx.strokeStyle = 'rgba(90,120,70,0.35)';
-        ctx.lineWidth = 2 * s;
-        ctx.beginPath();
-        ctx.moveTo(725 * s, 0);
-        ctx.bezierCurveTo(720 * s, 120 * s, 715 * s, 280 * s, 710 * s, 400 * s);
-        ctx.bezierCurveTo(705 * s, 500 * s, 708 * s, 560 * s, 705 * s, ch);
-        ctx.stroke();
-        // River ripples (flow downward, clipped to river)
+    // ============================================================
+    //  CAMERA — fits the world on wide screens, follows + drags on narrow ones
+    // ============================================================
+    // World point (wx, wy) appears on screen at (wx * canvasScale + camera.offX, wy * canvasScale + camera.offY).
+    const camera = {
+        mode: 'fit',          // 'fit' = whole world centred, 'pan' = zoomed in, follows learner, draggable
+        x: WORLD_W / 2,       // world-space point at the centre of the view
+        y: WORLD_H / 2,
+        offX: 0, offY: 0,     // CSS-pixel translation applied to the world layer
+        viewW: 1, viewH: 1,   // canvas size in CSS pixels
+        manualUntil: 0,       // after a drag, hold the manual position until this time
+        drag: null,
+        suppressClickUntil: 0,
+    };
+    const HORIZON_Y = 46;     // world y where the sky/mountain band meets the ground
+
+    function configureCamera(w, h) {
+        camera.viewW = w;
+        camera.viewH = h;
+        const contain = Math.min(w / WORLD_W, h / WORLD_H);
+        const cover = Math.max(w / WORLD_W, h / WORLD_H);
+        if (cover / contain <= 1.5) {
+            camera.mode = 'fit';
+            canvasScale = contain;
+        } else {
+            camera.mode = 'pan';
+            canvasScale = Math.min(cover, Math.max(contain, 1.4));
+        }
+        canvas.classList.toggle('pannable', camera.mode === 'pan');
+        if (camera.mode === 'pan' && persons.length > 1) {
+            const f = cameraFocus();
+            camera.x = f.x; camera.y = f.y;
+        }
+        applyCamera();
+    }
+
+    function applyCamera() {
+        const s = canvasScale;
+        const halfW = camera.viewW / (2 * s), halfH = camera.viewH / (2 * s);
+        if (camera.mode === 'fit' || halfW * 2 >= WORLD_W) camera.x = WORLD_W / 2;
+        else camera.x = Math.max(halfW, Math.min(WORLD_W - halfW, camera.x));
+        if (camera.mode === 'fit' || halfH * 2 >= WORLD_H) camera.y = WORLD_H / 2;
+        else camera.y = Math.max(halfH, Math.min(WORLD_H - halfH, camera.y));
+        // Snap to device pixels so the cached terrain blits crisply
+        camera.offX = Math.round((camera.viewW / 2 - camera.x * s) * dpr) / dpr;
+        camera.offY = Math.round((camera.viewH / 2 - camera.y * s) * dpr) / dpr;
+    }
+
+    function cameraFocus() {
+        const learner = persons[1], speaker = persons[0];
+        if (!learner) return { x: WORLD_W / 2, y: WORLD_H / 2 };
+        if (speaker) {
+            const span = Math.min(camera.viewW, camera.viewH) / canvasScale * 0.55;
+            if (Math.hypot(speaker.x - learner.x, speaker.y - learner.y) < span) {
+                return { x: (speaker.x + learner.x) / 2, y: (speaker.y + learner.y) / 2 - 10 };
+            }
+        }
+        return { x: learner.x, y: learner.y - 10 };
+    }
+
+    function updateCamera(rawDt) {
+        if (camera.mode !== 'pan' || camera.drag || performance.now() < camera.manualUntil) return;
+        const f = cameraFocus();
+        const k = 1 - Math.exp(-rawDt / 450);
+        camera.x += (f.x - camera.x) * k;
+        camera.y += (f.y - camera.y) * k;
+        applyCamera();
+    }
+
+    function screenToWorld(cssX, cssY) {
+        return { x: (cssX - camera.offX) / canvasScale, y: (cssY - camera.offY) / canvasScale };
+    }
+    // Visible area in world units
+    function viewWorldRect() {
+        const s = canvasScale;
+        return { x0: -camera.offX / s, y0: -camera.offY / s,
+                 x1: (camera.viewW - camera.offX) / s, y1: (camera.viewH - camera.offY) / s };
+    }
+    // Visible area in scaled-world pixels (what fillRect needs while the world transform is active)
+    function viewPxRect() {
+        return { x: -camera.offX, y: -camera.offY, w: camera.viewW, h: camera.viewH };
+    }
+    function setWorldTransform(c) { c.setTransform(dpr, 0, 0, dpr, camera.offX * dpr, camera.offY * dpr); }
+    function setScreenTransform(c) { c.setTransform(dpr, 0, 0, dpr, 0, 0); }
+
+    function setupCameraInput() {
+        canvas.addEventListener('pointerdown', e => {
+            if (camera.mode !== 'pan' || (e.pointerType === 'mouse' && e.button !== 0)) return;
+            camera.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, camX: camera.x, camY: camera.y, moved: false };
+        });
+        canvas.addEventListener('pointermove', e => {
+            const d = camera.drag;
+            if (!d || d.id !== e.pointerId) return;
+            const dx = e.clientX - d.x, dy = e.clientY - d.y;
+            if (!d.moved) {
+                if (Math.hypot(dx, dy) < 8) return;
+                d.moved = true;
+                canvas.classList.add('dragging');
+                try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+            }
+            camera.x = d.camX - dx / canvasScale;
+            camera.y = d.camY - dy / canvasScale;
+            camera.manualUntil = performance.now() + 8000;
+            applyCamera();
+        });
+        const endDrag = e => {
+            const d = camera.drag;
+            if (!d || d.id !== e.pointerId) return;
+            if (d.moved) camera.suppressClickUntil = performance.now() + 400;
+            camera.drag = null;
+            canvas.classList.remove('dragging');
+        };
+        canvas.addEventListener('pointerup', endDrag);
+        canvas.addEventListener('pointercancel', endDrag);
+    }
+
+    // ============================================================
+    //  TERRAIN — painted once into an offscreen canvas, rebuilt on resize / season change
+    // ============================================================
+    const terrainCache = { canvas: null, key: '', res: 1, x0: 0, y0: 0 };
+    let _grainTile = null;
+
+    // River banks as cubic Béziers (world units) — same course the collision code assumes (x≈705..800)
+    const RIVER_LEFT_CURVES = [
+        [[725, 0], [720, 120], [715, 280], [710, 400]],
+        [[710, 400], [705, 500], [708, 560], [705, 640]],
+    ];
+    const RIVER_RIGHT_CURVES = [
+        [[785, 0], [790, 80], [797, 180], [795, 300]],
+        [[795, 300], [793, 420], [798, 540], [800, 640]],
+    ];
+    function _sampleCurves(curves) {
+        const pts = [];
+        for (const [p0, p1, p2, p3] of curves) {
+            for (let i = 0; i <= 24; i++) {
+                const t = i / 24, u = 1 - t;
+                pts.push([
+                    u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0],
+                    u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1],
+                ]);
+            }
+        }
+        return pts;
+    }
+    const _riverLeftPts = _sampleCurves(RIVER_LEFT_CURVES);
+    const _riverRightPts = _sampleCurves(RIVER_RIGHT_CURVES);
+    function _bankXAt(pts, y) {
+        if (y <= pts[0][1]) return pts[0][0];
+        for (let i = 1; i < pts.length; i++) {
+            if (y <= pts[i][1]) {
+                const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+                return x0 + (x1 - x0) * ((y - y0) / ((y1 - y0) || 1));
+            }
+        }
+        return pts[pts.length - 1][0];
+    }
+    function riverBanksAt(y) { return { l: _bankXAt(_riverLeftPts, y), r: _bankXAt(_riverRightPts, y) }; }
+
+    // Closed river outline from yTop to yBottom (extends straight past the world edge into letterbox space)
+    function riverPath(yTop, yBottom) {
+        const p = new Path2D();
+        p.moveTo(_bankXAt(_riverLeftPts, yTop), yTop);
+        for (const [x, y] of _riverLeftPts) if (y > yTop) p.lineTo(x, y);
+        p.lineTo(705, Math.max(640, yBottom));
+        p.lineTo(800, Math.max(640, yBottom));
+        for (let i = _riverRightPts.length - 1; i >= 0; i--) {
+            const [x, y] = _riverRightPts[i];
+            if (y > yTop) p.lineTo(x, y);
+        }
+        p.lineTo(_bankXAt(_riverRightPts, yTop), yTop);
+        p.closePath();
+        return p;
+    }
+    function riverBankPath(pts, yTop, yBottom, xBottom) {
+        const p = new Path2D();
+        p.moveTo(_bankXAt(pts, yTop), yTop);
+        for (const [x, y] of pts) if (y > yTop) p.lineTo(x, y);
+        p.lineTo(xBottom, Math.max(640, yBottom));
+        return p;
+    }
+    let _riverAnimPath = null, _riverAnimKey = '';
+
+    // Village footpaths (world units). Purely visual — characters path-find independently.
+    const VILLAGE_PATHS = [
+        [[96, 336], [160, 322], [210, 308], [250, 302]],                 // torii → plaza
+        [[250, 300], [330, 298], [420, 300], [510, 301], [592, 302]],   // plaza east–west
+        [[420, 184], [421, 240], [420, 300], [419, 360], [420, 420]],   // plaza north–south
+        [[592, 304], [640, 322], [676, 360], [700, 396], [712, 402]],   // plaza → bridge
+        [[420, 420], [418, 470], [420, 512]],                            // plaza → koi pond
+        [[318, 392], [262, 420], [205, 448], [168, 474]],               // plaza → shrine
+        [[446, 196], [478, 182], [500, 174]],                            // lantern → shoin
+        [[548, 232], [578, 218], [600, 214]],                            // plaza → house
+        [[268, 232], [232, 236], [196, 234]],                            // plaza → house
+        [[792, 402], [826, 384], [846, 352], [842, 326]],               // bridge → medicine hut
+        [[826, 384], [866, 318], [900, 270], [918, 250]],               // → terakoya
+        [[796, 406], [850, 404], [898, 402]],                            // → stable
+        [[800, 418], [826, 470], [846, 530], [856, 574]],               // → viewpoint
+        [[836, 500], [870, 512], [902, 520]],                            // → tea field
+    ];
+    const PLAZA = { x: 420, y: 300, rx: 182, ry: 122 };
+
+    function _plazaRadius(a, inset) {
+        // Gently irregular rim
+        return 1 - inset + Math.sin(a * 3 + 0.7) * 0.025 + Math.sin(a * 7 + 2.1) * 0.015 + Math.sin(a * 13) * 0.008;
+    }
+    function _plazaShape(g, inset) {
+        g.beginPath();
+        for (let i = 0; i <= 96; i++) {
+            const a = (i / 96) * Math.PI * 2;
+            const k = _plazaRadius(a, inset);
+            const x = PLAZA.x + Math.cos(a) * PLAZA.rx * k;
+            const y = PLAZA.y + Math.sin(a) * PLAZA.ry * k;
+            if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+        }
+        g.closePath();
+    }
+    function _inPlaza(x, y, inset) {
+        const dx = (x - PLAZA.x) / PLAZA.rx, dy = (y - PLAZA.y) / PLAZA.ry;
+        return Math.hypot(dx, dy) < _plazaRadius(Math.atan2(dy, dx), inset || 0);
+    }
+
+    // Draw a shape as a soft-edged blob using the shadow-offset trick (works everywhere, unlike ctx.filter).
+    function _soft(g, res, color, blur, drawFn) {
+        const OFF = 20000;
+        g.save();
+        g.shadowColor = color;
+        g.shadowBlur = blur * res;
+        g.shadowOffsetX = OFF * res;
+        g.shadowOffsetY = 0;
+        g.translate(-OFF, 0);
+        g.fillStyle = '#000';
+        g.strokeStyle = '#000';
+        drawFn(g);
+        g.restore();
+    }
+
+    function _traceSmooth(g, pts) {
+        g.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length - 1; i++) {
+            const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2;
+            g.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
+        }
+        const last = pts[pts.length - 1];
+        g.lineTo(last[0], last[1]);
+    }
+
+    function _getGrainTile() {
+        if (_grainTile) return _grainTile;
+        const n = 128;
+        const src = document.createElement('canvas');
+        src.width = src.height = n;
+        const sc = src.getContext('2d');
+        const img = sc.createImageData(n, n);
+        const rnd = mulberry32(77);
+        for (let i = 0; i < n * n; i++) {
+            const v = 128 + (rnd() - 0.5) * 70;
+            img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+        }
+        sc.putImageData(img, 0, 0);
+        // Washi fibres
+        sc.lineCap = 'round';
+        for (let i = 0; i < 26; i++) {
+            const x = rnd() * n, y = rnd() * n, a = rnd() * Math.PI, len = 8 + rnd() * 22;
+            sc.strokeStyle = rnd() < 0.6 ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.18)';
+            sc.lineWidth = 0.6;
+            sc.beginPath();
+            sc.moveTo(x, y);
+            sc.quadraticCurveTo(x + Math.cos(a) * len * 0.5 + (rnd() - 0.5) * 6, y + Math.sin(a) * len * 0.5 + (rnd() - 0.5) * 6,
+                                x + Math.cos(a) * len, y + Math.sin(a) * len);
+            sc.stroke();
+        }
+        // Upscale ×2 with smoothing → softer, paper-like grain
+        const tile = document.createElement('canvas');
+        tile.width = tile.height = n * 2;
+        const tc = tile.getContext('2d');
+        tc.imageSmoothingEnabled = true;
+        tc.drawImage(src, 0, 0, n * 2, n * 2);
+        _grainTile = tile;
+        return tile;
+    }
+
+    function terrainRegion() {
+        // World area plus any letterbox margin around it (fit mode, or the short axis in pan mode)
+        const s = canvasScale;
+        const mx = Math.max(0, (camera.viewW / s - WORLD_W) / 2);
+        const my = Math.max(0, (camera.viewH / s - WORLD_H) / 2);
+        return { x0: -mx - 4, y0: -my - 4, x1: WORLD_W + mx + 4, y1: WORLD_H + my + 4 };
+    }
+
+    function buildTerrainCache(season, r, key) {
+        const w = r.x1 - r.x0, h = r.y1 - r.y0;
+        let res = canvasScale * Math.min(dpr, 2);
+        res = Math.min(res, 4096 / w, 4096 / h);
+        const c = terrainCache.canvas || document.createElement('canvas');
+        c.width = Math.ceil(w * res);
+        c.height = Math.ceil(h * res);
+        const g = c.getContext('2d');
+        g.setTransform(res, 0, 0, res, -r.x0 * res, -r.y0 * res);
+        paintTerrain(g, SEASON_PALETTES[season] || SEASON_PALETTES.spring, r, res);
+        // Washi grain over everything
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.globalCompositeOperation = 'soft-light';
+        g.globalAlpha = 0.55;
+        g.fillStyle = g.createPattern(_getGrainTile(), 'repeat');
+        g.fillRect(0, 0, c.width, c.height);
+        g.globalCompositeOperation = 'source-over';
+        g.globalAlpha = 1;
+        Object.assign(terrainCache, { canvas: c, key, res, x0: r.x0, y0: r.y0 });
+    }
+
+    function paintTerrain(g, P, r, res) {
+        const rnd = mulberry32(20240611);
+
+        // 1 — Ground base, a gentle bokashi from distance to foreground
+        const base = g.createLinearGradient(0, HORIZON_Y, 0, Math.max(WORLD_H, r.y1));
+        base.addColorStop(0, P.groundTop);
+        base.addColorStop(1, P.groundBottom);
+        g.fillStyle = base;
+        g.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
+
+        // 2 — Painterly colour blotches (fixed positions across a generous area so resizes don't reshuffle)
+        for (let i = 0; i < 170; i++) {
+            const x = -400 + rnd() * 1800, y = HORIZON_Y + rnd() * 1000 - 120;
+            const rad = 28 + rnd() * 70, col = P.blotches[i % P.blotches.length], a = 0.35 + rnd() * 0.3;
+            if (x + rad < r.x0 || x - rad > r.x1 || y + rad < r.y0 || y - rad > r.y1) continue;
+            const gr = g.createRadialGradient(x, y, 0, x, y, rad);
+            gr.addColorStop(0, hexToRgba(col, a));
+            gr.addColorStop(0.6, hexToRgba(col, a * 0.55));
+            gr.addColorStop(1, hexToRgba(col, 0));
+            g.fillStyle = gr;
+            g.save();
+            g.translate(x, y); g.scale(1, 0.62); g.translate(-x, -y);
+            g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+            g.restore();
+        }
+
+        // 3 — River: banks, water, flow lines, pebbles, reeds
+        const riverTop = HORIZON_Y - 4, riverBottom = r.y1 + 2;
+        const river = riverPath(riverTop, riverBottom);
+        const banks = [riverBankPath(_riverLeftPts, riverTop + 4, riverBottom, 705),
+                       riverBankPath(_riverRightPts, riverTop + 4, riverBottom, 800)];
+        g.save();
+        g.lineJoin = 'round';
+        _soft(g, res, hexToRgba(P.bank, 0.75), 5, s => { s.lineWidth = 12; for (const b of banks) s.stroke(b); });
+        const water = g.createLinearGradient(700, 0, 805, 0);
+        water.addColorStop(0, P.water[0]);
+        water.addColorStop(0.22, P.water[1]);
+        water.addColorStop(0.5, P.water[2]);
+        water.addColorStop(0.78, P.water[1]);
+        water.addColorStop(1, P.water[0]);
+        g.fillStyle = water;
+        g.fill(river);
+        g.clip(river);
+        // Shallows: pale band hugging each bank
+        g.strokeStyle = hexToRgba(PALETTE.washi, 0.16);
+        g.lineWidth = 7;
+        for (const b of banks) g.stroke(b);
+        // Long woodblock-style flow lines
+        g.lineCap = 'round';
+        for (let lane = 0; lane < 7; lane++) {
+            const u = 0.12 + lane * 0.127;
+            g.strokeStyle = hexToRgba(lane % 2 ? PALETTE.aiLight : PALETTE.washi, lane % 2 ? 0.28 : 0.12);
+            g.lineWidth = lane % 2 ? 0.9 : 0.7;
+            g.beginPath();
+            let started = false;
+            for (let y = riverTop; y <= riverBottom; y += 6) {
+                const b = riverBanksAt(y);
+                const x = b.l + (b.r - b.l) * u + Math.sin(y * 0.045 + lane * 1.7) * 3;
+                if (!started) { g.moveTo(x, y); started = true; } else g.lineTo(x, y);
+            }
+            g.setLineDash([22 + lane * 3, 10 + lane * 2]);
+            g.lineDashOffset = lane * 9;
+            g.stroke();
+        }
+        g.setLineDash([]);
+        g.restore();
+        // Ink outline of the banks
+        g.save();
+        g.strokeStyle = hexToRgba(PALETTE.sumi, 0.35);
+        g.lineWidth = 0.9;
+        g.lineJoin = 'round';
+        for (const b of banks) g.stroke(b);
+        g.restore();
+        // Pebbles & reeds along both banks (kept clear of the bridge and dock)
+        for (let y = HORIZON_Y + 6; y < riverBottom; y += 7 + rnd() * 9) {
+            if (Math.abs(y - BRIDGE.y) < 58 || Math.abs(y - 530) < 24) continue;
+            const b = riverBanksAt(y);
+            for (const side of [-1, 1]) {
+                const bx = side < 0 ? b.l : b.r;
+                if (rnd() < 0.55) {
+                    const px = bx + side * (2 + rnd() * 5), pr = 1.2 + rnd() * 2;
+                    g.fillStyle = rnd() < 0.5 ? PALETTE.stone : PALETTE.stoneLight;
+                    g.beginPath();
+                    g.ellipse(px, y, pr * 1.3, pr, rnd() * 3, 0, Math.PI * 2);
+                    g.fill();
+                }
+                if (rnd() < 0.16) _drawReeds(g, bx + side * 4, y, side, P, rnd);
+            }
+        }
+
+        // 4 — Footpaths: soft beaten earth
+        g.save();
+        g.lineCap = 'round';
+        g.lineJoin = 'round';
+        _soft(g, res, hexToRgba(P.path, 0.55), 6, s => {
+            s.lineWidth = 15;
+            for (const pts of VILLAGE_PATHS) { s.beginPath(); _traceSmooth(s, pts); s.stroke(); }
+        });
+        g.restore();
+
+        // 5 — Plaza: soft-edged sand with raked-gravel rings (karesansui)
+        _soft(g, res, P.sandEdge, 9, s => { _plazaShape(s, 0); s.fill(); });
+        _soft(g, res, P.sand, 6, s => { _plazaShape(s, 0.07); s.fill(); });
+        g.save();
+        _plazaShape(g, 0.08);
+        g.clip();
+        g.lineWidth = 1.1;
+        for (let k = 0.06; k < 1; k += 0.042) {
+            g.beginPath();
+            g.ellipse(PLAZA.x, PLAZA.y + 1, PLAZA.rx * k, PLAZA.ry * k, 0, 0, Math.PI * 2);
+            g.strokeStyle = hexToRgba(PALETTE.sumi, 0.07);
+            g.stroke();
+            g.beginPath();
+            g.ellipse(PLAZA.x, PLAZA.y, PLAZA.rx * k, PLAZA.ry * k, 0, 0, Math.PI * 2);
+            g.strokeStyle = hexToRgba('#ffffff', 0.2);
+            g.stroke();
+        }
+        g.restore();
+
+        // 6 — Stepping stones (tobi-ishi) along every path
+        for (const pts of VILLAGE_PATHS) {
+            let carry = 0, flip = 1;
+            for (let i = 1; i < pts.length; i++) {
+                const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
+                const len = Math.hypot(bx - ax, by - ay), nx = -(by - ay) / len, ny = (bx - ax) / len;
+                for (let d = carry; d < len; d += 15) {
+                    const t = d / len;
+                    const sx = ax + (bx - ax) * t + nx * flip * 2.5, sy = ay + (by - ay) * t + ny * flip * 2.5;
+                    flip = -flip;
+                    _drawStone(g, sx, sy, 3.6 + rnd() * 1.6, rnd);
+                    carry = d + 15 - len;
+                }
+            }
+        }
+
+        // 7 — Grass tufts (brush flicks)
+        g.save();
+        g.lineCap = 'round';
+        g.strokeStyle = hexToRgba(P.tuft, 0.55);
+        g.lineWidth = 0.7;
+        for (let i = 0; i < 520; i++) {
+            const x = -400 + rnd() * 1800, y = HORIZON_Y + 8 + rnd() * 1000 - 120, sz = 2.6 + rnd() * 2.4;
+            if (x < r.x0 || x > r.x1 || y < HORIZON_Y + 8 || y > r.y1) continue;
+            if (x > 696 && x < 810) continue;
+            if (_inPlaza(x, y, -0.04)) continue;
+            g.beginPath();
+            for (let b = -1; b <= 1; b++) {
+                g.moveTo(x + b * 0.9, y);
+                g.quadraticCurveTo(x + b * 1.6, y - sz * 0.6, x + b * 2.6 + (rnd() - 0.5), y - sz);
+            }
+            g.stroke();
+        }
+        g.restore();
+
+        // 8 — Seasonal scatter: petals, wildflowers, fallen leaves or snow
+        _paintSeasonScatter(g, P, r, res, rnd);
+
+        // 9 — Aerial perspective: distant ground fades toward the horizon colour
+        const haze = g.createLinearGradient(0, HORIZON_Y, 0, HORIZON_Y + 130);
+        haze.addColorStop(0, hexToRgba(P.skyHorizon, 0.45));
+        haze.addColorStop(1, hexToRgba(P.skyHorizon, 0));
+        g.fillStyle = haze;
+        g.fillRect(r.x0, HORIZON_Y - 2, r.x1 - r.x0, 132);
+
+        // 10 — Sky, mountains and mist above the horizon
+        _paintHorizon(g, P, r, res, rnd);
+    }
+
+    function _drawStone(g, x, y, rad, rnd) {
+        const pts = [];
+        const n = 7, rot = rnd() * Math.PI;
+        for (let i = 0; i < n; i++) {
+            const a = rot + (i / n) * Math.PI * 2;
+            const k = 0.78 + rnd() * 0.3;
+            pts.push([x + Math.cos(a) * rad * k * 1.25, y + Math.sin(a) * rad * k * 0.8]);
+        }
+        const shape = () => {
+            g.beginPath();
+            g.moveTo((pts[0][0] + pts[n - 1][0]) / 2, (pts[0][1] + pts[n - 1][1]) / 2);
+            for (let i = 0; i < n; i++) {
+                const p = pts[i], q = pts[(i + 1) % n];
+                g.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2);
+            }
+            g.closePath();
+        };
+        g.save();
+        g.translate(0.5, 0.9);
+        shape();
+        g.fillStyle = 'rgba(40,32,20,0.22)';
+        g.fill();
+        g.restore();
+        shape();
+        g.fillStyle = PALETTE.stone;
+        g.fill();
+        g.lineWidth = 0.45;
+        g.strokeStyle = hexToRgba(PALETTE.sumi, 0.4);
+        g.stroke();
+        g.save();
+        g.clip();
+        g.fillStyle = hexToRgba(PALETTE.stoneLight, 0.85);
+        g.beginPath();
+        g.ellipse(x - rad * 0.25, y - rad * 0.3, rad * 0.8, rad * 0.4, -0.2, 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+    }
+
+    function _drawReeds(g, x, y, side, P, rnd) {
+        g.save();
+        g.lineCap = 'round';
+        const n = 3 + Math.floor(rnd() * 3);
+        for (let i = 0; i < n; i++) {
+            const h = 7 + rnd() * 6, lean = side * (0.5 + rnd() * 2) + (rnd() - 0.5) * 2;
+            const bx = x + (i - n / 2) * 1.1;
+            g.strokeStyle = P.reed;
+            g.lineWidth = 0.6;
+            g.beginPath();
+            g.moveTo(bx, y);
+            g.quadraticCurveTo(bx + lean * 0.3, y - h * 0.6, bx + lean, y - h);
+            g.stroke();
+            if (rnd() < 0.45) {
+                g.strokeStyle = P.reedHead;
+                g.lineWidth = 1.5;
+                g.beginPath();
+                g.moveTo(bx + lean * 0.85, y - h * 0.82);
+                g.lineTo(bx + lean, y - h);
+                g.stroke();
+            }
+        }
+        g.restore();
+    }
+
+    function _paintSeasonScatter(g, P, r, res, rnd) {
+        const sc = P.scatter;
+        const ok = (x, y) => x >= r.x0 && x <= r.x1 && y >= HORIZON_Y + 10 && y <= r.y1 && !(x > 696 && x < 810);
+        if (sc.kind === 'snow') {
+            for (let i = 0; i < sc.count; i++) {
+                const x = -300 + rnd() * 1600, y = HORIZON_Y + 20 + rnd() * 860 - 60, rad = 14 + rnd() * 34;
+                if (!ok(x, y) || _inPlaza(x, y, -0.05)) continue;
+                const lobes = [];
+                for (let k = 0; k < 4; k++) lobes.push([x + (rnd() - 0.5) * rad * 1.6, y + (rnd() - 0.5) * rad * 0.5, rad * (0.35 + rnd() * 0.35)]);
+                _soft(g, res, hexToRgba(sc.colors[0], 0.5), 5, s => {
+                    s.beginPath();
+                    for (const [lx, ly, lr] of lobes) { s.moveTo(lx + lr, ly); s.ellipse(lx, ly, lr, lr * 0.45, 0, 0, Math.PI * 2); }
+                    s.fill();
+                });
+            }
+            g.fillStyle = hexToRgba('#ffffff', 0.7);
+            for (let i = 0; i < 260; i++) {
+                const x = -300 + rnd() * 1600, y = HORIZON_Y + rnd() * 900 - 60;
+                if (!ok(x, y)) continue;
+                g.fillRect(x, y, 0.8, 0.8);
+            }
+            return;
+        }
+        for (let i = 0; i < sc.count * 1.5; i++) {
+            const x = -300 + rnd() * 1600, y = HORIZON_Y + rnd() * 900 - 60;
+            const col = sc.colors[Math.floor(rnd() * sc.colors.length)], rot = rnd() * Math.PI * 2;
+            if (!ok(x, y)) continue;
+            const inPlaza = _inPlaza(x, y, 0);
+            if (inPlaza && sc.kind === 'flower') continue;
+            g.save();
+            g.translate(x, y);
+            g.rotate(rot);
+            if (sc.kind === 'petal') {
+                g.fillStyle = hexToRgba(col, 0.85);
+                g.beginPath();
+                g.ellipse(0, 0, 1.6, 0.9, 0, 0, Math.PI * 2);
+                g.fill();
+            } else if (sc.kind === 'flower') {
+                g.fillStyle = hexToRgba(col, 0.9);
+                for (let p = 0; p < 5; p++) {
+                    g.beginPath();
+                    g.arc(Math.cos(p * 1.2566) * 1.1, Math.sin(p * 1.2566) * 1.1, 0.75, 0, Math.PI * 2);
+                    g.fill();
+                }
+                g.fillStyle = '#e8b030';
+                g.beginPath(); g.arc(0, 0, 0.55, 0, Math.PI * 2); g.fill();
+            } else if (sc.kind === 'leaf') {
+                g.fillStyle = hexToRgba(col, 0.85);
+                g.beginPath();
+                g.moveTo(-2.4, 0);
+                g.quadraticCurveTo(0, -1.6, 2.4, 0);
+                g.quadraticCurveTo(0, 1.6, -2.4, 0);
+                g.fill();
+            }
+            g.restore();
+        }
+    }
+
+    function _ridge(g, x0, x1, baseY, seed, amp, freq, peakY) {
+        // Layered sine ridge; returns nothing, leaves an open path ready to fill
+        g.beginPath();
+        g.moveTo(x0, baseY);
+        for (let x = x0; x <= x1 + 6; x += 6) {
+            const y = peakY + amp * (0.5 + 0.5 * Math.sin(x * freq + seed))
+                    + amp * 0.45 * Math.sin(x * freq * 2.3 + seed * 1.7)
+                    + amp * 0.2 * Math.sin(x * freq * 5.1 + seed * 0.3);
+            g.lineTo(x, Math.min(baseY, y));
+        }
+        g.lineTo(x1 + 6, baseY);
+        g.closePath();
+    }
+
+    function _paintHorizon(g, P, r, res, rnd) {
+        const x0 = r.x0, x1 = r.x1, skyTop = Math.min(r.y0, -60);
+
+        // Sky — strong bokashi from indigo down to warm paper at the horizon
+        const sky = g.createLinearGradient(0, skyTop, 0, HORIZON_Y);
+        sky.addColorStop(0, P.skyTop);
+        sky.addColorStop(0.55, _mix(P.skyTop, P.skyHorizon, 0.55));
+        sky.addColorStop(1, P.skyHorizon);
+        g.fillStyle = sky;
+        g.fillRect(x0, r.y0, x1 - x0, HORIZON_Y + 2 - r.y0);
+
+        // Kasumi — long rounded mist bands, a woodblock signature
+        const band = (cx, cy, len, th, a) => {
+            _soft(g, res, hexToRgba(P.cloud, a), 2.5, s => {
+                s.beginPath();
+                s.moveTo(cx - len / 2 + th / 2, cy - th / 2);
+                s.lineTo(cx + len / 2 - th / 2, cy - th / 2);
+                s.arc(cx + len / 2 - th / 2, cy, th / 2, -Math.PI / 2, Math.PI / 2);
+                s.lineTo(cx - len / 2 + th / 2, cy + th / 2);
+                s.arc(cx - len / 2 + th / 2, cy, th / 2, Math.PI / 2, Math.PI * 1.5);
+                s.fill();
+            });
+        };
+        if (r.y0 < -10) {
+            band(160, -24, 260, 9, 0.75);
+            band(820, -38, 340, 10, 0.7);
+            band(-80, -48, 220, 8, 0.6);
+            band(1120, -14, 220, 8, 0.6);
+        }
+        band(300, 10, 200, 5, 0.55);
+        band(905, 4, 170, 5, 0.5);
+
+        // Distant volcano (snow-capped), echoing classic landscape prints
+        const fx = 600, fBase = HORIZON_Y - 2, fTop = 10, fHalf = 116;
+        const fGrad = g.createLinearGradient(0, fTop, 0, fBase);
+        fGrad.addColorStop(0, P.peak);
+        fGrad.addColorStop(1, hexToRgba(P.skyHorizon, 0.2));
+        g.fillStyle = fGrad;
+        g.beginPath();
+        g.moveTo(fx - fHalf, fBase);
+        g.quadraticCurveTo(fx - fHalf * 0.35, fTop + 18, fx - 12, fTop);
+        g.lineTo(fx + 12, fTop);
+        g.quadraticCurveTo(fx + fHalf * 0.35, fTop + 18, fx + fHalf, fBase);
+        g.closePath();
+        g.fill();
+        // Snow cap with jagged melt line
+        const capY = fTop + (fBase - fTop) * P.peakSnow;
+        g.save();
+        g.clip();
+        g.fillStyle = hexToRgba('#ffffff', 0.92);
+        g.beginPath();
+        g.moveTo(fx - fHalf, fTop - 2);
+        g.lineTo(fx + fHalf, fTop - 2);
+        for (let i = 0; i <= 12; i++) {
+            const x = fx + fHalf - (i / 12) * fHalf * 2;
+            g.lineTo(x, capY + (i % 2 ? 4 : -1) + Math.sin(i * 2.1) * 1.5);
+        }
+        g.closePath();
+        g.fill();
+        g.restore();
+
+        // Far range — pale, fading into mist at its foot
+        const farGrad = g.createLinearGradient(0, 10, 0, HORIZON_Y);
+        farGrad.addColorStop(0, P.mountFar);
+        farGrad.addColorStop(1, hexToRgba(P.skyHorizon, 0.4));
+        g.fillStyle = farGrad;
+        _ridge(g, x0, x1, HORIZON_Y, 1.3, 13, 0.011, 14);
+        g.fill();
+
+        // Near hills — darker, rounder
+        const nearGrad = g.createLinearGradient(0, 24, 0, HORIZON_Y + 4);
+        nearGrad.addColorStop(0, P.mountNear);
+        nearGrad.addColorStop(1, _mix(P.mountNear, P.groundTop, 0.7));
+        g.fillStyle = nearGrad;
+        _ridge(g, x0, x1, HORIZON_Y + 4, 4.2, 9, 0.017, 27);
+        g.fill();
+        g.strokeStyle = hexToRgba(PALETTE.sumi, 0.18);
+        g.lineWidth = 0.6;
+        g.stroke();
+
+        // Distant treeline — small brush dabs along the horizon
+        g.fillStyle = hexToRgba(P.treeline, 0.75);
+        for (let x = x0; x < x1; x += 4 + rnd() * 6) {
+            if (x > 712 && x < 795) continue; // river gap
+            const h = 3 + rnd() * 5, y = HORIZON_Y + 1 + rnd() * 2;
+            g.beginPath();
+            if (rnd() < 0.5) {
+                g.moveTo(x - 2.2, y); g.lineTo(x, y - h); g.lineTo(x + 2.2, y);
+            } else {
+                g.ellipse(x, y - h * 0.45, 2.4, h * 0.55, 0, 0, Math.PI * 2);
+            }
+            g.fill();
+        }
+
+        // Low mist where hills meet the village
+        const mist = g.createLinearGradient(0, HORIZON_Y - 6, 0, HORIZON_Y + 12);
+        mist.addColorStop(0, hexToRgba(P.skyHorizon, 0));
+        mist.addColorStop(0.45, hexToRgba(P.skyHorizon, 0.55));
+        mist.addColorStop(1, hexToRgba(P.skyHorizon, 0));
+        g.fillStyle = mist;
+        g.fillRect(x0, HORIZON_Y - 6, x1 - x0, 18);
+        band(130, HORIZON_Y + 1, 230, 4, 0.45);
+        band(520, HORIZON_Y - 1, 300, 4, 0.4);
+        band(960, HORIZON_Y + 2, 210, 4, 0.4);
+        // River mouth dissolves into a feathered pool of mist
+        _soft(g, res, hexToRgba(P.skyHorizon, 0.8), 10, s => {
+            s.beginPath(); s.ellipse(754, HORIZON_Y + 2, 62, 9, 0, 0, Math.PI * 2); s.fill();
+        });
+        band(760, HORIZON_Y + 6, 120, 4, 0.45);
+    }
+
+    function _mix(a, b, t) {
+        const na = parseInt(a.slice(1), 16), nb = parseInt(b.slice(1), 16);
+        const ch = sh => Math.round(((na >> sh) & 255) * (1 - t) + ((nb >> sh) & 255) * t);
+        return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+    }
+
+    function drawTerrain(ctx) {
+        const season = getSeason();
+        const r = terrainRegion();
+        const key = [season, canvasScale.toFixed(4), Math.min(dpr, 2), r.x0.toFixed(1), r.y0.toFixed(1), r.x1.toFixed(1), r.y1.toFixed(1)].join('|');
+        if (terrainCache.key !== key) buildTerrainCache(season, r, key);
+        const s = canvasScale, c = terrainCache.canvas, res = terrainCache.res;
+        ctx.drawImage(c, terrainCache.x0 * s, terrainCache.y0 * s, c.width / res * s, c.height / res * s);
+        drawRiverShimmer(ctx, r);
+    }
+
+    // Per-frame river animation: drifting highlight strokes, clipped to the water
+    function drawRiverShimmer(ctx, r) {
+        const s = canvasScale;
+        const top = HORIZON_Y - 4, bottom = r.y1 + 2;
+        const key = top + '|' + bottom;
+        if (_riverAnimKey !== key) { _riverAnimPath = riverPath(top, bottom); _riverAnimKey = key; }
+        const span = bottom - top;
         ctx.save();
-        ctx.clip(); // clip to the river path drawn above
-        ctx.strokeStyle = 'rgba(100,170,220,0.3)';
-        ctx.lineWidth = 1 * s;
-        for (let i = 0; i < 14; i++) {
-            const ry = (i * 50 + (gameTick * 0.4) % 50) * s;
+        ctx.scale(s, s);
+        ctx.clip(_riverAnimPath);
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 42; i++) {
+            const seed = i * 97.31;
+            const u = 0.12 + ((seed * 7.13) % 0.76);
+            const speed = 0.28 + (i % 5) * 0.04;
+            const travel = (seed * 13.7 + gameTick * speed) % span;
+            const y = top + travel;
+            const b = riverBanksAt(y);
+            const x = b.l + (b.r - b.l) * u + Math.sin(y * 0.05 + i) * 2;
+            const fade = Math.min(1, Math.sin(Math.PI * travel / span) * 4);
+            const pulse = 0.5 + 0.5 * Math.sin(gameTick * 0.03 + i * 1.9);
+            const a = (0.16 + (i % 3) * 0.08) * fade * (0.5 + pulse * 0.5);
+            const w = 4 + (i % 4) * 2;
+            ctx.strokeStyle = i % 3 === 0 ? `rgba(255,250,235,${a})` : `rgba(195,220,238,${a})`;
+            ctx.lineWidth = 0.8;
             ctx.beginPath();
-            ctx.moveTo(715 * s, ry);
-            ctx.quadraticCurveTo(750 * s, (ry + 8 * s), 785 * s, ry);
+            ctx.moveTo(x - w, y);
+            ctx.quadraticCurveTo(x, y + 2.4, x + w, y);
             ctx.stroke();
         }
-        ctx.restore(); // end river clipping
-
-        // Green grass patches (positioned to avoid buildings)
-        const grassPatches = [
-            { x: 80,  y: 400, r: 55, c: '#508030' },
-            { x: 620, y: 100, r: 45, c: '#4a7a2e' },
-            { x: 140, y: 140, r: 50, c: '#467428' },
-            { x: 580, y: 530, r: 55, c: '#4e7e32' },
-        ];
-        for (const gp of grassPatches) {
-            const depthScale = 0.8 + (gp.y / WORLD_H) * 0.4;
-            ctx.beginPath();
-            ctx.ellipse(gp.x * s, gp.y * s, gp.r * depthScale * s, gp.r * 0.6 * depthScale * s, 0, 0, Math.PI * 2);
-            ctx.fillStyle = gp.c;
-            ctx.fill();
-        }
-
-        // Bamboo shoots scattered (small green triangles)
-        const bambooShoots = [
-            [60, 180], [90, 420], [680, 100], [670, 480],
-            [140, 520], [50, 350], [660, 250], [100, 100]
-        ];
-        ctx.fillStyle = '#3a8a3a';
-        for (const [bx, by] of bambooShoots) {
-            ctx.beginPath();
-            ctx.moveTo(bx * s, by * s);
-            ctx.lineTo((bx - 2) * s, (by + 10) * s);
-            ctx.lineTo((bx + 2) * s, (by + 10) * s);
-            ctx.closePath();
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo((bx + 1) * s, (by + 3) * s);
-            ctx.lineTo((bx + 5) * s, (by + 1) * s);
-            ctx.lineTo((bx + 4) * s, (by + 4) * s);
-            ctx.closePath();
-            ctx.fill();
-        }
+        ctx.restore();
     }
 
     function drawObject(ctx, obj) {
@@ -7320,7 +8002,11 @@
             ctx.restore();
         } else {
             ctx.font = `${Math.round(9*canvasScale)}px 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif`;
-            ctx.fillStyle = 'rgba(200,190,160,0.6)';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = 2.4 * canvasScale;
+            ctx.strokeStyle = 'rgba(38,30,20,0.5)';
+            ctx.strokeText(obj.label, x, labelY);
+            ctx.fillStyle = 'rgba(246,238,220,0.92)';
             ctx.fillText(obj.label, x, labelY);
         }
     }
@@ -7581,8 +8267,12 @@
 
         // Name label
         ctx.font = `bold ${Math.round(10*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
-        ctx.fillStyle = '#e0d8c0';
         ctx.textAlign = 'center';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 2.6 * s;
+        ctx.strokeStyle = 'rgba(30,24,16,0.6)';
+        ctx.strokeText(person.name, x, y + 20*s);
+        ctx.fillStyle = '#f4ecd8';
         ctx.fillText(person.name, x, y + 20*s);
     }
 
@@ -10129,22 +10819,23 @@
         // Spawn & update particles
         if (currentWeather === 'clear' && weatherIntensity < 0.05) { weatherParticles = []; return; }
 
+        const vw = viewWorldRect();
         const spawnRate = weatherIntensity * (currentWeather === 'rain' ? 3 : currentWeather === 'snow' ? 2 : 1);
         for (let i = 0; i < spawnRate * dt * 0.3; i++) {
             if (weatherParticles.length > 300) break;
             switch(currentWeather) {
                 case 'rain':
-                    weatherParticles.push({ x: randFloat(-20, WORLD_W+20), y: randFloat(-40,-5), vx: randFloat(-0.5,-0.2), vy: randFloat(3,5), size: randFloat(1,2) });
+                    weatherParticles.push({ x: randFloat(vw.x0-20, vw.x1+20), y: randFloat(vw.y0-40, vw.y0-5), vx: randFloat(-0.5,-0.2), vy: randFloat(3,5), size: randFloat(1,2) });
                     break;
                 case 'snow':
-                    weatherParticles.push({ x: randFloat(-20, WORLD_W+20), y: randFloat(-20,-5), vx: randFloat(-0.3,0.3), vy: randFloat(0.3,0.8), size: randFloat(1.5,3.5), phase: randFloat(0,Math.PI*2) });
+                    weatherParticles.push({ x: randFloat(vw.x0-20, vw.x1+20), y: randFloat(vw.y0-20, vw.y0-5), vx: randFloat(-0.3,0.3), vy: randFloat(0.3,0.8), size: randFloat(1.5,3.5), phase: randFloat(0,Math.PI*2) });
                     break;
                 case 'wind':
-                    weatherParticles.push({ x: randFloat(-20,0), y: randFloat(0,WORLD_H), vx: randFloat(2,4), vy: randFloat(-0.5,0.5), life: randFloat(40,100), size: randFloat(0.5,1.5) });
+                    weatherParticles.push({ x: randFloat(vw.x0-20, vw.x0), y: randFloat(vw.y0, vw.y1), vx: randFloat(2,4), vy: randFloat(-0.5,0.5), life: randFloat(40,100), size: randFloat(0.5,1.5) });
                     break;
                 case 'fog':
                     if (weatherParticles.length < 40)
-                        weatherParticles.push({ x: randFloat(0,WORLD_W), y: randFloat(0,WORLD_H), size: randFloat(30,80), phase: randFloat(0,Math.PI*2), vx: randFloat(-0.1,0.1), alpha: randFloat(0.03,0.08) });
+                        weatherParticles.push({ x: randFloat(vw.x0, vw.x1), y: randFloat(vw.y0, vw.y1), size: randFloat(30,80), phase: randFloat(0,Math.PI*2), vx: randFloat(-0.1,0.1), alpha: randFloat(0.03,0.08) });
                     break;
             }
         }
@@ -10158,13 +10849,13 @@
 
         weatherParticles = weatherParticles.filter(p => {
             if (p.life !== undefined && p.life <= 0) return false;
-            if (p.x < -30 || p.x > WORLD_W+30 || p.y < -40) return false;
+            if (p.x < vw.x0-30 || p.x > vw.x1+30 || p.y < vw.y0-40) return false;
             // Rain splash on ground
-            if (currentWeather === 'rain' && p.y >= WORLD_H - 10 && rainSplashes.length < 30) {
-                rainSplashes.push({ x: p.x, y: WORLD_H - 5 + randFloat(-3, 3), life: 10, maxLife: 10 });
+            if (currentWeather === 'rain' && p.y >= vw.y1 - 10 && rainSplashes.length < 30) {
+                rainSplashes.push({ x: p.x, y: vw.y1 - 5 + randFloat(-3, 3), life: 10, maxLife: 10 });
                 return false;
             }
-            return p.y <= WORLD_H + 20;
+            return p.y <= vw.y1 + 20;
         });
 
         // Update rain splashes
@@ -10237,8 +10928,9 @@
     }
 
     function drawDayNightOverlay(ctx) {
-        const cw = canvas.width / dpr;
-        const ch = canvas.height / dpr;
+        // Runs under the world transform: cover the visible area, wherever the camera is
+        const vr = viewPxRect();
+        const cw = vr.w, ch = vr.h;
         const s = canvasScale;
 
         // Night overlay — gradient: darker sky, lighter ground (village glow)
@@ -10248,12 +10940,12 @@
             if (gameHour >= 4 && gameHour < 5) alpha = 0.45 * (5 - gameHour);
             if (alpha > 0.01) {
                 ctx.save();
-                const grad = ctx.createLinearGradient(0, 0, 0, ch);
+                const grad = ctx.createLinearGradient(0, vr.y, 0, vr.y + ch);
                 grad.addColorStop(0, `rgba(10,10,50,${alpha})`);
                 grad.addColorStop(0.6, `rgba(20,20,60,${alpha * 0.9})`);
                 grad.addColorStop(1, `rgba(30,25,50,${alpha * 0.7})`);
                 ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, cw, ch);
+                ctx.fillRect(vr.x, vr.y, cw, ch);
                 ctx.restore();
             }
         }
@@ -10263,12 +10955,12 @@
             const alpha = 0.18 * (1 - (gameHour - 5) / 2);
             if (alpha > 0.01) {
                 ctx.save();
-                const grad = ctx.createLinearGradient(0, 0, 0, ch);
+                const grad = ctx.createLinearGradient(0, vr.y, 0, vr.y + ch);
                 grad.addColorStop(0, `rgba(220,160,80,${alpha * 0.3})`);
                 grad.addColorStop(0.4, `rgba(240,130,60,${alpha})`);
                 grad.addColorStop(1, `rgba(200,100,40,${alpha * 0.5})`);
                 ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, cw, ch);
+                ctx.fillRect(vr.x, vr.y, cw, ch);
                 ctx.restore();
             }
         }
@@ -10278,13 +10970,13 @@
             const alpha = 0.22 * ((gameHour - 18) / 2);
             if (alpha > 0.01) {
                 ctx.save();
-                const grad = ctx.createLinearGradient(0, 0, 0, ch);
+                const grad = ctx.createLinearGradient(0, vr.y, 0, vr.y + ch);
                 grad.addColorStop(0, `rgba(180,60,30,${alpha * 0.4})`);
                 grad.addColorStop(0.3, `rgba(220,90,30,${alpha})`);
                 grad.addColorStop(0.7, `rgba(200,70,20,${alpha * 0.8})`);
                 grad.addColorStop(1, `rgba(180,80,40,${alpha * 0.5})`);
                 ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, cw, ch);
+                ctx.fillRect(vr.x, vr.y, cw, ch);
                 ctx.restore();
             }
         }
@@ -10327,7 +11019,7 @@
             ctx.globalAlpha = nightAlpha * 0.04;
             ctx.fillStyle = '#c0c8e0';
             ctx.save();
-            ctx.translate(cw * 0.5, ch * 0.15);
+            ctx.translate(WORLD_W * s * 0.5, 20 * s);
             ctx.rotate(-0.3);
             ctx.beginPath();
             ctx.ellipse(0, 0, cw * 0.45, 20 * s, 0, 0, Math.PI * 2);
@@ -10362,7 +11054,7 @@
         if (currentWeather === 'rain' && weatherIntensity > 0.1) {
             ctx.save();
             ctx.fillStyle = `rgba(30,40,50,${weatherIntensity * 0.15})`;
-            ctx.fillRect(0, 0, cw, ch);
+            ctx.fillRect(vr.x, vr.y, cw, ch);
             ctx.restore();
         }
     }
@@ -11299,6 +11991,7 @@
             const obj = quizData.highlightObj;
             const pulse = Math.sin(gameTick * 0.1) * 0.3 + 0.7;
             ctx.save();
+            setWorldTransform(ctx);
             ctx.strokeStyle = `rgba(255,220,80,${pulse * 0.8})`;
             ctx.lineWidth = 2.5 * s;
             ctx.setLineDash([4*s, 3*s]);
@@ -11330,8 +12023,8 @@
 
         // Panel at bottom center
         const panelH = (quizResult ? 50 : 100) * s;
-        const panelX = (WORLD_W * s - panelW) / 2;
-        const panelY = WORLD_H * s - panelH - 15 * s;
+        const panelX = (camera.viewW - panelW) / 2;
+        const panelY = camera.viewH - panelH - 15 * s;
 
         ctx.save();
 
@@ -11427,6 +12120,7 @@
     //  CANVAS CLICK HANDLER
     // ============================================================
     function handleCanvasClick(e) {
+        if (performance.now() < camera.suppressClickUntil) return; // this "click" ended a drag
         const rect = canvas.getBoundingClientRect();
         const clickCSSX = (e.clientX || e.pageX) - rect.left;
         const clickCSSY = (e.clientY || e.pageY) - rect.top;
@@ -11443,8 +12137,9 @@
         }
 
         // Check world objects
-        const clickWorldX = clickCSSX / canvasScale;
-        const clickWorldY = clickCSSY / canvasScale;
+        const clickWorld = screenToWorld(clickCSSX, clickCSSY);
+        const clickWorldX = clickWorld.x;
+        const clickWorldY = clickWorld.y;
         for (const obj of worldObjects) {
             const dx = clickWorldX - obj.x;
             const dy = clickWorldY - obj.y;
@@ -11906,6 +12601,9 @@
 
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
+        // Canvas follows its container (panel toggle, orientation, on-screen keyboard)
+        if (window.ResizeObserver) new ResizeObserver(resizeCanvas).observe(document.getElementById('canvas-wrap'));
+        setupCameraInput();
 
         // Canvas click handler (objects + quiz)
         canvas.addEventListener('click', handleCanvasClick);
@@ -11926,13 +12624,12 @@
     function resizeCanvas() {
         const wrap = document.getElementById('canvas-wrap');
         const rect = wrap.getBoundingClientRect();
+        if (rect.width < 1 || rect.height < 1) return;
         dpr = window.devicePixelRatio || 1;
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
-        canvas.style.width = rect.width + 'px';
-        canvas.style.height = rect.height + 'px';
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        canvasScale = Math.min(rect.width / WORLD_W, rect.height / WORLD_H);
+        configureCamera(rect.width, rect.height);
     }
 
     function togglePanel() {
@@ -12045,7 +12742,13 @@
         }
 
         // Render
-        ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+        updateCamera(rawDt);
+        setScreenTransform(ctx);
+        ctx.fillStyle = '#20242a';
+        ctx.fillRect(0, 0, camera.viewW, camera.viewH);
+
+        // --- World layer (camera transform) ---
+        setWorldTransform(ctx);
         drawTerrain(ctx);
 
         // Y-sorted scene drawing — build draw list, sort by depth
@@ -12098,15 +12801,20 @@
         // Festival effects
         drawFestivalEffects(ctx);
 
+        // --- Screen layer ---
+        setScreenTransform(ctx);
+
         // Calligraphy overlays (on top of weather/scene)
         for (const c of calligraphyOverlays) c.draw(ctx);
         if (proverbOverlay) proverbOverlay.draw(ctx);
         if (yojijukugoOverlay) yojijukugoOverlay.draw(ctx);
 
-        // Object tooltip (UI layer, always visible)
+        // Object tooltip (anchored to a world object)
+        setWorldTransform(ctx);
         drawObjectTooltip(ctx);
 
         // Quiz (UI layer, always visible)
+        setScreenTransform(ctx);
         drawQuiz(ctx);
 
         // UI updates (throttled)
