@@ -4252,6 +4252,9 @@
     let quizResultTimer = 0;
     let learnerFreezeTimer = 0;
     let quizOptionRects = [];
+    // Per-word quiz memory: { [conceptId]: { asked, misses, lastTick } } plus the most recent targets
+    let quizStats = {};
+    let quizRecent = [];
 
     // Camp progression
     let campProgress = {};
@@ -11931,17 +11934,22 @@
 
     function triggerQuiz() {
         const learner = persons[1];
-        const knownIds = [...learner.knownWords];
-        const targetId = randEl(knownIds);
+        const knownIds = [...learner.knownWords].filter(id => vocab[id]);
+        if (knownIds.length === 0) return;
+        const targetId = pickQuizWord(knownIds);
         const targetVocab = vocab[targetId];
 
-        // 1 correct + 2 wrong
-        const options = [{ word: targetVocab.kanji + ' (' + targetVocab.kana + ')', correct: true }];
+        // 1 correct + 2 wrong — distractors must look different from the answer and each other
+        const label = v => v.kanji + ' (' + v.kana + ')';
+        const options = [{ word: label(targetVocab), correct: true }];
+        const used = new Set([label(targetVocab), targetVocab.de]);
         const otherIds = Object.keys(vocab).filter(id => id !== targetId);
-        for (let i = 0; i < 2 && otherIds.length > 0; i++) {
-            const idx = randInt(0, otherIds.length - 1);
-            const wrongId = otherIds.splice(idx, 1)[0];
-            options.push({ word: vocab[wrongId].kanji + ' (' + vocab[wrongId].kana + ')', correct: false });
+        while (options.length < 3 && otherIds.length > 0) {
+            const wrongId = otherIds.splice(randInt(0, otherIds.length - 1), 1)[0];
+            const v = vocab[wrongId];
+            if (used.has(label(v)) || v.de === targetVocab.de) continue;
+            used.add(label(v));
+            options.push({ word: label(v), correct: false });
         }
         // Shuffle
         for (let i = options.length - 1; i > 0; i--) {
@@ -11955,10 +11963,34 @@
         if (relatedObj) highlightObj = relatedObj;
 
         quizData = { germanWord: targetVocab.de, conceptId: targetId, options, highlightObj };
+        const st = quizStats[targetId] || (quizStats[targetId] = { asked: 0, misses: 0, lastTick: -1e9 });
+        st.asked++;
+        st.lastTick = gameTick;
+        quizRecent.push(targetId);
+        if (quizRecent.length > 8) quizRecent.shift();
         quizActive = true;
         quizTimer = QUIZ_DURATION;
         quizResult = null;
         quizOptionRects = [];
+    }
+
+    // Choose the quiz word: never one of the last few, prefer words asked less often or
+    // not seen for a while, and bring back words the learner got wrong.
+    function pickQuizWord(knownIds) {
+        const holdBack = Math.min(quizRecent.length, Math.max(0, Math.floor(knownIds.length / 2)), 6);
+        const recent = new Set(quizRecent.slice(quizRecent.length - holdBack));
+        let pool = knownIds.filter(id => !recent.has(id));
+        if (pool.length === 0) pool = knownIds.filter(id => id !== quizRecent[quizRecent.length - 1]);
+        if (pool.length === 0) pool = knownIds;
+        const weights = pool.map(id => {
+            const st = quizStats[id];
+            if (!st) return 4;                                         // never asked: strong preference
+            const age = Math.min(4, Math.max(1, 1 + (gameTick - st.lastTick) / 6000)); // longer unseen → more likely
+            return age * (1 + 2 * st.misses) / Math.pow(1 + st.asked, 1.3);
+        });
+        let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+        for (let i = 0; i < pool.length; i++) { r -= weights[i]; if (r <= 0) return pool[i]; }
+        return pool[pool.length - 1];
     }
 
     function updateQuiz(dt, rawDt) {
@@ -11991,6 +12023,8 @@
     function answerQuiz(optionIndex) {
         if (!quizActive || quizResult !== null) return;
         const option = quizData.options[optionIndex];
+        const st = quizStats[quizData.conceptId];
+        if (st) st.misses = option.correct ? Math.max(0, st.misses - 1) : st.misses + 1;
         if (option.correct) {
             quizResult = 'correct';
             persons[1].hunger = 100;
@@ -12417,6 +12451,8 @@
             eventLog: eventLog.slice(0, 50),
             vocabHistory: vocabHistory,
             yojijukugoTriggered: [...yojijukugoTriggered],
+            quizStats: quizStats,
+            quizRecent: quizRecent.slice(),
         };
     }
 
@@ -12530,6 +12566,8 @@
         eventLog = Array.isArray(data.eventLog) ? data.eventLog : [];
         vocabHistory = Array.isArray(data.vocabHistory) ? data.vocabHistory : [];
         yojijukugoTriggered = new Set(data.yojijukugoTriggered || []);
+        quizStats = (data.quizStats && typeof data.quizStats === 'object') ? data.quizStats : {};
+        quizRecent = Array.isArray(data.quizRecent) ? data.quizRecent.slice(-8) : [];
     }
 
     function deleteSave() {
