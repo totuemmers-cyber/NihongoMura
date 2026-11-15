@@ -2795,7 +2795,7 @@
         { id: 'gate1',      type: 'torii',        x: 100, y: 300, w: 50, h: 60, label: '鳥居',   romaji: 'torii' },
         { id: 'bamboo1',    type: 'bamboo',       x: 60,  y: 200, w: 40, h: 70, label: '竹',     romaji: 'take' },
         { id: 'bamboo2',    type: 'bamboo',       x: 850, y: 450, w: 40, h: 70, label: '竹',     romaji: 'take' },
-        { id: 'garden1',    type: 'garden',        x: 250, y: 450, w: 60, h: 45, label: '庭園',   romaji: 'teien' },
+        { id: 'garden1',    type: 'garden',        x: 300, y: 500, w: 60, h: 45, label: '庭園',   romaji: 'teien' },
         { id: 'kitchen1',   type: 'kitchen',      x: 350, y: 180, w: 50, h: 40, label: '台所',   romaji: 'daidokoro' },
         { id: 'workshop1',  type: 'workshop',     x: 500, y: 150, w: 55, h: 40, label: '書院',   romaji: 'shoin' },
         { id: 'fish_pond1', type: 'fish_pond',    x: 180, y: 520, w: 45, h: 35, label: '池',     romaji: 'ike' },
@@ -4354,7 +4354,7 @@
     const CAMP_MILESTONES = [
         { id: 'bamboo_stack',   req: { cut_bamboo: 3 },          x: 75,  y: 215, desc: 'Bambusstangen stehen bereit.' },
         { id: 'brush_rack',     req: { write_calligraphy: 3 },   x: 515, y: 160, desc: 'Pinsel hängen am Gestell.' },
-        { id: 'tea_drying',     req: { pick_tea: 3 },            x: 265, y: 460, desc: 'Teeblätter trocknen in der Sonne.' },
+        { id: 'tea_drying',     req: { pick_tea: 3 },            x: 352, y: 492, desc: 'Teeblätter trocknen in der Sonne.' },
         { id: 'fish_basket',    req: { fish_catch: 3 },          x: 675, y: 510, desc: 'Körbe voller Fisch stehen bereit.' },
         { id: 'ink_set',        req: { grind_ink: 3 },           x: 510, y: 165, desc: 'Ein Tusche-Set liegt bereit.' },
         { id: 'lantern_circle', req: { make_lantern: 2 },        x: 450, y: 195, desc: 'Rote Laternen schmücken den Platz.' },
@@ -6880,22 +6880,303 @@
         ctx.restore();
     }
 
-    function drawObject(ctx, obj) {
+    // ============================================================
+    //  OBJECT SPRITES — each type's static drawing is rendered once, then given the
+    //  woodblock treatment (ink outline, one light direction, ground contact shade, washi grain)
+    // ============================================================
+    let _swayK = 1;                    // multiplies built-in sway; 0 while a sprite is being rendered
+    const SWAY_TYPES = {               // whole-sprite sway (amplitude in world units at the top)
+        bamboo: { amp: wind => 2 + wind * 6, f: 0.02,  k: 0.05, h: 62 },
+        willow: { amp: wind => 3 + wind * 8, f: 0.02,  k: 0.03, h: 46 },
+        flower: { amp: () => 1.5,            f: 0.025, k: 0.1,  h: 16 },
+    };
+    const FLAT_TYPES = new Set([...GROUND_TYPES, 'bridge', 'dock']);
+    // Plants get an outline in a deep shade of their own colour instead of black ink
+    const OUTLINE_INK = { willow: '#25381f', bamboo: '#1e3a1c', flower: '#3a3020' };
+    const _spriteCache = new Map();
+    let _spriteKey = '';
+
+    function getObjectSprite(obj) {
+        const res = canvasScale * Math.min(dpr, 3);
+        const key = res.toFixed(4);
+        if (_spriteKey !== key) { _spriteCache.clear(); _spriteKey = key; }
+        const k = obj.type === 'willow' ? 'willow|' + getSeason() : obj.type;
+        if (!_spriteCache.has(k)) _spriteCache.set(k, buildObjectSprite(obj, res));
+        return _spriteCache.get(k);
+    }
+
+    function buildObjectSprite(obj, res) {
+        // 1 — render the static drawing into a generous scratch canvas
+        const padX = obj.w / 2 + 50, padTop = obj.h / 2 + 90, padBot = obj.h / 2 + 30;
+        const W = Math.ceil(padX * 2 * res), H = Math.ceil((padTop + padBot) * res);
+        const scratch = document.createElement('canvas');
+        scratch.width = W; scratch.height = H;
+        const sc = scratch.getContext('2d', { willReadFrequently: true });
+        const keepScale = canvasScale;
+        canvasScale = res; _swayK = 0;
+        try { drawObjectBody(sc, Object.assign({}, obj, { x: padX, y: padTop })); }
+        finally { canvasScale = keepScale; _swayK = 1; }
+
+        // 2 — crop to the drawn pixels
+        const px = sc.getImageData(0, 0, W, H).data;
+        let x0 = W, y0 = H, x1 = -1, y1 = -1;
+        for (let yy = 0; yy < H; yy++) {
+            const row = yy * W * 4;
+            for (let xx = 0; xx < W; xx++) {
+                if (px[row + xx * 4 + 3] > 6) {
+                    if (xx < x0) x0 = xx; if (xx > x1) x1 = xx;
+                    if (yy < y0) y0 = yy; if (yy > y1) y1 = yy;
+                }
+            }
+        }
+        if (x1 < 0) return null;
+        const r = Math.max(1, Math.round(res * 0.8));     // ink outline radius in pixels
+        const pad = r + 2;
+        const cw = x1 - x0 + 1 + pad * 2, ch = y1 - y0 + 1 + pad * 2;
+        const mk = () => { const c = document.createElement('canvas'); c.width = cw; c.height = ch; return c; };
+
+        // 3 — body with light, contact shade and grain (all kept inside the body's own alpha)
+        const body = mk(), bc = body.getContext('2d');
+        bc.drawImage(scratch, x0, y0, x1 - x0 + 1, y1 - y0 + 1, pad, pad, x1 - x0 + 1, y1 - y0 + 1);
+        const mask = mk();
+        mask.getContext('2d').drawImage(body, 0, 0);
+        bc.globalCompositeOperation = 'source-atop';
+        const light = bc.createLinearGradient(0, 0, cw, ch);
+        light.addColorStop(0, 'rgba(255,244,214,0.20)');
+        light.addColorStop(0.5, 'rgba(255,244,214,0)');
+        light.addColorStop(1, 'rgba(24,22,52,0.22)');
+        bc.fillStyle = light;
+        bc.fillRect(0, 0, cw, ch);
+        if (!FLAT_TYPES.has(obj.type)) {
+            const ao = bc.createLinearGradient(0, ch, 0, ch * 0.72);
+            ao.addColorStop(0, 'rgba(20,16,34,0.26)');
+            ao.addColorStop(1, 'rgba(20,16,34,0)');
+            bc.fillStyle = ao;
+            bc.fillRect(0, 0, cw, ch);
+        }
+        bc.globalCompositeOperation = 'soft-light';
+        bc.globalAlpha = 0.6;
+        bc.fillStyle = bc.createPattern(_getGrainTile(), 'repeat');
+        bc.fillRect(0, 0, cw, ch);
+        bc.globalAlpha = 1;
+        bc.globalCompositeOperation = 'destination-in';
+        bc.drawImage(mask, 0, 0);
+
+        // 4 — ink outline: the silhouette stamped around the body
+        // Only solid pixels count, so faint glows and translucent foliage don't pile up into dark halos
+        const sil = mk(), sl = sil.getContext('2d', { willReadFrequently: true });
+        sl.drawImage(mask, 0, 0);
+        const sd = sl.getImageData(0, 0, cw, ch);
+        for (let i = 3; i < sd.data.length; i += 4) sd.data[i] = sd.data[i] > 110 ? 255 : 0;
+        sl.putImageData(sd, 0, 0);
+        sl.globalCompositeOperation = 'source-in';
+        sl.fillStyle = OUTLINE_INK[obj.type] || PALETTE.sumi;
+        sl.fillRect(0, 0, cw, ch);
+        const out = mk(), oc = out.getContext('2d');
+        oc.globalAlpha = OUTLINE_INK[obj.type] ? 0.7 : 0.85;
+        for (let i = 0; i < 8; i++) {
+            const a = i * Math.PI / 4;
+            oc.drawImage(sil, Math.round(Math.cos(a) * r), Math.round(Math.sin(a) * r));
+        }
+        oc.globalAlpha = 1;
+        oc.drawImage(body, 0, 0);
+
+        return { canvas: out, ox: (x0 - pad) / res - padX, oy: (y0 - pad) / res - padTop, w: cw / res, h: ch / res };
+    }
+
+    function drawObjectSprite(ctx, obj) {
+        const spr = getObjectSprite(obj);
+        if (!spr) return;
+        const s = canvasScale;
+        const dx = (obj.x + spr.ox) * s, dy = (obj.y + spr.oy) * s, dw = spr.w * s, dh = spr.h * s;
+        const sw = SWAY_TYPES[obj.type];
+        if (!sw) { ctx.drawImage(spr.canvas, dx, dy, dw, dh); return; }
+        // Bend the sprite about its base: the top moves by `sway`, the base stays planted
+        const wind = currentWeather === 'wind' ? weatherIntensity : 0;
+        const sway = Math.sin(gameTick * sw.f + obj.x * sw.k) * sw.amp(wind);
+        const baseY = (obj.y + (VISUAL_BOTTOM[obj.type] !== undefined ? VISUAL_BOTTOM[obj.type] : obj.h / 2)) * s;
+        ctx.save();
+        ctx.translate(0, baseY);
+        ctx.transform(1, 0, -sway / sw.h, 1, 0, 0);
+        ctx.translate(0, -baseY);
+        ctx.drawImage(spr.canvas, dx, dy, dw, dh);
+        ctx.restore();
+    }
+
+    // ============================================================
+    //  SHADOWS — flat ink-blue cast shadows that follow the sun, drawn before anything stands on them
+    // ============================================================
+    // fw/fd: footprint half-width and depth (world units, measured from the drawings); h: height
+    const SHADOW_SPECS = {
+        house:        { kind: 'box',   fw: 40, fd: 14, h: 50 },
+        teahouse:     { kind: 'box',   fw: 45, fd: 14, h: 54 },
+        market:       { kind: 'box',   fw: 35, fd: 10, h: 34 },
+        well:         { kind: 'box',   fw: 12, fd: 6,  h: 30 },
+        pagoda:       { kind: 'tower', fw: 24, fd: 14, h: 78 },
+        torii:        { kind: 'gate',  fw: 22.5, fd: 3, h: 52 },
+        bamboo:       { kind: 'tree',  fw: 6,  trunk: 44, r: 11 },
+        willow:       { kind: 'tree',  fw: 4,  trunk: 20, r: 18 },
+        kitchen:      { kind: 'box',   fw: 12, fd: 6,  h: 12 },
+        workshop:     { kind: 'box',   fw: 27, fd: 8,  h: 20 },
+        shrine:       { kind: 'box',   fw: 18, fd: 10, h: 34 },
+        lantern_post: { kind: 'post',  fw: 2,  h: 28, blob: 5, blobX: 8 },
+        dock:         { kind: 'box',   fw: 20, fd: 12, h: 3 },
+        flower:       { kind: 'blob',  fw: 10, fd: 6,  h: 10 },
+        school:       { kind: 'box',   fw: 33, fd: 12, h: 36 },
+        medicine_hut: { kind: 'box',   fw: 30, fd: 12, h: 36 },
+        stable:       { kind: 'box',   fw: 28, fd: 10, h: 28 },
+        tea_terrace:  { kind: 'box',   fw: 24, fd: 10, h: 12 },
+        viewpoint:    { kind: 'box',   fw: 20, fd: 8,  h: 14 },
+    };
+
+    // Sun position → shadow offset per unit of height. Morning shadows fall west (left), evening
+    // east (right), always tipped slightly toward the viewer; long at dawn/dusk, short at noon.
+    function sunState() {
+        const t = gameHour + gameMinute / 60;
+        const pc = Math.max(0, Math.min(1, (t - 6) / 12));
+        const elev = Math.sin(Math.PI * pc);
+        const L = 0.3 + 1.05 * Math.pow(1 - elev, 1.6);
+        const fade = (t > 5 && t < 19) ? Math.min(1, (t - 5) / 1.2, (19 - t) / 1.2) : 0;
+        const overcast = (currentWeather === 'rain' || currentWeather === 'fog' || currentWeather === 'snow') ? weatherIntensity : 0;
+        return { vx: -Math.cos(Math.PI * pc) * L, vy: 0.2 * L + 0.04, alpha: 0.2 * fade * (1 - 0.7 * overcast) };
+    }
+
+    function _hull(pts) {
+        pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+        const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+        const lo = [], hi = [];
+        for (const p of pts) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+        for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop(); hi.push(p); }
+        return lo.slice(0, -1).concat(hi.slice(0, -1));
+    }
+    function _fillPoly(ctx, pts) {
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.closePath();
+        ctx.fill();
+    }
+    // Box footprint swept along the sun vector (top optionally narrowed, e.g. a tapering pagoda)
+    function _sweptBox(ctx, cx, b, fw, fd, ox, oy, topScale) {
+        const foot = [[cx - fw, b - fd], [cx + fw, b - fd], [cx + fw, b], [cx - fw, b]];
+        const k = topScale || 1, my = b - fd / 2;
+        const top = foot.map(([px, py]) => [cx + (px - cx) * k + ox, my + (py - my) * k + oy]);
+        _fillPoly(ctx, _hull(foot.concat(top)));
+    }
+    function _ellipse(ctx, cx, cy, rx, ry, rot) {
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, Math.max(0.1, rx), Math.max(0.1, ry), rot || 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function drawShadows(ctx) {
+        const sun = sunState();
+        const s = canvasScale;
+        ctx.save();
+        ctx.scale(s, s);                       // everything below is in world units
+        ctx.fillStyle = 'rgb(28,30,60)';
+        for (const obj of worldObjects) {
+            const sp = SHADOW_SPECS[obj.type];
+            if (!sp) continue;
+            const b = obj.y + (VISUAL_BOTTOM[obj.type] !== undefined ? VISUAL_BOTTOM[obj.type] : obj.h / 2);
+            // Contact shade where the object meets the ground — present day and night
+            ctx.globalAlpha = 0.14;
+            _ellipse(ctx, obj.x, b - (sp.fd || 3) * 0.35, sp.fw * 1.05 + 2, Math.max(2.4, (sp.fd || 4) * 0.55));
+            if (sun.alpha < 0.01) continue;
+            ctx.globalAlpha = sun.alpha;
+            const H = Math.min(sp.h || sp.trunk || 0, 80);
+            const len = Math.min(1, 90 / Math.max(1, Math.hypot(sun.vx, sun.vy) * (H || 1))); // cap very long shadows
+            const vx = sun.vx * len, vy = sun.vy * len;
+            switch (sp.kind) {
+                case 'box':   _sweptBox(ctx, obj.x, b, sp.fw, sp.fd, vx * sp.h, vy * sp.h, 1); break;
+                case 'tower': _sweptBox(ctx, obj.x, b, sp.fw, sp.fd, vx * sp.h, vy * sp.h, 0.3); break;
+                case 'gate': {
+                    for (const side of [-1, 1]) _sweptBox(ctx, obj.x + side * sp.fw, b, 2.6, 2, vx * sp.h, vy * sp.h, 1);
+                    const tx = obj.x + vx * sp.h, ty = b + vy * sp.h;
+                    _fillPoly(ctx, [[tx - sp.fw - 9, ty - 2], [tx + sp.fw + 9, ty - 2], [tx + sp.fw + 9, ty + 2], [tx - sp.fw - 9, ty + 2]]);
+                    const nx = obj.x + vx * sp.h * 0.72, ny = b + vy * sp.h * 0.72;
+                    _fillPoly(ctx, [[nx - sp.fw, ny - 1], [nx + sp.fw, ny - 1], [nx + sp.fw, ny + 1], [nx - sp.fw, ny + 1]]);
+                    break;
+                }
+                case 'post':
+                    _sweptBox(ctx, obj.x, b, sp.fw, 1.5, vx * sp.h, vy * sp.h, 1);
+                    _ellipse(ctx, obj.x + sp.blobX + vx * sp.h * 0.85, b + vy * sp.h * 0.85, sp.blob + Math.abs(vx) * 2, sp.blob * 0.6);
+                    break;
+                case 'tree': {
+                    _sweptBox(ctx, obj.x, b, sp.fw * 0.5, 1.5, vx * sp.trunk, vy * sp.trunk, 1);
+                    const reach = sp.trunk + sp.r * 0.4;
+                    _ellipse(ctx, obj.x + vx * reach, b + vy * reach, sp.r * (1 + Math.abs(vx) * 0.45), sp.r * 0.55);
+                    break;
+                }
+                case 'blob':
+                    _ellipse(ctx, obj.x + vx * sp.h * 0.5, b + vy * sp.h * 0.5 - sp.fd * 0.3, sp.fw + Math.abs(vx) * sp.h * 0.4, sp.fd * 0.8);
+                    break;
+            }
+        }
+        // Characters: contact shade at the feet + a short cast shadow
+        for (const c of persons.concat(npcs)) {
+            const fx = c.x, fy = c.y + 6;
+            ctx.globalAlpha = 0.24;
+            _ellipse(ctx, fx, fy, 7.5, 2.6);
+            if (sun.alpha < 0.01) continue;
+            ctx.globalAlpha = sun.alpha * 1.1;
+            const ch = 24;
+            _ellipse(ctx, fx + sun.vx * ch * 0.5, fy + sun.vy * ch * 0.5, 3.5 + Math.abs(sun.vx) * ch * 0.5, 2.4 + sun.vy * 4, 0);
+        }
+        ctx.restore();
+    }
+
+    // Texture a roof that was just filled: clips to the current path (the roof outline).
+    // 'kawara' = rows of round glazed tiles, 'thatch' = layered straw, 'plank' = board seams.
+    function roofTexture(ctx, kind, cx, cy, w, h) {
+        const s = canvasScale;
+        const x0 = cx - w, x1 = cx + w, y0 = cy - h, y1 = cy + h;
+        ctx.save();
+        ctx.clip();
+        if (kind === 'kawara') {
+            ctx.fillStyle = 'rgba(64,86,118,0.22)';            // blue-grey glaze
+            ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+            for (let x = x0; x < x1; x += 2.8 * s) {
+                ctx.fillStyle = 'rgba(255,255,255,0.13)';      // lit crest of each tile row
+                ctx.fillRect(x, y0, 1.0 * s, y1 - y0);
+                ctx.fillStyle = 'rgba(0,0,0,0.28)';            // channel between rows
+                ctx.fillRect(x + 1.7 * s, y0, 0.55 * s, y1 - y0);
+            }
+            ctx.strokeStyle = 'rgba(0,0,0,0.16)';
+            ctx.lineWidth = 0.45 * s;
+            ctx.beginPath();
+            for (let y = y0; y < y1; y += 3.4 * s) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+            ctx.stroke();
+        } else if (kind === 'thatch') {
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 0.55 * s;
+            let row = 0;
+            for (let y = y0; y < y1; y += 2.2 * s, row++) {
+                for (let x = x0 + (row % 2) * 0.8 * s; x < x1; x += 1.6 * s) {
+                    const lean = ((x / s + row * 3) % 5 - 2.5) * 0.12 * s;
+                    ctx.strokeStyle = (row + Math.floor(x / s)) % 3 === 0 ? 'rgba(255,236,170,0.32)' : 'rgba(60,44,10,0.22)';
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + lean, y + 2.8 * s);
+                    ctx.stroke();
+                }
+            }
+        } else if (kind === 'plank') {
+            ctx.strokeStyle = 'rgba(40,26,8,0.35)';
+            ctx.lineWidth = 0.5 * s;
+            ctx.beginPath();
+            for (let x = x0; x < x1; x += 4 * s) { ctx.moveTo(x, y0); ctx.lineTo(x + 2 * s, y1); }
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // Static drawing of an object (cached into a styled sprite by getObjectSprite)
+    function drawObjectBody(ctx, obj) {
         const x = obj.x * canvasScale;
         const y = obj.y * canvasScale;
         const w = obj.w * canvasScale;
         const h = obj.h * canvasScale;
-
-        // Soft shadow under object (skip ground-level types and bridge)
-        if (!GROUND_TYPES.includes(obj.type) && obj.type !== 'bridge') {
-            const vb = (VISUAL_BOTTOM[obj.type] || obj.h / 2) * canvasScale;
-            const shadowW = w * 0.7;
-            const shadowH = Math.max(h * 0.12, 3 * canvasScale);
-            ctx.beginPath();
-            ctx.ellipse(x, y + vb, shadowW / 2, shadowH / 2, 0, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0,0,0,0.10)';
-            ctx.fill();
-        }
 
         switch (obj.type) {
             case 'house': {
@@ -6930,6 +7211,7 @@
                 ctx.lineTo(x + w/2 + 8*canvasScale, y - h/4 + 2*canvasScale);
                 ctx.closePath();
                 ctx.fill();
+                roofTexture(ctx, 'kawara', x, y - h/3, w/2 + 10*canvasScale, h/3);
                 // Roof ridge line
                 ctx.strokeStyle = '#4a4a4a';
                 ctx.lineWidth = canvasScale * 1.2;
@@ -6937,23 +7219,6 @@
                 ctx.moveTo(x - 12*canvasScale, y - h/2 - 3*canvasScale);
                 ctx.lineTo(x + 12*canvasScale, y - h/2 - 3*canvasScale);
                 ctx.stroke();
-                // Chimney smoke (not during rain)
-                if (currentWeather !== 'rain') {
-                    ctx.save();
-                    ctx.globalAlpha = 0.15;
-                    ctx.fillStyle = '#b0a890';
-                    const smokeT = gameTick * 0.02;
-                    for (let si = 0; si < 3; si++) {
-                        const sx = x + w/4 + Math.sin(smokeT + si * 2) * 3 * canvasScale;
-                        const sy = y - h/2 - 10*canvasScale - si * 8 * canvasScale;
-                        const sr = (2 + si * 1.5) * canvasScale;
-                        ctx.globalAlpha = 0.15 - si * 0.04;
-                        ctx.beginPath();
-                        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                    ctx.restore();
-                }
                 break;
             }
 
@@ -6970,26 +7235,6 @@
                 ctx.fillRect(x - w/2 + 1*canvasScale, y - h/4, 3*canvasScale, h/2 + 4*canvasScale);
                 ctx.fillRect(x + w/2 - 4*canvasScale, y - h/4, 3*canvasScale, h/2 + 4*canvasScale);
                 ctx.fillRect(x - 1.5*canvasScale, y - h/4, 3*canvasScale, h/2 + 4*canvasScale);
-                // Noren curtains (暖簾) — hanging fabric strips, navy blue with white circle
-                const norenSway = Math.sin(gameTick * 0.025) * 1.5 * canvasScale;
-                const norenW = (w - 10*canvasScale) / 4;
-                ctx.fillStyle = '#2a3a6a';
-                for (let i = 0; i < 4; i++) {
-                    const nx = x - w/2 + 4*canvasScale + i * (norenW + 1*canvasScale);
-                    const sway = Math.sin(gameTick * 0.025 + i * 0.8) * 1.5 * canvasScale;
-                    ctx.beginPath();
-                    ctx.moveTo(nx, y - h/4 + 2*canvasScale);
-                    ctx.lineTo(nx + norenW, y - h/4 + 2*canvasScale);
-                    ctx.lineTo(nx + norenW + sway, y - h/4 + h/3 - 2*canvasScale);
-                    ctx.lineTo(nx + sway, y - h/4 + h/3 - 2*canvasScale);
-                    ctx.closePath();
-                    ctx.fill();
-                }
-                // White circle on center noren (mon crest)
-                ctx.fillStyle = 'rgba(240,235,220,0.7)';
-                ctx.beginPath();
-                ctx.arc(x, y - h/4 + h/6, 4*canvasScale, 0, Math.PI*2);
-                ctx.fill();
                 // Gable roof
                 ctx.fillStyle = '#3a3a3a';
                 ctx.beginPath();
@@ -6998,22 +7243,7 @@
                 ctx.lineTo(x + w/2 + 6*canvasScale, y - h/4);
                 ctx.closePath();
                 ctx.fill();
-                // Steam wisps rising from teahouse (animated)
-                const st = gameTick * 0.03;
-                for (let i = 0; i < 3; i++) {
-                    const sx = x + (i - 1) * 5 * canvasScale;
-                    const rise = (st + i * 2.5) % 6;
-                    const fadeAlpha = rise < 1 ? rise * 0.25 : Math.max(0, 0.25 - (rise - 1) * 0.06);
-                    if (fadeAlpha <= 0) continue;
-                    ctx.globalAlpha = fadeAlpha;
-                    ctx.fillStyle = '#e8e4e0';
-                    const wy = y - h/3 - (6 + rise * 5) * canvasScale;
-                    const wobble = Math.sin(st * 2 + i * 1.8) * 3 * canvasScale;
-                    ctx.beginPath();
-                    ctx.ellipse(sx + wobble, wy, (2.5 + rise * 0.4) * canvasScale, (1.5 + rise * 0.3) * canvasScale, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                ctx.globalAlpha = 1.0;
+                roofTexture(ctx, 'kawara', x, y - h/3, w/2 + 8*canvasScale, h/3);
                 break;
             }
 
@@ -7186,6 +7416,7 @@
                     ctx.quadraticCurveTo(x + tw + 6*canvasScale, ty - 2*canvasScale, x + tw + 4*canvasScale, ty + 4*canvasScale);
                     ctx.closePath();
                     ctx.fill();
+                    roofTexture(ctx, 'kawara', x, ty, tw + 8*canvasScale, 14*canvasScale);
                     // Tier body
                     ctx.fillStyle = '#8a6a30';
                     ctx.fillRect(x - tw + 2*canvasScale, ty + 4*canvasScale, tw*2 - 4*canvasScale, h/6);
@@ -7235,7 +7466,7 @@
             case 'bamboo': {
                 // 2-3 tall green bamboo stems with leaves — wind responsive
                 const windStr = currentWeather === 'wind' ? weatherIntensity : 0;
-                const bamSway = Math.sin(gameTick * 0.02 + obj.x * 0.05) * (2 + windStr * 6) * canvasScale;
+                const bamSway = _swayK * Math.sin(gameTick * 0.02 + obj.x * 0.05) * (2 + windStr * 6) * canvasScale;
                 const stems = [-5, 0, 5];
                 for (let si = 0; si < stems.length; si++) {
                     const sx = x + stems[si] * canvasScale;
@@ -7317,22 +7548,6 @@
                 ctx.fillStyle = '#4a4a4a';
                 ctx.fillRect(x - 8*canvasScale, y + 2*canvasScale, 3*canvasScale, 10*canvasScale);
                 ctx.fillRect(x + 5*canvasScale, y + 2*canvasScale, 3*canvasScale, 10*canvasScale);
-                // Fire underneath (animated)
-                const kt = gameTick * 0.06;
-                for (let i = 0; i < 4; i++) {
-                    const fx = x + Math.sin(kt + i * 1.5) * 4 * canvasScale;
-                    const fy = y + 6*canvasScale - Math.sin(kt * 1.3 + i) * 2 * canvasScale;
-                    ctx.beginPath();
-                    ctx.arc(fx, fy, (3 + Math.sin(kt + i)*1)*canvasScale, 0, Math.PI*2);
-                    ctx.fillStyle = i < 2 ? '#e8a020' : '#e85020';
-                    ctx.fill();
-                }
-                // Glow
-                const kGrad = ctx.createRadialGradient(x, y + 6*canvasScale, 0, x, y + 6*canvasScale, 14*canvasScale);
-                kGrad.addColorStop(0, 'rgba(255,160,40,0.12)');
-                kGrad.addColorStop(1, 'rgba(255,160,40,0)');
-                ctx.fillStyle = kGrad;
-                ctx.fillRect(x - 16*canvasScale, y - 4*canvasScale, 32*canvasScale, 24*canvasScale);
                 // Wok (half circle)
                 ctx.fillStyle = '#2a2a2a';
                 ctx.beginPath();
@@ -7350,21 +7565,6 @@
                 ctx.beginPath();
                 ctx.ellipse(x, y + 4*canvasScale, 7*canvasScale, 3*canvasScale, 0, 0, Math.PI*2);
                 ctx.fill();
-                // Steam puffs rising from wok (animated)
-                for (let i = 0; i < 3; i++) {
-                    const sx = x + (i - 1) * 4 * canvasScale;
-                    const rise = (kt * 0.5 + i * 2.5) % 6;
-                    const fadeAlpha = rise < 1 ? rise * 0.25 : Math.max(0, 0.25 - (rise - 1) * 0.06);
-                    if (fadeAlpha <= 0) continue;
-                    ctx.globalAlpha = fadeAlpha;
-                    ctx.fillStyle = '#e8e4e0';
-                    const wy = y - (6 + rise * 5) * canvasScale;
-                    const wobble = Math.sin(kt + i * 1.8) * 3 * canvasScale;
-                    ctx.beginPath();
-                    ctx.ellipse(sx + wobble, wy, (2.5 + rise * 0.4) * canvasScale, (1.5 + rise * 0.3) * canvasScale, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                ctx.globalAlpha = 1.0;
                 break;
             }
 
@@ -7416,17 +7616,6 @@
                 ctx.strokeStyle = '#1a4a7a';
                 ctx.lineWidth = 2*canvasScale;
                 ctx.stroke();
-                // Ripples (animated)
-                const fpt = gameTick * 0.03;
-                ctx.strokeStyle = 'rgba(100,180,220,0.3)';
-                ctx.lineWidth = canvasScale;
-                for (let i = 0; i < 2; i++) {
-                    ctx.beginPath();
-                    const rx = x + Math.cos(fpt + i*3) * w/5;
-                    const ry = y + Math.sin(fpt + i*3) * h/5;
-                    ctx.ellipse(rx, ry, 4*canvasScale, 2*canvasScale, 0, 0, Math.PI*2);
-                    ctx.stroke();
-                }
                 // Lily pads
                 const pads = [[-8,-4],[6,-2],[-3,5]];
                 for (const [px,py] of pads) {
@@ -7441,42 +7630,6 @@
                     ctx.moveTo(x+px*canvasScale, y+py*canvasScale);
                     ctx.lineTo(x+(px+3)*canvasScale, y+(py-2)*canvasScale);
                     ctx.stroke();
-                }
-                // Koi fish (natural lazy swimming)
-                const koiColors = ['#e86030','#e8c040'];
-                for (let i = 0; i < 2; i++) {
-                    // Figure-8 with varying speed and drift
-                    const t1 = fpt * (0.35 + i * 0.12);
-                    const t2 = fpt * (0.23 + i * 0.09);
-                    const kx = x + Math.cos(t1 + i * 2.1) * w * 0.28
-                              + Math.sin(t2 * 0.7 + i) * w * 0.08;
-                    const ky = y + Math.sin(t1 * 0.8 + i * 1.7) * h * 0.25
-                              + Math.cos(t2 * 0.5 + i * 0.9) * h * 0.06;
-                    // Facing direction from movement delta
-                    const prevX = x + Math.cos((t1 - 0.05) + i * 2.1) * w * 0.28
-                                + Math.sin(((t2 - 0.05) * 0.7) + i) * w * 0.08;
-                    const prevY = y + Math.sin(((t1 - 0.05) * 0.8) + i * 1.7) * h * 0.25
-                                + Math.cos(((t2 - 0.05) * 0.5) + i * 0.9) * h * 0.06;
-                    const kAngle = Math.atan2(ky - prevY, kx - prevX);
-                    ctx.save();
-                    ctx.translate(kx, ky);
-                    ctx.rotate(kAngle + Math.PI / 2);
-                    ctx.fillStyle = koiColors[i];
-                    // Body
-                    ctx.beginPath();
-                    ctx.moveTo(0, -4*canvasScale);
-                    ctx.quadraticCurveTo(3*canvasScale, 0, 0, 4*canvasScale);
-                    ctx.quadraticCurveTo(-2*canvasScale, 0, 0, -4*canvasScale);
-                    ctx.fill();
-                    // Tail (wags)
-                    const tailWag = Math.sin(fpt * 3 + i * 2) * 1.5 * canvasScale;
-                    ctx.beginPath();
-                    ctx.moveTo(0, 3*canvasScale);
-                    ctx.lineTo(-2*canvasScale + tailWag, 6*canvasScale);
-                    ctx.lineTo(2*canvasScale + tailWag, 6*canvasScale);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.restore();
                 }
                 break;
             }
@@ -7503,6 +7656,7 @@
                 ctx.lineTo(x + w/3 + 6*canvasScale, y - h/4 + 2*canvasScale);
                 ctx.closePath();
                 ctx.fill();
+                roofTexture(ctx, 'kawara', x, y - h/3, w/2, h/3);
                 // Chigi (千木) — crossed beams on roof ridge
                 ctx.strokeStyle = '#C4A56A';
                 ctx.lineWidth = canvasScale * 1.2;
@@ -7532,18 +7686,6 @@
                     ctx.lineTo(sx + 1*canvasScale, sy + 8*canvasScale);
                     ctx.closePath();
                     ctx.fill();
-                }
-                // Incense smoke (animated)
-                const it = gameTick * 0.04;
-                ctx.strokeStyle = 'rgba(180,180,180,0.25)';
-                ctx.lineWidth = canvasScale;
-                for (let i = 0; i < 2; i++) {
-                    const ix = x + (i*4 - 2)*canvasScale;
-                    const sOff = Math.sin(it + i*2) * 2*canvasScale;
-                    ctx.beginPath();
-                    ctx.moveTo(ix, y - h/3 - 6*canvasScale);
-                    ctx.quadraticCurveTo(ix + sOff, y - h/3 - 12*canvasScale, ix - sOff, y - h/3 - 18*canvasScale);
-                    ctx.stroke();
                 }
                 break;
             }
@@ -7744,21 +7886,12 @@
                     ctx.arc(lfx, lfy, 1.5*canvasScale, 0, Math.PI*2);
                     ctx.fill();
                 }
-                // Ripples
-                const lpt = gameTick * 0.025;
-                ctx.strokeStyle = 'rgba(100,180,220,0.25)';
-                ctx.lineWidth = canvasScale;
-                for (let i = 0; i < 2; i++) {
-                    ctx.beginPath();
-                    ctx.ellipse(x + Math.sin(lpt+i*2)*6*canvasScale, y + Math.cos(lpt+i*2)*3*canvasScale, 5*canvasScale, 2*canvasScale, 0, 0, Math.PI*2);
-                    ctx.stroke();
-                }
                 break;
             }
 
             case 'flower': {
                 // Cluster of colorful flowers — gentle sway
-                const flowerSway = Math.sin(gameTick * 0.025 + obj.x * 0.1) * 1.5 * canvasScale;
+                const flowerSway = _swayK * Math.sin(gameTick * 0.025 + obj.x * 0.1) * 1.5 * canvasScale;
                 const flowerColors = ['#e84060','#e8a020','#c060e0','#e86040','#e0e040'];
                 for (let i = 0; i < 6; i++) {
                     const fx2 = x + (Math.cos(i*1.05) * 8)*canvasScale;
@@ -7786,51 +7919,78 @@
             }
 
             case 'willow': {
-                // Willow tree with drooping branches — wind responsive
+                // Weeping willow (柳): leaning trunk, rounded crown, a curtain of hanging strands.
+                // Foliage follows the season; bare twigs in winter.
                 const wWind = currentWeather === 'wind' ? weatherIntensity : 0;
-                const wSway = Math.sin(gameTick * 0.02 + obj.x * 0.03) * (3 + wWind * 8) * canvasScale;
-                // Trunk
-                ctx.fillStyle = '#5a3a1a';
-                ctx.fillRect(x - 4*canvasScale, y - 5*canvasScale, 8*canvasScale, 25*canvasScale);
-                // Main branches (upward then drooping)
-                ctx.strokeStyle = '#4a3018';
-                ctx.lineWidth = 2*canvasScale;
-                const branchAngles = [-0.8, -0.3, 0.2, 0.7];
-                for (const a of branchAngles) {
-                    const bx = x + Math.cos(a) * 8*canvasScale + wSway * 0.3;
-                    const by = y - 10*canvasScale + Math.sin(a) * 4*canvasScale;
-                    ctx.beginPath();
-                    ctx.moveTo(x, y - 5*canvasScale);
-                    ctx.lineTo(bx, by);
-                    ctx.stroke();
+                const wSway = _swayK * Math.sin(gameTick * 0.02 + obj.x * 0.03) * (3 + wWind * 8) * canvasScale;
+                const sc = canvasScale;
+                const leaf = { spring: ['#a6cf6c', '#79ad50', '#c8e290'], summer: ['#5d9a43', '#3f7c34', '#7cb35a'],
+                               autumn: ['#c4b04c', '#a0923c', '#ddc868'], winter: null }[getSeason()];
+                // Trunk with root flare
+                ctx.fillStyle = '#4a3322';
+                ctx.beginPath();
+                ctx.moveTo(x - 6*sc, y + 20*sc);
+                ctx.quadraticCurveTo(x - 3*sc, y + 14*sc, x - 3.5*sc, y - 4*sc);
+                ctx.lineTo(x - 1*sc, y - 14*sc);
+                ctx.lineTo(x + 2.5*sc, y - 14*sc);
+                ctx.quadraticCurveTo(x + 3*sc, y + 2*sc, x + 4*sc, y + 14*sc);
+                ctx.quadraticCurveTo(x + 5*sc, y + 18*sc, x + 7*sc, y + 20*sc);
+                ctx.closePath();
+                ctx.fill();
+                // Limbs
+                ctx.strokeStyle = '#4a3322';
+                ctx.lineCap = 'round';
+                ctx.lineWidth = 2*sc;
+                ctx.beginPath();
+                for (const [ex, ey] of [[-13, -18], [12, -19], [-4, -24], [5, -25]]) {
+                    ctx.moveTo(x, y - 10*sc);
+                    ctx.quadraticCurveTo(x + ex*0.3*sc, y + (ey + 4)*sc, x + ex*sc + wSway*0.2, y + ey*sc);
                 }
-                // Drooping branch lines (green) — with wind sway
-                ctx.strokeStyle = '#3a8a2a';
-                ctx.lineWidth = canvasScale * 0.8;
-                for (let i = 0; i < 12; i++) {
-                    const branchSway = wSway * (0.5 + i * 0.08) + Math.sin(gameTick * 0.015 + i * 0.9) * 2 * canvasScale;
-                    const startX = x + (Math.cos(i * 0.55) * 12)*canvasScale + branchSway * 0.3;
-                    const startY = y - 12*canvasScale + Math.sin(i * 0.8) * 3*canvasScale;
-                    const endX = startX + (Math.cos(i * 0.55) * 6)*canvasScale + branchSway;
-                    const endY = startY + 18*canvasScale + Math.sin(i * 1.2) * 4*canvasScale;
-                    const midX = (startX + endX)/2 + Math.sin(i) * 3*canvasScale + branchSway * 0.6;
+                ctx.stroke();
+                const strands = 26;
+                if (!leaf) {
+                    ctx.strokeStyle = '#6e5c42';
+                    ctx.lineWidth = 0.6*sc;
                     ctx.beginPath();
-                    ctx.moveTo(startX, startY);
-                    ctx.quadraticCurveTo(midX, (startY + endY)/2, endX, endY);
+                    for (let i = 0; i < strands; i++) {
+                        const t = i / (strands - 1), a2 = -1.25 + t * 2.5;
+                        const sx = x + Math.sin(a2) * 15*sc, sy = y - 22*sc + Math.abs(Math.sin(a2)) * 7*sc;
+                        const len = (15 + (i * 7) % 10) * sc;
+                        ctx.moveTo(sx, sy);
+                        ctx.quadraticCurveTo(sx + Math.sin(a2) * 4*sc + wSway*0.5, sy + len*0.5, sx + Math.sin(a2) * 5*sc + wSway, sy + len);
+                    }
                     ctx.stroke();
-                    // Small leaves along droop
-                    if (i % 2 === 0) {
-                        ctx.fillStyle = '#4a9a3a';
+                    break;
+                }
+                // Crown mass
+                ctx.fillStyle = leaf[1];
+                for (const [cx2, cy2, rx2, ry2] of [[0, -19, 17, 9], [-10, -15, 10, 7], [10, -15, 10, 7]]) {
+                    ctx.beginPath();
+                    ctx.ellipse(x + cx2*sc + wSway*0.2, y + cy2*sc, rx2*sc, ry2*sc, 0, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                // Hanging strands — back layer darker, front layer lighter
+                ctx.lineCap = 'round';
+                for (let layer = 0; layer < 2; layer++) {
+                    for (let i = layer; i < strands; i += 2) {
+                        const t = i / (strands - 1), a2 = -1.3 + t * 2.6;
+                        const sx = x + Math.sin(a2) * 16*sc, sy = y - 20*sc + Math.abs(Math.sin(a2)) * 6*sc;
+                        const len = (14 + (i * 7) % 11 - layer * 2) * sc;
+                        ctx.strokeStyle = layer === 0 ? leaf[1] : leaf[i % 3 === 0 ? 2 : 0];
+                        ctx.lineWidth = (layer === 0 ? 2.4 : 1.7) * sc;
                         ctx.beginPath();
-                        ctx.ellipse(midX, (startY+endY)/2, 2*canvasScale, 1*canvasScale, i*0.3, 0, Math.PI*2);
-                        ctx.fill();
+                        ctx.moveTo(sx, sy);
+                        ctx.quadraticCurveTo(sx + Math.sin(a2) * 4*sc + wSway*0.5, sy + len*0.55, sx + Math.sin(a2) * 5.5*sc + wSway, sy + len);
+                        ctx.stroke();
                     }
                 }
-                // Canopy mass (light)
-                ctx.fillStyle = 'rgba(60,140,50,0.25)';
-                ctx.beginPath();
-                ctx.arc(x + wSway * 0.2, y - 10*canvasScale, 16*canvasScale, 0, Math.PI*2);
-                ctx.fill();
+                // Sunlit dabs on the upper left of the crown
+                ctx.fillStyle = leaf[2];
+                for (const [dx2, dy2] of [[-8, -23], [-2, -25], [-12, -19], [3, -22], [-5, -20]]) {
+                    ctx.beginPath();
+                    ctx.ellipse(x + dx2*sc, y + dy2*sc, 2.6*sc, 1.4*sc, -0.4, 0, Math.PI*2);
+                    ctx.fill();
+                }
                 break;
             }
 
@@ -7856,6 +8016,7 @@
                 ctx.moveTo(x - w/2 - 5*canvasScale, y - h/4 + 2*canvasScale);
                 ctx.quadraticCurveTo(x, y - h/2 - 8*canvasScale, x + w/2 + 5*canvasScale, y - h/4 + 2*canvasScale);
                 ctx.fill();
+                roofTexture(ctx, 'kawara', x, y - h/3, w/2 + 7*canvasScale, h/3);
                 // Signboard with character
                 ctx.fillStyle = '#c8a030';
                 ctx.fillRect(x - 6*canvasScale, y - h/4 + 4*canvasScale, 12*canvasScale, 8*canvasScale);
@@ -7887,6 +8048,7 @@
                 ctx.lineTo(x + w/2 + 6*canvasScale, y - h/6 + 2*canvasScale);
                 ctx.closePath();
                 ctx.fill();
+                roofTexture(ctx, 'thatch', x, y - h/3, w/2 + 8*canvasScale, h/3);
                 // Thatch texture lines
                 ctx.strokeStyle = '#8a7a30';
                 ctx.lineWidth = canvasScale * 0.7;
@@ -7948,6 +8110,7 @@
                 ctx.lineTo(x - w/2 - 4*canvasScale, y - h/4 - 8*canvasScale);
                 ctx.closePath();
                 ctx.fill();
+                roofTexture(ctx, 'plank', x, y - h/4, w/2 + 6*canvasScale, 8*canvasScale);
                 // Fence rails
                 ctx.strokeStyle = '#6a4a2a';
                 ctx.lineWidth = 2*canvasScale;
@@ -8056,6 +8219,203 @@
             }
         }
 
+    }
+
+    // Animated details, drawn live around the cached sprite: 'under' sits beneath it, 'over' on top
+    function drawObjectAnim(ctx, obj, layer) {
+        const x = obj.x * canvasScale;
+        const y = obj.y * canvasScale;
+        const w = obj.w * canvasScale;
+        const h = obj.h * canvasScale;
+        switch (obj.type) {
+            case 'house':
+                if (layer !== 'over') break;
+                // Chimney smoke (not during rain)
+                if (currentWeather !== 'rain') {
+                    ctx.save();
+                    ctx.globalAlpha = 0.15;
+                    ctx.fillStyle = '#b0a890';
+                    const smokeT = gameTick * 0.02;
+                    for (let si = 0; si < 3; si++) {
+                        const sx = x + w/4 + Math.sin(smokeT + si * 2) * 3 * canvasScale;
+                        const sy = y - h/2 - 10*canvasScale - si * 8 * canvasScale;
+                        const sr = (2 + si * 1.5) * canvasScale;
+                        ctx.globalAlpha = 0.15 - si * 0.04;
+                        ctx.beginPath();
+                        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
+                break;
+            case 'teahouse': {
+                if (layer !== 'over') break;
+                // Noren curtains (暖簾) — hanging fabric strips, navy blue with white circle
+                const norenSway = Math.sin(gameTick * 0.025) * 1.5 * canvasScale;
+                const norenW = (w - 10*canvasScale) / 4;
+                ctx.fillStyle = '#2a3a6a';
+                for (let i = 0; i < 4; i++) {
+                    const nx = x - w/2 + 4*canvasScale + i * (norenW + 1*canvasScale);
+                    const sway = Math.sin(gameTick * 0.025 + i * 0.8) * 1.5 * canvasScale;
+                    ctx.beginPath();
+                    ctx.moveTo(nx, y - h/4 + 2*canvasScale);
+                    ctx.lineTo(nx + norenW, y - h/4 + 2*canvasScale);
+                    ctx.lineTo(nx + norenW + sway, y - h/4 + h/3 - 2*canvasScale);
+                    ctx.lineTo(nx + sway, y - h/4 + h/3 - 2*canvasScale);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                // White circle on center noren (mon crest)
+                ctx.fillStyle = 'rgba(240,235,220,0.7)';
+                ctx.beginPath();
+                ctx.arc(x, y - h/4 + h/6, 4*canvasScale, 0, Math.PI*2);
+                ctx.fill();
+                // Steam wisps rising from teahouse (animated)
+                const st = gameTick * 0.03;
+                for (let i = 0; i < 3; i++) {
+                    const sx = x + (i - 1) * 5 * canvasScale;
+                    const rise = (st + i * 2.5) % 6;
+                    const fadeAlpha = rise < 1 ? rise * 0.25 : Math.max(0, 0.25 - (rise - 1) * 0.06);
+                    if (fadeAlpha <= 0) continue;
+                    ctx.globalAlpha = fadeAlpha;
+                    ctx.fillStyle = '#e8e4e0';
+                    const wy = y - h/3 - (6 + rise * 5) * canvasScale;
+                    const wobble = Math.sin(st * 2 + i * 1.8) * 3 * canvasScale;
+                    ctx.beginPath();
+                    ctx.ellipse(sx + wobble, wy, (2.5 + rise * 0.4) * canvasScale, (1.5 + rise * 0.3) * canvasScale, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1.0;
+                break;
+            }
+            case 'kitchen': {
+                const kt = gameTick * 0.06;
+                if (layer === 'under') {
+                    // Fire underneath (animated)
+                    for (let i = 0; i < 4; i++) {
+                        const fx = x + Math.sin(kt + i * 1.5) * 4 * canvasScale;
+                        const fy = y + 6*canvasScale - Math.sin(kt * 1.3 + i) * 2 * canvasScale;
+                        ctx.beginPath();
+                        ctx.arc(fx, fy, (3 + Math.sin(kt + i)*1)*canvasScale, 0, Math.PI*2);
+                        ctx.fillStyle = i < 2 ? '#e8a020' : '#e85020';
+                        ctx.fill();
+                    }
+                    // Glow
+                    const kGrad = ctx.createRadialGradient(x, y + 6*canvasScale, 0, x, y + 6*canvasScale, 14*canvasScale);
+                    kGrad.addColorStop(0, 'rgba(255,160,40,0.12)');
+                    kGrad.addColorStop(1, 'rgba(255,160,40,0)');
+                    ctx.fillStyle = kGrad;
+                    ctx.fillRect(x - 16*canvasScale, y - 4*canvasScale, 32*canvasScale, 24*canvasScale);
+                } else {
+                    // Steam puffs rising from wok (animated)
+                    for (let i = 0; i < 3; i++) {
+                        const sx = x + (i - 1) * 4 * canvasScale;
+                        const rise = (kt * 0.5 + i * 2.5) % 6;
+                        const fadeAlpha = rise < 1 ? rise * 0.25 : Math.max(0, 0.25 - (rise - 1) * 0.06);
+                        if (fadeAlpha <= 0) continue;
+                        ctx.globalAlpha = fadeAlpha;
+                        ctx.fillStyle = '#e8e4e0';
+                        const wy = y - (6 + rise * 5) * canvasScale;
+                        const wobble = Math.sin(kt + i * 1.8) * 3 * canvasScale;
+                        ctx.beginPath();
+                        ctx.ellipse(sx + wobble, wy, (2.5 + rise * 0.4) * canvasScale, (1.5 + rise * 0.3) * canvasScale, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.globalAlpha = 1.0;
+                }
+                break;
+            }
+            case 'fish_pond': {
+                if (layer !== 'over') break;
+                // Ripples (animated)
+                const fpt = gameTick * 0.03;
+                ctx.strokeStyle = 'rgba(100,180,220,0.3)';
+                ctx.lineWidth = canvasScale;
+                for (let i = 0; i < 2; i++) {
+                    ctx.beginPath();
+                    const rx = x + Math.cos(fpt + i*3) * w/5;
+                    const ry = y + Math.sin(fpt + i*3) * h/5;
+                    ctx.ellipse(rx, ry, 4*canvasScale, 2*canvasScale, 0, 0, Math.PI*2);
+                    ctx.stroke();
+                }
+                // Koi fish (natural lazy swimming)
+                const koiColors = ['#e86030','#e8c040'];
+                for (let i = 0; i < 2; i++) {
+                    // Figure-8 with varying speed and drift
+                    const t1 = fpt * (0.35 + i * 0.12);
+                    const t2 = fpt * (0.23 + i * 0.09);
+                    const kx = x + Math.cos(t1 + i * 2.1) * w * 0.28
+                              + Math.sin(t2 * 0.7 + i) * w * 0.08;
+                    const ky = y + Math.sin(t1 * 0.8 + i * 1.7) * h * 0.25
+                              + Math.cos(t2 * 0.5 + i * 0.9) * h * 0.06;
+                    // Facing direction from movement delta
+                    const prevX = x + Math.cos((t1 - 0.05) + i * 2.1) * w * 0.28
+                                + Math.sin(((t2 - 0.05) * 0.7) + i) * w * 0.08;
+                    const prevY = y + Math.sin(((t1 - 0.05) * 0.8) + i * 1.7) * h * 0.25
+                                + Math.cos(((t2 - 0.05) * 0.5) + i * 0.9) * h * 0.06;
+                    const kAngle = Math.atan2(ky - prevY, kx - prevX);
+                    ctx.save();
+                    ctx.translate(kx, ky);
+                    ctx.rotate(kAngle + Math.PI / 2);
+                    ctx.fillStyle = koiColors[i];
+                    // Body
+                    ctx.beginPath();
+                    ctx.moveTo(0, -4*canvasScale);
+                    ctx.quadraticCurveTo(3*canvasScale, 0, 0, 4*canvasScale);
+                    ctx.quadraticCurveTo(-2*canvasScale, 0, 0, -4*canvasScale);
+                    ctx.fill();
+                    // Tail (wags)
+                    const tailWag = Math.sin(fpt * 3 + i * 2) * 1.5 * canvasScale;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 3*canvasScale);
+                    ctx.lineTo(-2*canvasScale + tailWag, 6*canvasScale);
+                    ctx.lineTo(2*canvasScale + tailWag, 6*canvasScale);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+                break;
+            }
+            case 'shrine':
+                if (layer !== 'over') break;
+                // Incense smoke (animated)
+                const it = gameTick * 0.04;
+                ctx.strokeStyle = 'rgba(180,180,180,0.25)';
+                ctx.lineWidth = canvasScale;
+                for (let i = 0; i < 2; i++) {
+                    const ix = x + (i*4 - 2)*canvasScale;
+                    const sOff = Math.sin(it + i*2) * 2*canvasScale;
+                    ctx.beginPath();
+                    ctx.moveTo(ix, y - h/3 - 6*canvasScale);
+                    ctx.quadraticCurveTo(ix + sOff, y - h/3 - 12*canvasScale, ix - sOff, y - h/3 - 18*canvasScale);
+                    ctx.stroke();
+                }
+                break;
+            case 'lotus_pond':
+                if (layer !== 'over') break;
+                // Ripples
+                const lpt = gameTick * 0.025;
+                ctx.strokeStyle = 'rgba(100,180,220,0.25)';
+                ctx.lineWidth = canvasScale;
+                for (let i = 0; i < 2; i++) {
+                    ctx.beginPath();
+                    ctx.ellipse(x + Math.sin(lpt+i*2)*6*canvasScale, y + Math.cos(lpt+i*2)*3*canvasScale, 5*canvasScale, 2*canvasScale, 0, 0, Math.PI*2);
+                    ctx.stroke();
+                }
+                break;
+        }
+    }
+
+    function drawObject(ctx, obj) {
+        const x = obj.x * canvasScale;
+        const y = obj.y * canvasScale;
+        const w = obj.w * canvasScale;
+        const h = obj.h * canvasScale;
+
+        drawObjectAnim(ctx, obj, 'under');
+        drawObjectSprite(ctx, obj);
+        drawObjectAnim(ctx, obj, 'over');
+
         // Window glow at night
         if ((gameHour >= 19 || gameHour < 6) && (obj.type === 'house' || obj.type === 'teahouse' || obj.type === 'school')) {
             const nightA = gameHour >= 19 && gameHour < 20 ? (gameHour - 19) : gameHour >= 5 && gameHour < 6 ? (6 - gameHour) : 1;
@@ -8083,40 +8443,99 @@
             ctx.fill();
         }
 
-        // Label — per-type visual bottom offset (distance from center to visual bottom in world coords)
-        const visualBottom = VISUAL_BOTTOM[obj.type] || obj.h/2;
-        const labelY = y + (visualBottom + 10) * canvasScale;
-        ctx.textAlign = 'center';
-
-        // Contextual glow when speaker acts here
+        // Place tag below the object's base; it lights up while the speaker uses the object
+        const visualBottom = VISUAL_BOTTOM[obj.type] !== undefined ? VISUAL_BOTTOM[obj.type] : obj.h/2;
+        const tagY = y + (visualBottom + 8) * canvasScale;
         if (activeObjectGlow && activeObjectGlow.objId === obj.id) {
-            const glowAlpha = Math.min(1, activeObjectGlow.timer / 30); // fade out in last 30 ticks
-            const pulseAlpha = glowAlpha * (0.7 + Math.sin(gameTick * 0.08) * 0.3);
-            // Glow halo
-            ctx.save();
-            ctx.font = `bold ${Math.round(12*canvasScale)}px 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif`;
-            ctx.fillStyle = `rgba(212,160,48,${pulseAlpha * 0.3})`;
-            ctx.fillText(obj.label, x, labelY);
-            ctx.fillText(obj.label, x + canvasScale * 0.5, labelY + canvasScale * 0.5);
-            // Sharp label
-            ctx.fillStyle = `rgba(255,220,120,${pulseAlpha})`;
-            ctx.fillText(obj.label, x, labelY);
-            // Romaji below
-            if (obj.romaji) {
-                ctx.font = `${Math.round(9*canvasScale)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro',monospace`;
-                ctx.fillStyle = `rgba(220,200,160,${pulseAlpha * 0.8})`;
-                ctx.fillText(obj.romaji, x, labelY + 12 * canvasScale);
-            }
-            ctx.restore();
+            const glowAlpha = Math.min(1, activeObjectGlow.timer / 30);
+            const pulse = 0.75 + Math.sin(gameTick * 0.08) * 0.25;
+            drawTag(ctx, obj.label, x, tagY, PLACE_TAG_ACTIVE, glowAlpha * pulse + (1 - glowAlpha) * 0.9);
+            if (obj.romaji) drawTag(ctx, obj.romaji, x, tagY + 12 * canvasScale, ROMAJI_TAG, glowAlpha);
         } else {
-            ctx.font = `${Math.round(9*canvasScale)}px 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif`;
-            ctx.lineJoin = 'round';
-            ctx.lineWidth = 2.4 * canvasScale;
-            ctx.strokeStyle = 'rgba(38,30,20,0.5)';
-            ctx.strokeText(obj.label, x, labelY);
-            ctx.fillStyle = 'rgba(246,238,220,0.92)';
-            ctx.fillText(obj.label, x, labelY);
+            drawTag(ctx, obj.label, x, tagY, PLACE_TAG);
         }
+    }
+
+    // Small paper tags for place labels and names
+    const PLACE_TAG = { font: `600 9.5px ${FONT_MINCHO}`, h: 12, bg: 'rgba(246,238,222,0.9)', border: 'rgba(43,38,34,0.5)', fg: '#2b2622', accent: '#c8442f' };
+    const PLACE_TAG_ACTIVE = { font: `700 10.5px ${FONT_MINCHO}`, h: 13.5, bg: 'rgba(255,244,214,0.97)', border: '#c99a3a', fg: '#2b2622', accent: '#c99a3a', glow: true };
+    const ROMAJI_TAG = { font: `500 8px ${FONT_UI}`, h: 10, bg: 'rgba(43,38,34,0.75)', border: null, fg: '#f3ead8' };
+    const NAME_TAG = {
+        speaker:  { font: `700 8.5px ${FONT_UI}`, h: 11, bg: 'rgba(46,74,107,0.92)', border: 'rgba(20,30,48,0.8)', fg: '#f6efe0' },
+        learner:  { font: `700 8.5px ${FONT_UI}`, h: 11, bg: 'rgba(168,58,40,0.92)', border: 'rgba(70,20,12,0.8)', fg: '#f6efe0' },
+        villager: { font: `700 8px ${FONT_UI}`,   h: 10, bg: 'rgba(43,38,34,0.55)',  border: null, fg: '#f3ead8' },
+    };
+    // Draws `text` on a tag centred at (cx, cy) in canvas pixels; sizes in the style are world units
+    function drawTag(ctx, text, cx, cy, st, alpha) {
+        if (!text) return;
+        const s = canvasScale;
+        const px = parseFloat(st.font.match(/([\d.]+)px/)[1]) * s;
+        ctx.save();
+        if (alpha !== undefined) ctx.globalAlpha = alpha;
+        ctx.font = st.font.replace(/[\d.]+px/, px.toFixed(1) + 'px');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const tw = ctx.measureText(text).width;
+        const accentW = st.accent ? 1.6 * s : 0;
+        const w = tw + 7 * s + accentW, hh = st.h * s;
+        const x0 = cx - w / 2, y0 = cy - hh / 2;
+        if (st.glow) { ctx.shadowColor = 'rgba(201,154,58,0.8)'; ctx.shadowBlur = 8 * s * dpr; }
+        ctx.fillStyle = st.bg;
+        roundRect(ctx, x0, y0, w, hh, 2 * s);
+        ctx.fill();
+        ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+        if (st.border) { ctx.strokeStyle = st.border; ctx.lineWidth = 0.6 * s; ctx.stroke(); }
+        if (st.accent) { ctx.fillStyle = st.accent; ctx.fillRect(x0 + 1 * s, y0 + 2 * s, accentW, hh - 4 * s); }
+        ctx.fillStyle = st.fg;
+        ctx.fillText(text, cx + accentW / 2 + 0.5 * s, cy + 0.6 * s);
+        ctx.restore();
+    }
+
+    // Per-person look, derived from the name so it's stable across frames and reloads
+    const KIMONO_PATTERNS = ['stripes', 'dots', 'checks', 'waves', 'plain'];
+    const OBI_COLORS = ['#c8442f', '#c99a3a', '#6f93b5', '#e6d8bb', '#5f8a4f', '#8a3b5a'];
+    function personLook(person) {
+        if (person._look) return person._look;
+        let hsh = 7;
+        for (const ch of person.name) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+        person._look = person.role === 'learner'
+            ? { pattern: 'plain', obi: '#5a3e24' }
+            : { pattern: KIMONO_PATTERNS[hsh % KIMONO_PATTERNS.length], obi: OBI_COLORS[(hsh >> 3) % OBI_COLORS.length] };
+        return person._look;
+    }
+    // Pattern inside the current robe path (caller has built the path); colours derive from the cloth
+    function kimonoPattern(ctx, kind, cx, cy, rx, ry, s) {
+        if (kind === 'plain') return;
+        ctx.save();
+        ctx.clip();
+        const light = 'rgba(255,248,232,0.30)', dark = 'rgba(20,18,30,0.22)';
+        if (kind === 'stripes') {
+            ctx.fillStyle = light;
+            for (let x = cx - rx; x < cx + rx; x += 2.6 * s) ctx.fillRect(x, cy - ry, 0.9 * s, ry * 2);
+        } else if (kind === 'dots') {
+            ctx.fillStyle = light;
+            let row = 0;
+            for (let y = cy - ry; y < cy + ry; y += 3 * s, row++) {
+                for (let x = cx - rx + (row % 2) * 1.5 * s; x < cx + rx; x += 3 * s) {
+                    ctx.beginPath(); ctx.arc(x, y, 0.65 * s, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+        } else if (kind === 'checks') {
+            ctx.fillStyle = dark;
+            const q = 3.2 * s;
+            for (let y = cy - ry, r = 0; y < cy + ry; y += q, r++)
+                for (let x = cx - rx + (r % 2) * q, c = 0; x < cx + rx; x += q * 2, c++) ctx.fillRect(x, y, q, q);
+        } else if (kind === 'waves') {      // seigaiha-like arcs
+            ctx.strokeStyle = light;
+            ctx.lineWidth = 0.5 * s;
+            let row = 0;
+            for (let y = cy - ry; y < cy + ry + 3 * s; y += 2.4 * s, row++) {
+                for (let x = cx - rx + (row % 2) * 2 * s; x < cx + rx + 3 * s; x += 4 * s) {
+                    ctx.beginPath(); ctx.arc(x, y, 2 * s, Math.PI, 0); ctx.stroke();
+                }
+            }
+        }
+        ctx.restore();
     }
 
     function drawPerson(ctx, person) {
@@ -8149,12 +8568,6 @@
         ctx.save();
         ctx.translate(x, y);
 
-        // Shadow
-        ctx.beginPath();
-        ctx.ellipse(0, 5*s, 10*s, 4*s, 0, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.fill();
-
         // Feet / cloth shoes
         const legSpread = 4 * s;
         const leftLegOff = walkCycle * 3 * s;
@@ -8176,17 +8589,19 @@
         ctx.restore();
 
         // Body / robe (longer for Song Dynasty) — with breathing
+        const look = personLook(person);
         ctx.beginPath();
         ctx.ellipse(leanX, -2*s + leanY, 9*s, 12*s + breathOff, 0, 0, Math.PI*2);
         ctx.fillStyle = cloth;
         ctx.fill();
-        ctx.strokeStyle = '#1a1a10';
-        ctx.lineWidth = 0.6*s;
+        kimonoPattern(ctx, look.pattern, leanX, -2*s + leanY, 9*s, 12*s + breathOff, s);
+        ctx.strokeStyle = PALETTE.sumi;
+        ctx.lineWidth = 0.9*s;
         ctx.stroke();
 
         // V-collar on robe
-        ctx.strokeStyle = isLearner ? '#d0c8b0' : '#e8d8a0';
-        ctx.lineWidth = 1*s;
+        ctx.strokeStyle = isLearner ? '#d0c8b0' : '#f6efe0';
+        ctx.lineWidth = 1.4*s;
         ctx.beginPath();
         const collarFwd = Math.cos(facing) * 4 * s;
         const collarSide = Math.sin(facing) * 4 * s;
@@ -8198,7 +8613,7 @@
         // Belt / sash
         ctx.beginPath();
         ctx.ellipse(leanX, 2*s + leanY, 9*s, 2*s, 0, 0, Math.PI*2);
-        ctx.fillStyle = isLearner ? '#6a4a2a' : '#8a6030';
+        ctx.fillStyle = look.obi;
         ctx.fill();
 
         // Arms with sleeves — action-specific poses
@@ -8248,8 +8663,8 @@
         ctx.ellipse(Math.cos(facing) * leftArmSwing, Math.sin(facing) * leftArmSwing + leftArmYOff, sleeveW, sleeveH, facing + 0.3, 0, Math.PI*2);
         ctx.fillStyle = cloth;
         ctx.fill();
-        ctx.strokeStyle = '#1a1a10';
-        ctx.lineWidth = 0.4*s;
+        ctx.strokeStyle = PALETTE.sumi;
+        ctx.lineWidth = 0.7*s;
         ctx.stroke();
         // Hand
         ctx.beginPath();
@@ -8264,8 +8679,8 @@
         ctx.ellipse(Math.cos(facing) * rightArmSwing, Math.sin(facing) * rightArmSwing + rightArmYOff, sleeveW, sleeveH, facing - 0.3, 0, Math.PI*2);
         ctx.fillStyle = cloth;
         ctx.fill();
-        ctx.strokeStyle = '#1a1a10';
-        ctx.lineWidth = 0.4*s;
+        ctx.strokeStyle = PALETTE.sumi;
+        ctx.lineWidth = 0.7*s;
         ctx.stroke();
         ctx.beginPath();
         ctx.arc(Math.cos(facing) * (rightArmSwing + 2*s), Math.sin(facing) * (rightArmSwing + 2*s) + rightArmYOff, 2*s, 0, Math.PI*2);
@@ -8280,8 +8695,8 @@
         ctx.arc(headX, headY, 6*s, 0, Math.PI*2);
         ctx.fillStyle = skin;
         ctx.fill();
-        ctx.strokeStyle = '#1a1a10';
-        ctx.lineWidth = 0.5*s;
+        ctx.strokeStyle = PALETTE.sumi;
+        ctx.lineWidth = 0.8*s;
         ctx.stroke();
 
         // Hair
@@ -8373,15 +8788,9 @@
 
         ctx.restore();
 
-        // Name label
-        ctx.font = `bold ${Math.round(10*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
-        ctx.textAlign = 'center';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = 2.6 * s;
-        ctx.strokeStyle = 'rgba(30,24,16,0.6)';
-        ctx.strokeText(person.name, x, y + 20*s);
-        ctx.fillStyle = '#f4ecd8';
-        ctx.fillText(person.name, x, y + 20*s);
+        // Name tag: indigo for the speaker, vermilion for the learner, quiet ink for villagers
+        const tagStyle = person.role === 'speaker' ? NAME_TAG.speaker : person.role === 'learner' ? NAME_TAG.learner : NAME_TAG.villager;
+        drawTag(ctx, person.name, x, y + 17*s, tagStyle);
     }
 
     // ============================================================
@@ -12743,6 +13152,18 @@
             }
         }
 
+        // Japanese web fonts load in unicode slices: fetch the glyphs the tags use up front
+        if (document.fonts && document.fonts.load) {
+            const tagText = worldObjects.map(o => o.label).join('') + '台所庭園茶屋';
+            const names = [...persons, ...npcs].map(c => c.name).join('') + SPEAKER_NAMES.join('') + NPC_NAMES.join('');
+            Promise.all([
+                document.fonts.load(`600 12px "Shippori Mincho"`, tagText),
+                document.fonts.load(`700 12px "Shippori Mincho"`, tagText),
+                document.fonts.load(`700 12px "Zen Maru Gothic"`, names + 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzäöüÄÖÜß'),
+                document.fonts.load(`500 12px "Zen Maru Gothic"`, 'abcdefghijklmnopqrstuvwxyz'),
+            ]).catch(() => {});
+        }
+
         // Spawn initial wildlife
         spawnWildlife();
 
@@ -12906,6 +13327,7 @@
         // --- World layer (camera transform) ---
         setWorldTransform(ctx);
         drawTerrain(ctx);
+        drawShadows(ctx);
 
         // Y-sorted scene drawing — build draw list, sort by depth
         const drawList = [];
