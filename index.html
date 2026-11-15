@@ -9,7 +9,6 @@
     <title>Nihongo Mura — Japanisch-Sprachsimulation</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Zen+Maru+Gothic:wght@400;500;700&display=swap">
     <style>
         :root {
             /* Woodblock / washi palette — mirrored by PALETTE in the script */
@@ -385,6 +384,13 @@
         .log-entry.speak { color: var(--text); }
 
         #panel-toggle { display: none; }
+        #perf-hud {
+            position: absolute; left: 12px; bottom: 12px; z-index: 3;
+            padding: 6px 10px; border-radius: 8px;
+            background: rgba(19,17,14,0.82); border: 1px solid var(--line-strong);
+            color: var(--text); font: 500 11.5px/1.45 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+            white-space: pre; pointer-events: none;
+        }
 
         /* ---------- Narrow / portrait: map full screen, panel as a bottom sheet ---------- */
         @media (max-width: 800px), (orientation: portrait) {
@@ -512,6 +518,25 @@
     <button id="panel-toggle" onclick="togglePanel()" aria-label="Übersicht öffnen" aria-expanded="false" aria-controls="panel"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5c-2-1.6-4.6-2-7.5-1.5v13c2.9-.5 5.5-.1 7.5 1.5 2-1.6 4.6-2 7.5-1.5V5c-2.9-.5-5.5-.1-7.5 1.5z"/><path d="M12 6.5v13"/></svg></button>
 
     <script>
+    // ---- Web fonts: one small subset file per weight, containing only the glyphs this page uses
+    // (built from the page's own text, so edits stay covered); added without blocking first paint.
+    (function loadWebFonts() {
+        try {
+            const src = (document.currentScript ? document.currentScript.text : '') + document.body.textContent;
+            const set = new Set(src.match(/[\u3000-\u30ff\u4e00-\u9fff\uff00-\uffef]/g) || []);
+            for (let c = 0x3041; c <= 0x3096; c++) set.add(String.fromCharCode(c));   // every kana: conjugation can produce any
+            for (let c = 0x30a1; c <= 0x30fa; c++) set.add(String.fromCharCode(c));
+            set.add('ー');
+            let latin = '';
+            for (let c = 32; c < 127; c++) latin += String.fromCharCode(c);
+            const text = [...set].sort().join('') + latin + 'äöüÄÖÜß„“”‘’–—…·×→';
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@700;800&family=Zen+Maru+Gothic:wght@400;500;700&display=swap&text=' + encodeURIComponent(text);
+            document.head.appendChild(link);
+        } catch (e) { /* fonts are decorative; system fallbacks apply */ }
+    })();
+
     // ============================================================
     //  CONFIGURATION
     // ============================================================
@@ -6920,7 +6945,16 @@
         const season = getSeason();
         const r = terrainRegion();
         const key = [season, canvasScale.toFixed(4), Math.min(dpr, 2), r.x0.toFixed(1), r.y0.toFixed(1), r.x1.toFixed(1), r.y1.toFixed(1)].join('|');
-        if (terrainCache.key !== key) buildTerrainCache(season, r, key);
+        if (terrainCache.key !== key) {
+            if (terrainCache.canvas && performance.now() - _lastResizeAt < 250) {
+                // Mid-resize: reuse the old cache (it may not reach the new edges, so back it with a fill)
+                const vr = viewPxRect();
+                ctx.fillStyle = '#20242a';
+                ctx.fillRect(vr.x, vr.y, vr.w, vr.h);
+            } else {
+                buildTerrainCache(season, r, key);
+            }
+        }
         const s = canvasScale, c = terrainCache.canvas, res = terrainCache.res;
         ctx.drawImage(c, terrainCache.x0 * s, terrainCache.y0 * s, c.width / res * s, c.height / res * s);
         drawRiverShimmer(ctx, r);
@@ -6975,14 +7009,28 @@
     const OUTLINE_INK = { willow: '#25381f', bamboo: '#1e3a1c', flower: '#3a3020' };
     const _spriteCache = new Map();
     let _spriteKey = '';
+    let _spriteStale = null;          // previous-resolution sprites, shown (stretched) until replacements exist
+    let _spriteBudgetEnd = Infinity;  // the game loop sets this each frame; builds stop once it passes
 
+    // Returns the styled sprite, or null when it isn't built yet (callers then draw the object directly)
     function getObjectSprite(obj) {
         const res = canvasScale * Math.min(dpr, 3);
         const key = res.toFixed(4);
-        if (_spriteKey !== key) { _spriteCache.clear(); _spriteKey = key; }
         const k = obj.type === 'willow' ? 'willow|' + getSeason() : obj.type;
-        if (!_spriteCache.has(k)) _spriteCache.set(k, buildObjectSprite(obj, res));
-        return _spriteCache.get(k);
+        if (_spriteKey !== key) {
+            if (_spriteCache.size && performance.now() - _lastResizeAt < 250) return _spriteCache.get(k) || null;  // mid-resize
+            if (_spriteCache.size) _spriteStale = new Map(_spriteCache);
+            _spriteCache.clear();
+            _spriteKey = key;
+        }
+        let spr = _spriteCache.get(k);
+        if (spr === undefined) {
+            if (performance.now() > _spriteBudgetEnd) return (_spriteStale && _spriteStale.get(k)) || null;
+            spr = buildObjectSprite(obj, res);
+            _spriteCache.set(k, spr);
+            if (_spriteStale && _spriteCache.size >= _spriteStale.size) _spriteStale = null;
+        }
+        return spr;
     }
 
     function buildObjectSprite(obj, res) {
@@ -7066,7 +7114,7 @@
 
     function drawObjectSprite(ctx, obj) {
         const spr = getObjectSprite(obj);
-        if (!spr) return;
+        if (!spr) { drawObjectBody(ctx, obj); return; }      // not built yet: plain drawing for a frame or two
         const s = canvasScale;
         const dx = (obj.x + spr.ox) * s, dy = (obj.y + spr.oy) * s, dw = spr.w * s, dh = spr.h * s;
         const sw = SWAY_TYPES[obj.type];
@@ -8550,17 +8598,28 @@
     };
     // Draws `text` on a tag centred at (cx, cy) in canvas pixels; sizes in the style are world units
     let _tagQueue = null;     // while non-null, tags are queued instead of drawn (see game loop)
+    const _tagWidths = new Map();   // measured text widths; cleared when web fonts arrive (metrics change)
+    if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', () => _tagWidths.clear());
     function drawTag(ctx, text, cx, cy, st, alpha) {
         if (!text) return;
         if (_tagQueue) { _tagQueue.push([text, cx, cy, st, alpha]); return; }
         const s = canvasScale;
-        const px = parseFloat(st.font.match(/([\d.]+)px/)[1]) * s;
+        if (st._s !== s) {                          // scaled font string, rebuilt only when the zoom changes
+            st._s = s;
+            st._font = st.font.replace(/[\d.]+px/, (parseFloat(st.font.match(/([\d.]+)px/)[1]) * s).toFixed(1) + 'px');
+        }
         ctx.save();
         if (alpha !== undefined) ctx.globalAlpha = alpha;
-        ctx.font = st.font.replace(/[\d.]+px/, px.toFixed(1) + 'px');
+        ctx.font = st._font;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const tw = ctx.measureText(text).width;
+        const mk = st._font + '\u0000' + text;
+        let tw = _tagWidths.get(mk);
+        if (tw === undefined) {
+            tw = ctx.measureText(text).width;
+            if (_tagWidths.size > 3000) _tagWidths.clear();
+            _tagWidths.set(mk, tw);
+        }
         const accentW = st.accent ? 1.6 * s : 0;
         const w = tw + 7 * s + accentW, hh = st.h * s;
         const x0 = cx - w / 2, y0 = cy - hh / 2;
@@ -10145,10 +10204,15 @@
         `;
     }
 
+    let _vocabPanelFp = '';
     function renderVocabPanel() {
         const learner = persons[1];
         const total = Object.keys(vocab).length;
         const known = learner.knownWords.size;
+        const searchEl0 = document.getElementById('vocab-search');
+        const fp = known + '|' + learner.wordHistory.length + '|' + vocabHistory.length + '|' + total + '|' + (searchEl0 ? searchEl0.value : '');
+        if (fp === _vocabPanelFp) return;          // nothing it shows has changed
+        _vocabPanelFp = fp;
         const pct = total > 0 ? Math.round(known / total * 100) : 0;
 
         document.getElementById('vocab-progress').innerHTML = `<span><b>${known}</b> / ${total} Wörter gelernt</span><span>${pct}%</span>`;
@@ -11090,8 +11154,6 @@
     let activeNpcInteraction = null;
     let npcInteractionTimer = randFloat(500, 1000);
 
-    // Relationship change flash indicators
-    let relChangeFlashes = [];
 
     function updateNPCs(dt) {
         for (const npc of npcs) {
@@ -11103,7 +11165,7 @@
             }
 
             // Update mood periodically
-            if (Math.floor(gameTick) % 30 === 0) npc.mood = getMood(npc);
+            if (_due.mood) npc.mood = getMood(npc);
 
             switch (npc.state) {
                 case 'idle':
@@ -11166,7 +11228,6 @@
                                 const oldRel = npc.relationships[partner.name] || 0;
                                 npc.relationships[partner.name] = Math.min(100, oldRel + 3);
                                 partner.relationships[npc.name] = Math.min(100, (partner.relationships[npc.name] || 0) + 3);
-                                if (oldRel < 97) relChangeFlashes.push({ x: (npc.x + partner.x)/2, y: Math.min(npc.y, partner.y) - 20, text: '+', timer: 60, color: 'rgba(120,220,120,' });
                                 startedChat = true;
                             }
                         }
@@ -11282,71 +11343,6 @@
         }
     }
 
-    function drawRelationshipIndicators(ctx) {
-        const allChars = [...persons, ...npcs];
-        const s = canvasScale;
-        for (let i = 0; i < allChars.length; i++) {
-            for (let j = i + 1; j < allChars.length; j++) {
-                const a = allChars[i], b = allChars[j];
-                const rel = Math.max(a.relationships[b.name] || 0, b.relationships[a.name] || 0);
-                if (rel < 50) continue;
-                const d = Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
-                if (d > 100) continue;
-                const ax = a.x * s, ay = (a.y - 5) * s;
-                const bx = b.x * s, by = (b.y - 5) * s;
-
-                ctx.save();
-                if (rel >= 90) {
-                    // Tier 4: Golden pulsing line + sparkles
-                    const pulse = 0.3 + Math.sin(gameTick * 0.06) * 0.15;
-                    ctx.strokeStyle = `rgba(255,210,80,${pulse})`;
-                    ctx.lineWidth = s * 2.5;
-                    ctx.setLineDash([]);
-                    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-                    // Sparkle particles along line
-                    for (let t = 0.2; t <= 0.8; t += 0.3) {
-                        const sx = ax + (bx - ax) * t + Math.sin(gameTick * 0.1 + t * 20) * 4 * s;
-                        const sy = ay + (by - ay) * t + Math.cos(gameTick * 0.13 + t * 15) * 3 * s;
-                        ctx.beginPath();
-                        ctx.arc(sx, sy, 1.5 * s, 0, Math.PI * 2);
-                        ctx.fillStyle = `rgba(255,240,150,${pulse})`;
-                        ctx.fill();
-                    }
-                } else if (rel >= 70) {
-                    // Tier 3: Brighter golden line with subtle pulse
-                    const alpha = 0.2 + Math.sin(gameTick * 0.04) * 0.08;
-                    ctx.strokeStyle = `rgba(255,220,120,${alpha})`;
-                    ctx.lineWidth = s * 2;
-                    ctx.setLineDash([]);
-                    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-                } else {
-                    // Tier 2 (rel 50+): Faint dashed line
-                    const alpha = Math.min(0.18, (rel - 50) / 200);
-                    ctx.strokeStyle = `rgba(255,220,120,${alpha})`;
-                    ctx.lineWidth = s * 1.5;
-                    ctx.setLineDash([3 * s, 4 * s]);
-                    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-                }
-                ctx.setLineDash([]);
-                ctx.restore();
-            }
-        }
-
-        // Draw relationship change flashes (+/-)
-        for (let i = relChangeFlashes.length - 1; i >= 0; i--) {
-            const f = relChangeFlashes[i];
-            f.timer -= 1;
-            const alpha = Math.min(1, f.timer / 30);
-            const rise = (60 - f.timer) * 0.3 * s;
-            ctx.save();
-            ctx.font = `bold ${Math.round(12*s)}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.fillStyle = f.color + alpha + ')';
-            ctx.fillText(f.text, f.x * s, (f.y * s) - rise);
-            ctx.restore();
-            if (f.timer <= 0) relChangeFlashes.splice(i, 1);
-        }
-    }
 
     // ============================================================
     //  WEATHER & DAY/NIGHT SYSTEM
@@ -11577,7 +11573,14 @@
         [20.3, [70, 78, 128],  0.95],
         [24.0, [62, 72, 122],  1.0],
     ];
+    const _gradeMemo = { t: NaN, w: '', wi: NaN, d: NaN, r: null };
     function gradeAt(t) {
+        const m = _gradeMemo;
+        if (t === m.t && currentWeather === m.w && weatherIntensity === m.wi && gameDay === m.d) return m.r;
+        m.t = t; m.w = currentWeather; m.wi = weatherIntensity; m.d = gameDay;
+        return (m.r = _gradeAtUncached(t));
+    }
+    function _gradeAtUncached(t) {
         let i = 0;
         while (i < GRADE_KEYS.length - 2 && t >= GRADE_KEYS[i + 1][0]) i++;
         const [t0, c0, n0] = GRADE_KEYS[i], [t1, c1, n1] = GRADE_KEYS[i + 1];
@@ -11817,12 +11820,14 @@
     // ============================================================
     function updateAtmospheric(dt) {
         const season = getSeason();
+        const kinds = {};
+        for (const p of atmosParticles) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
         const isNight = gameHour >= 20 || gameHour < 5;
         const isDusk  = gameHour >= 18 && gameHour < 20;
         const isDawn  = gameHour >= 5 && gameHour < 7;
 
         // --- Fireflies (night, near water) ---
-        if (isNight && atmosParticles.filter(p => p.kind === 'firefly').length < 18) {
+        if (isNight && (kinds.firefly || 0) < 18) {
             if (Math.random() < 0.04 * dt) {
                 // Spawn near water features: lotus pond (120,530), fish pond (180,520), river area
                 const spots = [[120,530],[180,520],[420,560],[650,400],[850,450]];
@@ -11839,7 +11844,7 @@
         }
 
         // --- Cherry blossom petals (spring) ---
-        if (season === 'spring' && atmosParticles.filter(p => p.kind === 'blossom').length < 25) {
+        if (season === 'spring' && (kinds.blossom || 0) < 25) {
             if (Math.random() < 0.06 * dt) {
                 atmosParticles.push({
                     kind: 'blossom', x: randFloat(-20, WORLD_W + 20), y: randFloat(-20, -5),
@@ -11852,7 +11857,7 @@
         }
 
         // --- Autumn leaves ---
-        if (season === 'autumn' && atmosParticles.filter(p => p.kind === 'leaf').length < 15) {
+        if (season === 'autumn' && (kinds.leaf || 0) < 15) {
             if (Math.random() < 0.03 * dt) {
                 atmosParticles.push({
                     kind: 'leaf', x: randFloat(-20, WORLD_W + 20), y: randFloat(-20, -5),
@@ -11864,7 +11869,7 @@
         }
 
         // --- Dusk embers / warm dust (dusk) ---
-        if (isDusk && atmosParticles.filter(p => p.kind === 'ember').length < 20) {
+        if (isDusk && (kinds.ember || 0) < 20) {
             if (Math.random() < 0.06 * dt) {
                 atmosParticles.push({
                     kind: 'ember', x: randFloat(0, WORLD_W), y: randFloat(WORLD_H * 0.2, WORLD_H * 0.8),
@@ -12460,7 +12465,6 @@
                 const oldRel = ia.npc1.relationships[ia.npc2.name] || 0;
                 ia.npc1.relationships[ia.npc2.name] = Math.min(100, oldRel + 5);
                 ia.npc2.relationships[ia.npc1.name] = Math.min(100, (ia.npc2.relationships[ia.npc1.name] || 0) + 5);
-                relChangeFlashes.push({ x: (ia.npc1.x + ia.npc2.x)/2, y: Math.min(ia.npc1.y, ia.npc2.y) - 20, text: '+', timer: 60, color: 'rgba(120,220,120,' });
                 ia.npc1.state = 'idle'; ia.npc1.idleTimer = randFloat(60, 200);
                 ia.npc2.state = 'idle'; ia.npc2.idleTimer = randFloat(60, 200);
                 ia.npc1.activityDe = 'Untätig'; ia.npc2.activityDe = 'Untätig';
@@ -13339,7 +13343,8 @@
         const wrap = document.getElementById('canvas-wrap');
         const rect = wrap.getBoundingClientRect();
         if (rect.width < 1 || rect.height < 1) return;
-        dpr = window.devicePixelRatio || 1;
+        dpr = effectiveDpr();
+        _lastResizeAt = performance.now();
         canvas.width = Math.round(rect.width * dpr);
         canvas.height = Math.round(rect.height * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -13357,9 +13362,88 @@
     // ============================================================
     let lastTime = 0;
     let uiTimer = 0;
+    const _due = { mood: false, checks: false };
+    const _clocks = {};
+    function everyTicks(name, period, step) {
+        const c = (_clocks[name] || 0) + step;
+        if (c >= period) { _clocks[name] = c % period; return true; }
+        _clocks[name] = c;
+        return false;
+    }
+
+    // ---- Frame pacing, perf stats and adaptive resolution ----
+    const MAX_DPR = 2;                        // never more than 2 device pixels per CSS pixel
+    const QUALITY_LEVELS = [1, 0.8, 0.65];    // multipliers on the capped DPR, floored at 1 device px per CSS px
+    let qualityLevel = 0;
+    let _lastResizeAt = 0;
+    const perf = { lastRender: 0, avg: 0, slowSince: 0, fastSince: 0, drops: [0, 0, 0], ceiling: 0,
+                   work: [], frames: 0, windowStart: 0, hud: null, hudOn: false, hudLast: 0, fps: 0 };
+    function effectiveDpr() {
+        const raw = window.devicePixelRatio || 1;
+        return Math.max(Math.min(raw, 1), Math.min(raw, MAX_DPR) * QUALITY_LEVELS[qualityLevel]);
+    }
+    // Step resolution down when frames stay slow; back up after a long smooth stretch.
+    // A level we've had to leave twice becomes the ceiling, so it doesn't oscillate.
+    function adaptQuality(interval, now) {
+        if (document.hidden || camera.drag || now - _lastResizeAt < 1500 || (window.devicePixelRatio || 1) <= 1) {
+            perf.slowSince = perf.fastSince = 0;
+            return;
+        }
+        perf.avg = perf.avg ? perf.avg * 0.94 + Math.min(interval, 100) * 0.06 : interval;
+        if (perf.avg > 24 && qualityLevel < QUALITY_LEVELS.length - 1) {          // under ~42 fps
+            perf.fastSince = 0;
+            perf.slowSince = perf.slowSince || now;
+            if (now - perf.slowSince > 2000) {
+                if (++perf.drops[qualityLevel] >= 2) perf.ceiling = Math.max(perf.ceiling, qualityLevel + 1);
+                qualityLevel++;
+                perf.slowSince = 0; perf.avg = 0;
+                resizeCanvas();
+            }
+        } else if (perf.avg < 18.5 && qualityLevel > perf.ceiling) {
+            perf.slowSince = 0;
+            perf.fastSince = perf.fastSince || now;
+            if (now - perf.fastSince > 12000) {
+                qualityLevel--;
+                perf.fastSince = 0; perf.avg = 0;
+                resizeCanvas();
+            }
+        } else {
+            perf.slowSince = perf.fastSince = 0;
+        }
+    }
+    function togglePerfHud(on) {
+        perf.hudOn = on === undefined ? !perf.hudOn : on;
+        if (perf.hudOn && !perf.hud) {
+            perf.hud = document.createElement('div');
+            perf.hud.id = 'perf-hud';
+            perf.hud.setAttribute('aria-hidden', 'true');
+            document.getElementById('canvas-wrap').appendChild(perf.hud);
+        }
+        if (perf.hud) perf.hud.style.display = perf.hudOn ? '' : 'none';
+    }
+    function updatePerfHud(now) {
+        perf.frames++;
+        if (!perf.windowStart) perf.windowStart = now;
+        if (now - perf.windowStart < 500) return;
+        perf.fps = perf.frames * 1000 / (now - perf.windowStart);
+        perf.frames = 0; perf.windowStart = now;
+        if (!perf.hudOn || !perf.hud) return;
+        const w = perf.work.slice().sort((a, b) => a - b);
+        const avg = w.reduce((a, b) => a + b, 0) / (w.length || 1), p95 = w[Math.floor(w.length * 0.95)] || 0;
+        perf.hud.textContent =
+            `${perf.fps.toFixed(0)} fps   script ${avg.toFixed(1)} ms (p95 ${p95.toFixed(1)})\n` +
+            `res ${dpr.toFixed(2)}x  q${qualityLevel}  ${canvas.width}×${canvas.height}  scale ${canvasScale.toFixed(2)}\n` +
+            `chars ${persons.length + npcs.length}  animals ${wildlife.length}  rain ${weatherParticles.length}  fx ${atmosParticles.length}`;
+    }
 
     function gameLoop(timestamp) {
         requestAnimationFrame(gameLoop); // schedule next frame first, so exceptions don't kill the loop
+        // On 90–144 Hz screens render at most ~60–72 fps (dragging the map stays at full rate)
+        if (perf.lastRender && timestamp - perf.lastRender < 13.5 && !camera.drag) return;
+        const frameInterval = perf.lastRender ? timestamp - perf.lastRender : 16.7;
+        perf.lastRender = timestamp;
+        const workStart = performance.now();
+        _spriteBudgetEnd = workStart + 4;    // sprite builds this frame stop after ~4 ms
         const rawDt = lastTime ? (timestamp - lastTime) : 16;
         lastTime = timestamp;
 
@@ -13368,6 +13452,10 @@
         gameTick += rawDt / TICK_MS;
 
         if (gameSpeed > 0) {
+            // Periodic checks run on fixed real-time clocks (they used to depend on hitting exact tick numbers)
+            _due.mood = everyTicks('mood', 30, rawDt / TICK_MS);
+            _due.checks = everyTicks('checks', 100, rawDt / TICK_MS);
+
             // Update game time
             gameMinute += dt * 0.12;
             if (gameMinute >= 60) {
@@ -13382,7 +13470,7 @@
             // Update persons
             for (const p of persons) p.update(dt);
             // Update person moods periodically
-            if (Math.floor(gameTick) % 30 === 0) { for (const p of persons) p.mood = getMood(p); }
+            if (_due.mood) { for (const p of persons) p.mood = getMood(p); }
 
             // Update AI
             updateSpeakerAI(dt);
@@ -13435,7 +13523,7 @@
             updateNpcInteractions(dt);
 
             // Check chengyu triggers (every ~100 ticks)
-            if (Math.floor(gameTick) % 100 === 0) { checkYojijukugoTriggers(); checkFestival(); }
+            if (_due.checks) { checkYojijukugoTriggers(); checkFestival(); }
             if (yojijukugoOverlay && !yojijukugoOverlay.update(dt)) yojijukugoOverlay = null;
             updateFestivalParticles(dt);
 
@@ -13456,9 +13544,7 @@
 
         // Render
         updateCamera(rawDt);
-        setScreenTransform(ctx);
-        ctx.fillStyle = '#20242a';
-        ctx.fillRect(0, 0, camera.viewW, camera.viewH);
+        // (no clear needed: the terrain layer covers the whole view)
 
         // --- World layer (camera transform) ---
         setWorldTransform(ctx);
@@ -13556,6 +13642,10 @@
             updateTimeDisplay();
         }
 
+        perf.work.push(performance.now() - workStart);
+        if (perf.work.length > 120) perf.work.shift();
+        updatePerfHud(timestamp);
+        adaptQuality(frameInterval, timestamp);
     }
 
     // Keyboard shortcuts
@@ -13565,7 +13655,10 @@
         if (e.key === '2') setSpeed(2);
         if (e.key === '3') setSpeed(3);
         if (e.key === 'm' || e.key === 'M') toggleSound();
+        if (e.key === 'p' || e.key === 'P') togglePerfHud();
     });
+    // Phones have no keyboard: ?perf or #perf in the URL turns the readout on
+    if (/[?&#]perf\b/.test(location.search + location.hash)) setTimeout(() => togglePerfHud(true), 0);
 
     // iOS: prevent pinch-zoom, double-tap zoom, and bounce scrolling
     document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
