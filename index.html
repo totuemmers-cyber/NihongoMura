@@ -8443,9 +8443,11 @@
             ctx.fill();
         }
 
-        // Place tag below the object's base; it lights up while the speaker uses the object
-        const visualBottom = VISUAL_BOTTOM[obj.type] !== undefined ? VISUAL_BOTTOM[obj.type] : obj.h/2;
-        const tagY = y + (visualBottom + 8) * canvasScale;
+        // Place tag just below the object's drawn bottom (taken from its sprite, so it never sits
+        // inside a pond, bed or tree); it lights up while the speaker uses the object
+        const spr = getObjectSprite(obj);
+        const drawnBottom = spr ? spr.oy + spr.h : (VISUAL_BOTTOM[obj.type] !== undefined ? VISUAL_BOTTOM[obj.type] : obj.h/2);
+        const tagY = y + (drawnBottom + 7.5) * canvasScale;
         if (activeObjectGlow && activeObjectGlow.objId === obj.id) {
             const glowAlpha = Math.min(1, activeObjectGlow.timer / 30);
             const pulse = 0.75 + Math.sin(gameTick * 0.08) * 0.25;
@@ -8457,8 +8459,9 @@
     }
 
     // Small paper tags for place labels and names
-    const PLACE_TAG = { font: `600 9.5px ${FONT_MINCHO}`, h: 12, bg: 'rgba(246,238,222,0.9)', border: 'rgba(43,38,34,0.5)', fg: '#2b2622', accent: '#c8442f' };
-    const PLACE_TAG_ACTIVE = { font: `700 10.5px ${FONT_MINCHO}`, h: 13.5, bg: 'rgba(255,244,214,0.97)', border: '#c99a3a', fg: '#2b2622', accent: '#c99a3a', glow: true };
+    // Translucent ink tags with warm light text: calm against the ground, no glare
+    const PLACE_TAG = { font: `600 9.5px ${FONT_MINCHO}`, h: 12, bg: 'rgba(36,30,24,0.52)', border: null, fg: '#efe3c8', accent: 'rgba(200,68,47,0.85)' };
+    const PLACE_TAG_ACTIVE = { font: `700 10.5px ${FONT_MINCHO}`, h: 13.5, bg: 'rgba(58,42,16,0.82)', border: 'rgba(201,154,58,0.9)', fg: '#ffe6a8', accent: '#c99a3a', glow: true };
     const ROMAJI_TAG = { font: `500 8px ${FONT_UI}`, h: 10, bg: 'rgba(43,38,34,0.75)', border: null, fg: '#f3ead8' };
     const NAME_TAG = {
         speaker:  { font: `700 8.5px ${FONT_UI}`, h: 11, bg: 'rgba(46,74,107,0.92)', border: 'rgba(20,30,48,0.8)', fg: '#f6efe0' },
