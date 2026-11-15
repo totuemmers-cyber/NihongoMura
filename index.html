@@ -2863,14 +2863,37 @@
     // Check if a point is inside any building (for avoidance)
     const BUILDING_TYPES = ['house', 'teahouse', 'kitchen', 'workshop', 'market', 'pagoda', 'shrine', 'torii', 'school', 'medicine_hut', 'stable'];
     const GROUND_TYPES = ['rice_paddy', 'river', 'lotus_pond', 'fish_pond', 'garden'];
+    // Distance from obj.y down to where each object meets the ground, measured from its drawing.
+    // This is the object's depth line: anything whose feet are below it is drawn in front.
     const VISUAL_BOTTOM = {
-        house: 18, teahouse: 19, market: 14, well: 10, bridge: 22,
-        pagoda: 21, gate: 26, bamboo: 25, garden: 0, kitchen: 14,
-        workshop: 19, fish_pond: 0, shrine: 14, lantern_post: 16,
-        rice_paddy: 0, river: 0, dock: 12, lotus_pond: 0,
-        flower: 10, willow: 22, school: 20, medicine_hut: 13,
-        stable: 13, tea_terrace: 16, viewpoint: 13
+        house: 19.5, teahouse: 20, market: 12, well: 10, bridge: 30,
+        pagoda: 19, torii: 30, bamboo: 25, garden: 0, kitchen: 12,
+        workshop: 18, fish_pond: 0, shrine: 13, lantern_post: 14,
+        rice_paddy: 0, river: 0, dock: 13, lotus_pond: 0,
+        flower: 11, willow: 20, school: 18, medicine_hut: 11,
+        stable: 14, tea_terrace: 14, viewpoint: 11.5
     };
+    // Characters are anchored at body centre; their feet meet the ground this far below it.
+    const CHAR_FOOT_Y = 8;
+
+    // Where a character stands to use an object: just in front of its visible base,
+    // so it is always drawn in front of the object instead of half-inside it.
+    const STAND_ON_TYPES = new Set(['rice_paddy', 'garden', 'bridge', 'dock']);
+    const WATER_EDGE_TYPES = new Set(['fish_pond', 'lotus_pond']);
+    function standSpot(obj, spread) {
+        const k = spread === undefined ? 1 : spread;
+        const jx = randFloat(-obj.w * 0.32, obj.w * 0.32) * k;
+        if (STAND_ON_TYPES.has(obj.type)) {
+            return { x: obj.x + jx, y: obj.y + randFloat(-obj.h * 0.3, obj.h * 0.3) * k };
+        }
+        if (WATER_EDGE_TYPES.has(obj.type)) {
+            return { x: obj.x + jx, y: obj.y + obj.h / 2 + randFloat(2, 6) };
+        }
+        const base = VISUAL_BOTTOM[obj.type] !== undefined ? VISUAL_BOTTOM[obj.type] : obj.h / 2;
+        // Buildings block their whole w×h box, so stand just outside it
+        const front = BUILDING_TYPES.includes(obj.type) ? Math.max(obj.h / 2, base) : base;
+        return { x: obj.x + jx, y: obj.y + front + randFloat(3, 8) };
+    }
     function isInsideBuilding(x, y, excludeType) {
         for (const obj of cachedBuildingObjects) {
             if (excludeType && obj.type === excludeType) continue;
@@ -9258,8 +9281,9 @@
                     if (action.target) {
                         const obj = findClosestObject(action.target);
                         if (obj) {
-                            tx = obj.x + randFloat(-15, 15);
-                            ty = obj.y + randFloat(-15, 15);
+                            const spot = standSpot(obj);
+                            tx = spot.x;
+                            ty = spot.y;
                         } else {
                             tx = p.x; ty = p.y;
                         }
@@ -9357,7 +9381,8 @@
 
             if (needAction) {
                 learner.state = 'moving';
-                setTargetWithPath(learner, needAction.target.x + randFloat(-10, 10), needAction.target.y + randFloat(-10, 10));
+                const spot = standSpot(needAction.target, 0.7);
+                setTargetWithPath(learner, spot.x, spot.y);
                 learner.currentAction = needAction.action;
                 learner.activityDe = needAction.label;
                 learner.followMode = 'returning'; // will return to speaker after
@@ -10408,7 +10433,7 @@
         else                                        targetType = 'house';
         const obj = worldObjects.find(o => o.type === targetType);
         if (!obj) return null;
-        return { x: obj.x + randFloat(-15, 15), y: obj.y + randFloat(-10, 10) };
+        return standSpot(obj);
     }
 
     // Mood calculation
@@ -11417,7 +11442,7 @@
                 if (!npc) return;
                 const well = worldObjects.find(o => o.id === 'well1');
                 if (!well) return;
-                setTargetWithPath(npc, well.x, well.y);
+                { const spot = standSpot(well, 0.5); setTargetWithPath(npc, spot.x, spot.y); }
                 npc.state = 'moving';
                 activeMicroEvent = { id: 'splash_well', npc, well, timer: 200, phase: 0 };
                 alertNearbyNPCs(well.x, well.y, 90, 80);
@@ -11441,7 +11466,7 @@
                 if (!npc) return;
                 const pond = worldObjects.find(o => o.id === 'fish_pond1');
                 if (!pond) return;
-                setTargetWithPath(npc, pond.x + randFloat(-10, 10), pond.y + randFloat(-10, 10));
+                { const spot = standSpot(pond); setTargetWithPath(npc, spot.x, spot.y); }
                 npc.state = 'moving';
                 activeMicroEvent = { id: 'big_fish', npc, pond, timer: 200, phase: 0 };
                 alertNearbyNPCs(pond.x, pond.y, 80, 70);
@@ -11716,7 +11741,7 @@
             switch (phase.action) {
                 case 'move_kitchen': {
                     const kitchen = worldObjects.find(o => o.type === 'kitchen');
-                    if (kitchen) { setTargetWithPath(ia.npc1, kitchen.x + randFloat(-10,10), kitchen.y + randFloat(-5,5)); ia.npc1.state = 'moving'; }
+                    if (kitchen) { const spot = standSpot(kitchen, 0.6); setTargetWithPath(ia.npc1, spot.x, spot.y); ia.npc1.state = 'moving'; }
                     break;
                 }
                 case 'move_partner':
@@ -12277,8 +12302,9 @@
         if (action.target) {
             const obj = findClosestObjectFrom(learner, action.target);
             if (obj) {
-                tx = obj.x + randFloat(-10, 10);
-                ty = obj.y + randFloat(-10, 10);
+                const spot = standSpot(obj, 0.7);
+                tx = spot.x;
+                ty = spot.y;
             } else {
                 tx = learner.x; ty = learner.y;
             }
@@ -12761,9 +12787,9 @@
         for (const disc of discoveries) {
             if (!disc.found) drawList.push({ sortY: disc.y, type: 'disc', ref: disc });
         }
-        for (const a of wildlife) drawList.push({ sortY: a.y, type: 'wild', ref: a });
-        for (const npc of npcs) drawList.push({ sortY: npc.y, type: 'char', ref: npc });
-        for (const p of persons) drawList.push({ sortY: p.y, type: 'char', ref: p });
+        for (const a of wildlife) drawList.push({ sortY: (a.type === 'magpie' || a.type === 'butterfly') ? 1e6 : a.y, type: 'wild', ref: a });
+        for (const npc of npcs) drawList.push({ sortY: npc.y + CHAR_FOOT_Y, type: 'char', ref: npc });
+        for (const p of persons) drawList.push({ sortY: p.y + CHAR_FOOT_Y, type: 'char', ref: p });
         drawList.sort((a, b) => a.sortY - b.sortY);
         for (const item of drawList) {
             switch (item.type) {
