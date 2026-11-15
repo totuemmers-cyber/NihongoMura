@@ -2876,6 +2876,30 @@
     // Characters are anchored at body centre; their feet meet the ground this far below it.
     const CHAR_FOOT_Y = 8;
 
+    // Small solid props: elliptical ground footprints, measured from the drawings and expressed in
+    // character-anchor space (shifted up by CHAR_FOOT_Y, padded by a character's half-width/foot depth).
+    // Characters walk around these instead of through them, so their draw order always reads correctly.
+    const SOLID_PROPS = {
+        well:         { cx: 0, cy: 2 - CHAR_FOOT_Y,  rx: 12 + 7, ry: 7 + 4 }, // stone base ellipse
+        lantern_post: { cx: 0, cy: 14 - CHAR_FOOT_Y, rx: 2 + 6,  ry: 2 + 4 }, // foot of the pole
+    };
+    function isObstacleType(type) { return BUILDING_TYPES.includes(type) || !!SOLID_PROPS[type]; }
+    // Axis-aligned box (centre + size) covering an obstacle's blocked area, for path planning
+    function obstacleBox(obj) {
+        const sp = SOLID_PROPS[obj.type];
+        if (sp) return { x: obj.x + sp.cx, y: obj.y + sp.cy, w: sp.rx * 2, h: sp.ry * 2 };
+        return { x: obj.x, y: obj.y, w: obj.w, h: obj.h };
+    }
+    function insideObstacle(obj, x, y) {
+        const sp = SOLID_PROPS[obj.type];
+        if (sp) {
+            const dx = (x - obj.x - sp.cx) / sp.rx, dy = (y - obj.y - sp.cy) / sp.ry;
+            return dx * dx + dy * dy < 1;
+        }
+        const hw = obj.w / 2, hh = obj.h / 2;
+        return x > obj.x - hw && x < obj.x + hw && y > obj.y - hh && y < obj.y + hh;
+    }
+
     // Where a character stands to use an object: just in front of its visible base,
     // so it is always drawn in front of the object instead of half-inside it.
     const STAND_ON_TYPES = new Set(['rice_paddy', 'garden', 'bridge', 'dock']);
@@ -2889,18 +2913,48 @@
         if (WATER_EDGE_TYPES.has(obj.type)) {
             return { x: obj.x + jx, y: obj.y + obj.h / 2 + randFloat(2, 6) };
         }
+        const sp = SOLID_PROPS[obj.type];
+        if (sp) return { x: obj.x + jx, y: obj.y + sp.cy + sp.ry + randFloat(6, 9) };
         const base = VISUAL_BOTTOM[obj.type] !== undefined ? VISUAL_BOTTOM[obj.type] : obj.h / 2;
-        // Buildings block their whole w×h box, so stand just outside it
-        const front = BUILDING_TYPES.includes(obj.type) ? Math.max(obj.h / 2, base) : base;
-        return { x: obj.x + jx, y: obj.y + front + randFloat(3, 8) };
+        // Buildings block their whole w×h box, so stand just outside it — beyond the
+        // 4-unit margin the path planner keeps around obstacles, so the last leg is clear
+        if (BUILDING_TYPES.includes(obj.type)) return { x: obj.x + jx, y: obj.y + Math.max(obj.h / 2, base) + randFloat(6, 10) };
+        return { x: obj.x + jx, y: obj.y + base + randFloat(3, 8) };
     }
-    function isInsideBuilding(x, y, excludeType) {
-        for (const obj of cachedBuildingObjects) {
-            if (excludeType && obj.type === excludeType) continue;
-            const hw = obj.w / 2, hh = obj.h / 2;
-            if (x > obj.x - hw && x < obj.x + hw && y > obj.y - hh && y < obj.y + hh) {
-                return obj;
+    // Move a destination that falls inside a solid object to the nearest point just outside it,
+    // so nobody walks into a wall trying to reach an unreachable spot.
+    function clampOutOfObstacles(x, y) {
+        for (let pass = 0; pass < 3; pass++) {
+            const obj = isInsideBuilding(x, y);
+            if (!obj) break;
+            const sp = SOLID_PROPS[obj.type];
+            if (sp) {
+                const cx = obj.x + sp.cx, cy = obj.y + sp.cy;
+                let dx = (x - cx) / sp.rx, dy = (y - cy) / sp.ry;
+                const l = Math.hypot(dx, dy);
+                if (l < 1e-3) { dx = 0; dy = 1; } else { dx /= l; dy /= l; }   // dead centre: step to the front
+                x = cx + dx * (sp.rx + 6);
+                y = cy + dy * (sp.ry + 6);
+            } else {
+                const hw = obj.w / 2 + 6, hh = obj.h / 2 + 6;
+                const exits = [
+                    { d: x - (obj.x - hw), x: obj.x - hw, y },
+                    { d: (obj.x + hw) - x, x: obj.x + hw, y },
+                    { d: y - (obj.y - hh), x, y: obj.y - hh },
+                    { d: ((obj.y + hh) - y) * 0.8, x, y: obj.y + hh },   // slight preference for the front
+                ];
+                const best = exits.reduce((a, b) => (b.d < a.d ? b : a));
+                x = best.x; y = best.y;
             }
+        }
+        return { x, y };
+    }
+
+    // Solid object containing (x, y), if any. Characters are never exempt from an object because
+    // it's their destination: standSpot() always puts them outside the footprint.
+    function isInsideBuilding(x, y) {
+        for (const obj of cachedBuildingObjects) {
+            if (insideObstacle(obj, x, y)) return obj;
         }
         return null;
     }
@@ -2911,8 +2965,8 @@
         if (isInRiver(x) && Math.abs(y - BRIDGE.y) > BRIDGE.halfH + 35) {
             return true;
         }
-        // Building check
-        if (isInsideBuilding(x, y, targetType)) {
+        // Building / solid prop check
+        if (isInsideBuilding(x, y)) {
             return true;
         }
         return false;
@@ -2921,6 +2975,13 @@
     // Steer around obstacles: try original direction, then alternate angles
     // Always returns a direction — never leaves the character stuck
     function steerAroundObstacles(x, y, dirX, dirY, step, targetType) {
+        // Already inside an obstacle: head straight out, away from its centre
+        const inside = isInsideBuilding(x, y);
+        if (inside) {
+            const b = obstacleBox(inside);
+            const ox = x - b.x, oy = (y - b.y) * (b.w / b.h), ol = Math.hypot(ox, oy) || 1;
+            return { dx: ox / ol, dy: oy / ol };
+        }
         // Try original direction first
         if (!isBlocked(x + dirX * step, y + dirY * step, targetType)) {
             return { dx: dirX, dy: dirY };
@@ -2966,33 +3027,52 @@
         return true;
     }
 
-    // Plan waypoints around buildings that lie in the path
+    // Plan waypoints around obstacles that lie in the path. For each obstacle crossed, take the
+    // shortest detour via one corner, or via two corners along one side when going from behind
+    // an obstacle to its front (or side to side), such that no leg cuts through it.
     function planBuildingWaypoints(fromX, fromY, toX, toY, targetType) {
         const waypoints = [];
-        for (const obj of worldObjects) {
-            if (!BUILDING_TYPES.includes(obj.type)) continue;
-            if (targetType && obj.type === targetType) continue;
-            if (!lineIntersectsRect(fromX, fromY, toX, toY, obj.x, obj.y, obj.w, obj.h)) continue;
-            // Route around this building - pick the corner closest to the straight line
-            const hw = obj.w / 2 + 10, hh = obj.h / 2 + 10;
-            const corners = [
-                { x: obj.x - hw, y: obj.y - hh },
-                { x: obj.x + hw, y: obj.y - hh },
-                { x: obj.x - hw, y: obj.y + hh },
-                { x: obj.x + hw, y: obj.y + hh },
+        const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+        for (const obj of cachedBuildingObjects) {
+            const box = obstacleBox(obj);
+            if (!lineIntersectsRect(fromX, fromY, toX, toY, box.x, box.y, box.w, box.h)) continue;
+            const hw = box.w / 2 + 10, hh = box.h / 2 + 10;
+            // Corners in ring order: TL, TR, BR, BL (neighbours share a side)
+            const ring = [
+                { x: box.x - hw, y: box.y - hh },
+                { x: box.x + hw, y: box.y - hh },
+                { x: box.x + hw, y: box.y + hh },
+                { x: box.x - hw, y: box.y + hh },
             ];
-            // Pick the corner that results in shortest total detour and isn't itself blocked
-            let bestCorner = null, bestDist = Infinity;
-            for (const c of corners) {
-                // Skip corners that land in the river or another building
-                if (isInRiver(c.x)) continue;
-                if (c.x < 20 || c.x > WORLD_W - 20 || c.y < 20 || c.y > WORLD_H - 20) continue;
-                const d = Math.sqrt((fromX - c.x) ** 2 + (fromY - c.y) ** 2)
-                        + Math.sqrt((toX - c.x) ** 2 + (toY - c.y) ** 2);
-                if (d < bestDist) { bestDist = d; bestCorner = c; }
+            const usable = c => !isInRiver(c.x) && !isInsideBuilding(c.x, c.y) &&
+                                c.x >= 20 && c.x <= WORLD_W - 20 && c.y >= 20 && c.y <= WORLD_H - 20;
+            const clear = (ax, ay, bx, by) => !lineIntersectsRect(ax, ay, bx, by, box.x, box.y, box.w, box.h);
+            let best = null, bestLen = Infinity;
+            const consider = route => {
+                if (!route.every(usable)) return;
+                const pts = [{ x: fromX, y: fromY }, ...route, { x: toX, y: toY }];
+                let len = 0;
+                for (let i = 1; i < pts.length; i++) {
+                    if (!clear(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y)) return;
+                    len += dist(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y);
+                }
+                if (len < bestLen) { bestLen = len; best = route; }
+            };
+            for (let i = 0; i < 4; i++) {
+                consider([ring[i]]);
+                consider([ring[i], ring[(i + 1) % 4]]);
+                consider([ring[(i + 1) % 4], ring[i]]);
             }
-            if (bestCorner) {
-                waypoints.push({ x: bestCorner.x, y: bestCorner.y, _dist: Math.sqrt((fromX - bestCorner.x) ** 2 + (fromY - bestCorner.y) ** 2) });
+            if (!best) {
+                // Fall back to the old single-corner choice (steering handles the rest)
+                for (const c of ring) {
+                    if (!usable(c)) continue;
+                    const d = dist(fromX, fromY, c.x, c.y) + dist(toX, toY, c.x, c.y);
+                    if (d < bestLen) { bestLen = d; best = [c]; }
+                }
+            }
+            if (best) {
+                for (const c of best) waypoints.push({ x: c.x, y: c.y, _dist: dist(fromX, fromY, c.x, c.y) });
             }
         }
         // Sort by distance from start
@@ -3071,6 +3151,8 @@
     function setTargetWithPath(character, tx, ty) {
         // Clamp target out of the river to prevent characters from targeting positions inside it
         tx = clampOutOfRiver(tx, ty);
+        const outside = clampOutOfObstacles(tx, ty);
+        tx = outside.x; ty = outside.y;
         character.targetX = tx;
         character.targetY = ty;
         // Determine what type of building the character is going to (so we don't avoid it)
@@ -12615,7 +12697,7 @@
 
         // Cache frequently-looked-up objects
         cachedTeahouse = worldObjects.find(o => o.type === 'teahouse') || null;
-        cachedBuildingObjects = worldObjects.filter(o => BUILDING_TYPES.includes(o.type));
+        cachedBuildingObjects = worldObjects.filter(o => isObstacleType(o.type));
 
         // Try to load saved game
         const saveData = loadSaveData();
@@ -12649,6 +12731,16 @@
             addLog(`${p2.name} (Reisender) — Ges:${p2.geschick} Neu:${p2.neugier} Soz:${p2.geselligkeit} Wah:${p2.wahrnehmung}`, 'learn');
             addLog(`${npcCount} weitere Stadtbewohner sind anwesend.`, 'speak');
             addLog('Willkommen in Longmen! Die Simulation beginnt...', 'speak');
+        }
+
+        // Nobody starts inside a building or the well (random spawns, older saves)
+        for (const c of [...persons, ...npcs]) {
+            const out = clampOutOfObstacles(c.x, c.y);
+            if (out.x !== c.x || out.y !== c.y) {
+                c.x = out.x; c.y = out.y;
+                c.targetX = c.x; c.targetY = c.y;
+                c.waypoints = [];
+            }
         }
 
         // Spawn initial wildlife
