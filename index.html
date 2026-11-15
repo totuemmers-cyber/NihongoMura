@@ -4194,11 +4194,28 @@
             const bannerAlpha = 0.6 + Math.sin(gameTick * 0.03) * 0.1;
             const cw = camera.viewW;
             setScreenTransform(ctx);
-            ctx.globalAlpha = bannerAlpha;
-            ctx.font = `bold ${Math.round(10*s)}px 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif`;
-            ctx.fillStyle = '#d4a030';
-            ctx.textAlign = 'right';
-            ctx.fillText(`${activeFestival.name} ${activeFestival.romaji}`, cw - 10*s, 14*s);
+            void bannerAlpha;
+            const label = activeFestival.name, sub = activeFestival.romaji;
+            const px = Math.round(11 * s), spx = Math.round(9 * s);
+            ctx.font = `700 ${px}px ${CJK_FONT}`;
+            const lw = ctx.measureText(label).width;
+            ctx.font = `500 ${spx}px ${UI_FONT}`;
+            const sw = ctx.measureText(sub).width;
+            // Sits under the time chip (top-left); the top centre belongs to the idiom banner
+            const w = lw + sw + 34 * s, h = 22 * s, x0 = cw < 560 ? 8 : 12, y0 = cw < 560 ? 44 : 52;
+            ctx.globalAlpha = 0.95;
+            inkCard(ctx, x0, y0, w, h, h / 2, 'rgba(200,68,47,0.6)');
+            const glow = 0.7 + Math.sin(gameTick * 0.06) * 0.3;
+            ctx.fillStyle = `rgba(232,96,60,${glow})`;
+            ctx.beginPath(); ctx.arc(x0 + 11 * s, y0 + h / 2, 3.2 * s, 0, Math.PI * 2); ctx.fill();
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            ctx.font = `700 ${px}px ${CJK_FONT}`;
+            ctx.fillStyle = '#f3ead8';
+            ctx.fillText(label, x0 + 20 * s, y0 + h / 2 + 0.5 * s);
+            ctx.font = `500 ${spx}px ${UI_FONT}`;
+            ctx.fillStyle = '#c99a3a';
+            ctx.fillText(sub, x0 + 26 * s + lw, y0 + h / 2 + 0.5 * s);
             ctx.globalAlpha = 1;
         }
         ctx.restore();
@@ -4222,30 +4239,34 @@
             const fadeIn = Math.min(1, (this.maxLife - this.life) / 40);
             const fadeOut = Math.min(1, this.life / 40);
             const alpha = fadeIn * fadeOut;
-            const cy = 50 * s + Math.sin(gameTick * 0.015) * 4 * s;
+            const drop = REDUCED_MOTION ? 0 : (1 - fadeIn) * -10 * s;
             ctx.save();
             ctx.globalAlpha = alpha;
-            // Cloud background
-            ctx.fillStyle = 'rgba(30,25,15,0.6)';
-            const tw = this.chars.length * 18 * s + 40 * s;
-            const cx = cw / 2;
-            ctx.beginPath();
-            ctx.ellipse(cx, cy, tw / 2, 22 * s, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // Gold border
-            ctx.strokeStyle = `rgba(180,130,40,${alpha * 0.5})`;
-            ctx.lineWidth = 1 * s;
-            ctx.stroke();
-            // Characters
-            ctx.font = `bold ${Math.round(16*s)}px 'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif`;
-            ctx.fillStyle = '#e8d080';
+            const charsPx = Math.round(19 * s), subPx = Math.round(9.5 * s);
+            ctx.font = `800 ${charsPx}px ${CJK_FONT}`;
+            const cwid = ctx.measureText(this.chars).width + this.chars.length * 4 * s;
+            ctx.font = `500 ${subPx}px ${UI_FONT}`;
+            const sub = this.kana + ' — ' + this.de;
+            const w = Math.max(cwid, ctx.measureText(sub).width) + 54 * s, h = 52 * s;
+            // Top centre on wide screens; on phones the top is taken (time chip, calligraphy card),
+            // so it sits near the bottom, above the panel button
+            const narrow = cw < 560;
+            const x0 = (cw - w) / 2, y0 = narrow ? camera.viewH - h - 84 - drop : 14 * s + drop;
+            inkCard(ctx, x0, y0, w, h, 6 * s, 'rgba(201,154,58,0.6)');
+            ctx.fillStyle = '#c99a3a';                              // gilt rods, like a hanging scroll
+            ctx.fillRect(x0 + 6 * s, y0 - 1.5 * s, w - 12 * s, 2.5 * s);
+            ctx.fillRect(x0 + 6 * s, y0 + h - 1 * s, w - 12 * s, 2.5 * s);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(this.chars, cx, cy - 3 * s);
-            // Kana + German
-            ctx.font = `${Math.round(8*s)}px 'Courier New','Noto Sans JP',monospace`;
-            ctx.fillStyle = '#a09070';
-            ctx.fillText(this.kana + ' — ' + this.de, cx, cy + 12 * s);
+            ctx.font = `800 ${charsPx}px ${CJK_FONT}`;
+            ctx.fillStyle = '#f3ead8';
+            if (ctx.letterSpacing !== undefined) ctx.letterSpacing = `${4 * s}px`;
+            ctx.fillText(this.chars, (cw) / 2 + 2 * s, y0 + h * 0.4);
+            if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '0px';
+            ctx.font = `500 ${subPx}px ${UI_FONT}`;
+            ctx.fillStyle = '#c99a3a';
+            ctx.fillText(sub, cw / 2, y0 + h * 0.78);
+            hanko(ctx, x0 + w - 14 * s, y0 + 14 * s, 14 * s, '熟', 0.1);
             ctx.restore();
         }
     }
@@ -4758,7 +4779,7 @@
     // ============================================================
     //  GRAMMAR SYSTEM — Japanese SOV, verb conjugation, particles
     // ============================================================
-    const CJK_FONT_GRAMMAR = "'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif";
+    const CJK_FONT_GRAMMAR = "'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',serif";
     const ROLE_COLORS = {
         noun:     '#d4a030', // gold
         verb:     '#5aaa5a', // green
@@ -5459,78 +5480,89 @@
         }
         draw(ctx) {
             if (this.alpha <= 0) return;
-            const x = this.person.x * canvasScale;
-            const yOff = this.isResponse ? -60 : -48;
-            const y = (this.person.y + yOff) * canvasScale;
-            const CJK_FONT = "'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',sans-serif";
+            const s = canvasScale;
+            const isVillager = !this.person.role;              // background chatter: smaller, quieter
+            const hasKana = this.kanaText && !this.isResponse;
+            const age = this.maxLife - this.life;
+            const pop = Math.min(1, age / 9);
+            const scale = REDUCED_MOTION ? 1 : 0.8 + 0.2 * easeOutBack(pop);
+            const x = this.person.x * s;
+            const y = (this.person.y + (this.isResponse ? -60 : -48)) * s + (REDUCED_MOTION ? 0 : (1 - pop) * 5 * s);
+
+            const kanjiPx = Math.round((isVillager ? 11 : 13.5) * s);
+            const kanaPx = Math.round(8.5 * s);
+            const respPx = Math.round(10.5 * s);
             ctx.save();
             ctx.globalAlpha = this.alpha;
-
-            // Measure widths for both lines
-            const hasPinyin = this.kanaText && !this.isResponse;
-            const kanjiFontSize = Math.round(13 * canvasScale);
-            const kanaFontSize = Math.round(9 * canvasScale);
-            const responseFontSize = Math.round(11 * canvasScale);
-
             let textW;
             if (this.isResponse) {
-                // Measure with the actual font used for response rendering
-                ctx.font = `bold ${responseFontSize}px 'Courier New',${CJK_FONT}`;
+                ctx.font = `500 ${respPx}px ${UI_FONT}`;
                 textW = ctx.measureText(this.text).width;
             } else {
-                ctx.font = `bold ${kanjiFontSize}px ${CJK_FONT}`;
-                const kanjiW = ctx.measureText(this.kanjiText).width;
-                let kanaW = 0;
-                if (hasPinyin) {
-                    ctx.font = `${kanaFontSize}px 'Courier New',${CJK_FONT}`;
-                    kanaW = ctx.measureText(this.kanaText).width;
-                }
-                textW = Math.max(kanjiW, kanaW);
+                ctx.font = `700 ${kanjiPx}px ${CJK_FONT}`;
+                textW = ctx.measureText(this.kanjiText).width;
+                if (hasKana) { ctx.font = `500 ${kanaPx}px ${UI_FONT}`; textW = Math.max(textW, ctx.measureText(this.kanaText).width); }
             }
+            const padX = 8 * s, accent = isVillager ? 0 : 2.2 * s;
+            const bw = textW + padX * 2 + accent, bh = (hasKana ? 34 : isVillager ? 19 : 21) * s;
+            const r = 6 * s, tail = 6 * s;
 
-            const pad = 8 * canvasScale;
-            const bw = textW + pad * 2;
-            const bh = (hasPinyin ? 34 : 22) * canvasScale;
-            const bx = x - bw / 2;
-            const by = y - bh;
-
-            // Bubble bg
-            ctx.fillStyle = this.isResponse ? '#2a2a1a' : '#f5f0e0';
-            ctx.strokeStyle = this.isResponse ? '#6a8a5a' : '#c83030';
-            ctx.lineWidth = canvasScale;
-            roundRect(ctx, bx, by, bw, bh, 4 * canvasScale);
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            const bx = -bw / 2, by = -bh;
+            const shape = () => {                               // rounded box with a soft tail
+                ctx.beginPath();
+                ctx.moveTo(bx + r, by);
+                ctx.lineTo(bx + bw - r, by);
+                ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+                ctx.lineTo(bx + bw, by + bh - r);
+                ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
+                ctx.lineTo(4.5 * s, by + bh);
+                ctx.quadraticCurveTo(1 * s, by + bh + tail * 0.4, -0.5 * s, by + bh + tail);
+                ctx.quadraticCurveTo(-1.5 * s, by + bh + tail * 0.3, -4.5 * s, by + bh);
+                ctx.lineTo(bx + r, by + bh);
+                ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
+                ctx.lineTo(bx, by + r);
+                ctx.quadraticCurveTo(bx, by, bx + r, by);
+                ctx.closePath();
+            };
+            // shadow, body, edge
+            ctx.save(); ctx.translate(1.2 * s, 2 * s); shape(); ctx.fillStyle = 'rgba(20,14,8,0.22)'; ctx.fill(); ctx.restore();
+            shape();
+            ctx.fillStyle = this.isResponse ? 'rgba(30,26,22,0.92)' : isVillager ? 'rgba(232,222,198,0.9)' : '#e9dec4';
             ctx.fill();
+            ctx.strokeStyle = this.isResponse ? 'rgba(243,234,216,0.16)' : 'rgba(60,44,26,0.4)';
+            ctx.lineWidth = 0.8 * s;
             ctx.stroke();
-
-            // Pointer
-            ctx.beginPath();
-            ctx.moveTo(x - 4 * canvasScale, by + bh);
-            ctx.lineTo(x, by + bh + 6 * canvasScale);
-            ctx.lineTo(x + 4 * canvasScale, by + bh);
-            ctx.fillStyle = this.isResponse ? '#2a2a1a' : '#f5f0e0';
-            ctx.fill();
-
+            if (accent) {                                        // indigo for the speaker, vermilion for the learner
+                ctx.save(); shape(); ctx.clip();
+                ctx.fillStyle = this.isResponse ? '#c0503a' : '#3d5f86';
+                ctx.fillRect(bx, by, accent, bh);
+                ctx.restore();
+            }
+            const cx = accent / 2;
             ctx.textAlign = 'center';
-            if (hasPinyin) {
-                // Color-coded kanji line (top, larger)
+            ctx.textBaseline = 'middle';
+            if (hasKana) {
                 if (this.conceptWords && this.conceptWords.length > 0) {
-                    _drawColorCodedKanji(ctx, this.conceptWords, x, by + bh * 0.35, kanjiFontSize, true);
+                    _drawColorCodedKanji(ctx, this.conceptWords, cx, by + bh * 0.37, kanjiPx, true);
                 } else {
-                    ctx.font = `bold ${kanjiFontSize}px ${CJK_FONT}`;
-                    ctx.fillStyle = '#2a2010';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(this.kanjiText, x, by + bh * 0.35);
+                    ctx.font = `700 ${kanjiPx}px ${CJK_FONT}`;
+                    ctx.fillStyle = '#2b2018';
+                    ctx.fillText(this.kanjiText, cx, by + bh * 0.37);
                 }
-                // Pinyin line (bottom, smaller, grey)
-                ctx.font = `${kanaFontSize}px 'Courier New',${CJK_FONT}`;
-                ctx.fillStyle = '#8a7e6a';
-                ctx.fillText(this.kanaText, x, by + bh * 0.72);
+                ctx.font = `500 ${kanaPx}px ${UI_FONT}`;
+                ctx.fillStyle = '#7a6a54';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.kanaText, cx, by + bh * 0.75);
+            } else if (this.isResponse) {
+                ctx.font = `500 ${respPx}px ${UI_FONT}`;
+                ctx.fillStyle = '#ece2cb';
+                ctx.fillText(this.text, cx, by + bh / 2 + 0.5 * s);
             } else {
-                // Single line (response bubble or fallback)
-                ctx.font = `bold ${Math.round(11 * canvasScale)}px 'Courier New',${CJK_FONT}`;
-                ctx.fillStyle = this.isResponse ? '#a0c890' : '#2a2010';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(this.text, x, by + bh / 2);
+                ctx.font = `700 ${kanjiPx}px ${CJK_FONT}`;
+                ctx.fillStyle = '#2b2018';
+                ctx.fillText(this.text, cx, by + bh / 2 + 0.5 * s);
             }
             ctx.restore();
         }
@@ -5557,9 +5589,13 @@
         constructor(x, y, word) {
             this.x = x;
             this.y = y;
-            this.word = word;
-            this.life = 90;
-            this.vy = -0.5;
+            const m = /^(.*?)\s*\((.*)\)$/.exec(word);
+            this.kanji = m ? m[1] : word;
+            this.kana = m ? m[2] : '';
+            this.life = 120;
+            this.maxLife = 120;
+            this.vy = -0.32;
+            this.drops = Array.from({ length: 9 }, (_, i) => ({ a: (i / 9) * Math.PI * 2 + Math.random() * 0.5, d: 6 + Math.random() * 9, r: 0.8 + Math.random() * 1.6 }));
         }
         update(dt) {
             this.y += this.vy * dt;
@@ -5567,24 +5603,118 @@
             return this.life > 0;
         }
         draw(ctx) {
-            const alpha = Math.min(1, this.life / 40);
+            const s = canvasScale;
+            const t = 1 - this.life / this.maxLife;
             ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.font = `bold ${Math.round(10 * canvasScale)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
-            ctx.fillStyle = '#4ade4a';
-            ctx.textAlign = 'center';
-            ctx.fillText('+ ' + this.word, this.x * canvasScale, this.y * canvasScale);
+            // Ink splash where the word lands
+            if (t < 0.3) {
+                const k = t / 0.3;
+                ctx.fillStyle = `rgba(31,23,18,${0.55 * (1 - k)})`;
+                ctx.beginPath();
+                ctx.arc(this.x * s, (this.y + 14) * s, (3 + k * 6) * s, 0, Math.PI * 2);
+                ctx.fill();
+                for (const d of this.drops) {
+                    ctx.beginPath();
+                    ctx.arc((this.x + Math.cos(d.a) * d.d * (0.4 + k)) * s, (this.y + 14 + Math.sin(d.a) * d.d * 0.6 * (0.4 + k)) * s, d.r * s * (1 - k * 0.5), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            // Tag: vermilion seal + the word, rising and fading
+            const a = Math.min(1, t / 0.1) * Math.min(1, this.life / 30);
+            ctx.globalAlpha = a;
+            const kanjiPx = Math.round(12 * s), kanaPx = Math.round(8 * s);
+            ctx.font = `700 ${kanjiPx}px ${CJK_FONT}`;
+            const kw = ctx.measureText(this.kanji).width;
+            ctx.font = `500 ${kanaPx}px ${UI_FONT}`;
+            const nw = this.kana ? ctx.measureText(this.kana).width + 5 * s : 0;
+            const seal = 13 * s, h = 18 * s, w = seal + 6 * s + kw + nw + 8 * s;
+            const x0 = this.x * s - w / 2, y0 = this.y * s - h / 2;
+            inkCard(ctx, x0, y0, w, h, 5 * s, 'rgba(134,171,111,0.55)');
+            hanko(ctx, x0 + 3 * s + seal / 2, y0 + h / 2, seal, '覚', -0.06);
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            ctx.font = `700 ${kanjiPx}px ${CJK_FONT}`;
+            ctx.fillStyle = '#f3ead8';
+            ctx.fillText(this.kanji, x0 + seal + 7 * s, y0 + h / 2 + 0.5 * s);
+            if (this.kana) {
+                ctx.font = `500 ${kanaPx}px ${UI_FONT}`;
+                ctx.fillStyle = '#9fc08a';
+                ctx.fillText(this.kana, x0 + seal + 7 * s + kw + 5 * s, y0 + h / 2 + 0.5 * s);
+            }
             ctx.restore();
         }
     }
 
     // ============================================================
-    //  CALLIGRAPHY OVERLAY (书法 shūfǎ — brush stroke animation)
+    //  CALLIGRAPHY OVERLAY (書道 shodō — brush stroke animation)
     // ============================================================
-    const CJK_FONT = "'Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic','Noto Sans CJK JP',sans-serif";
-    const INK_COLOR = '#1a0a00';
-    const PARCHMENT_BG = '#f5e6c8';
-    const PARCHMENT_BORDER = '#c4a46a';
+    const CJK_FONT = "'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',serif";
+    const UI_FONT = "'Zen Maru Gothic','Hiragino Maru Gothic ProN','Hiragino Sans','Noto Sans JP',system-ui,sans-serif";
+    const INK_COLOR = '#1f1712';
+    const PARCHMENT_BG = '#e6d9bd';       // toned washi — warm, never glaring white
+    const PARCHMENT_BORDER = '#b89a68';
+
+    // ---- Shared overlay pieces: toned paper card, ink card, hanko seal ----
+    let _cardGrain = null;
+    function paperCard(ctx, x, y, w, h, r) {
+        const s = canvasScale;
+        ctx.save();
+        ctx.fillStyle = 'rgba(20,14,8,0.28)';
+        roundRect(ctx, x + 1.5 * s, y + 2.5 * s, w, h, r);
+        ctx.fill();
+        const g = ctx.createLinearGradient(x, y, x, y + h);
+        g.addColorStop(0, '#ebdfc4');
+        g.addColorStop(1, '#ddcdab');
+        ctx.fillStyle = g;
+        roundRect(ctx, x, y, w, h, r);
+        ctx.fill();
+        ctx.save();
+        ctx.clip();
+        if (!_cardGrain) _cardGrain = ctx.createPattern(_getGrainTile(), 'repeat');
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.globalAlpha *= 0.18;
+        ctx.fillStyle = _cardGrain;
+        ctx.fillRect(x, y, w, h);
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(60,44,26,0.35)';
+        ctx.lineWidth = 0.8 * s;
+        roundRect(ctx, x + 0.5 * s, y + 0.5 * s, w - s, h - s, r);
+        ctx.stroke();
+        ctx.restore();
+    }
+    function inkCard(ctx, x, y, w, h, r, edge) {
+        const s = canvasScale;
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        roundRect(ctx, x + 1.5 * s, y + 3 * s, w, h, r);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(29,25,20,0.95)';
+        roundRect(ctx, x, y, w, h, r);
+        ctx.fill();
+        ctx.strokeStyle = edge || 'rgba(243,234,216,0.14)';
+        ctx.lineWidth = s;
+        ctx.stroke();
+        ctx.restore();
+    }
+    function hanko(ctx, cx, cy, size, ch, rot) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rot === undefined ? -0.08 : rot);
+        ctx.fillStyle = 'rgba(190,52,36,0.92)';
+        roundRect(ctx, -size / 2, -size / 2, size, size, size * 0.16);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,236,220,0.35)';
+        ctx.lineWidth = size * 0.05;
+        roundRect(ctx, -size * 0.38, -size * 0.38, size * 0.76, size * 0.76, size * 0.1);
+        ctx.stroke();
+        ctx.fillStyle = '#fbefe2';
+        ctx.font = `800 ${Math.round(size * 0.58)}px ${CJK_FONT}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(ch, 0, size * 0.04);
+        ctx.restore();
+    }
+    const easeOutBack = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
 
     class CalligraphyOverlay {
         constructor(kanji, kana, german) {
@@ -5634,7 +5764,8 @@
                 fontSize = Math.floor(fontSize * (s * 0.9) / measured);
                 c.font = `bold ${fontSize}px ${CJK_FONT}`;
             }
-            // Ink bleed: draw twice with offset
+            // Ink bleed: draw twice with offset (heavy mincho reads like a brushed character)
+            c.font = c.font.replace('bold', '800');
             c.fillStyle = INK_COLOR;
             c.globalAlpha = 0.25;
             c.fillText(this.kanji, s / 2 + 1, s / 2 + 1);
@@ -5670,35 +5801,9 @@
             const x = cw - w - 10 * s;
             const y = this.wy * s;
 
-            // Parchment/rice paper background
-            ctx.fillStyle = PARCHMENT_BG;
-            ctx.strokeStyle = PARCHMENT_BORDER;
-            ctx.lineWidth = 1.5 * s;
-            roundRect(ctx, x, y, w, h, 4 * s);
-            ctx.fill();
-            ctx.stroke();
-
-            // Subtle paper texture
-            ctx.globalAlpha = alpha * 0.06;
-            for (let i = 0; i < 8; i++) {
-                const tx = x + w * (0.1 + Math.sin(i * 2.7) * 0.4 + 0.4);
-                const ty = y + h * (0.1 + Math.cos(i * 1.9) * 0.35 + 0.35);
-                ctx.beginPath();
-                ctx.arc(tx, ty, (3 + i * 1.5) * s, 0, Math.PI * 2);
-                ctx.fillStyle = '#c8a060';
-                ctx.fill();
-            }
+            // Toned washi card
+            paperCard(ctx, x, y, w, h, 6 * s);
             ctx.globalAlpha = alpha * 0.95;
-
-            // Red seal stamp decoration (top-left corner)
-            const sealX = x + 8 * s;
-            const sealY = y + 6 * s;
-            const sealSz = 14 * s;
-            ctx.fillStyle = 'rgba(180,30,20,0.15)';
-            ctx.fillRect(sealX, sealY, sealSz, sealSz);
-            ctx.strokeStyle = 'rgba(180,30,20,0.3)';
-            ctx.lineWidth = 0.8 * s;
-            ctx.strokeRect(sealX, sealY, sealSz, sealSz);
 
             // Character area (centered in upper portion of parchment)
             const charAreaX = x + (w - 100 * s) / 2;
@@ -5754,25 +5859,24 @@
             }
             ctx.restore();
 
-            // Pinyin below character
-            ctx.globalAlpha = alpha * 0.9;
-            ctx.font = `${Math.round(11 * s)}px ${CJK_FONT}`;
-            ctx.fillStyle = '#4a3520';
+            // Reading and meaning
+            ctx.globalAlpha = alpha;
             ctx.textAlign = 'center';
-            ctx.fillText(this.kana, x + w / 2, y + 132 * s);
-
-            // German translation
-            ctx.font = `${Math.round(9 * s)}px ${CJK_FONT}`;
-            ctx.fillStyle = '#7a6a55';
-            ctx.fillText(this.german, x + w / 2, y + 150 * s);
-
-            // Decorative line
+            ctx.textBaseline = 'middle';
+            ctx.font = `500 ${Math.round(12 * s)}px ${UI_FONT}`;
+            ctx.fillStyle = '#4a3828';
+            ctx.fillText(this.kana, x + w / 2, y + 134 * s);
             ctx.beginPath();
-            ctx.moveTo(x + 15 * s, y + 170 * s);
-            ctx.lineTo(x + w - 15 * s, y + 170 * s);
-            ctx.strokeStyle = 'rgba(180,140,80,0.3)';
-            ctx.lineWidth = 0.5 * s;
+            ctx.moveTo(x + w / 2 - 22 * s, y + 147 * s);
+            ctx.lineTo(x + w / 2 + 22 * s, y + 147 * s);
+            ctx.strokeStyle = 'rgba(90,64,40,0.3)';
+            ctx.lineWidth = 0.7 * s;
             ctx.stroke();
+            ctx.font = `700 ${Math.round(11 * s)}px ${UI_FONT}`;
+            ctx.fillStyle = '#7a5434';
+            ctx.fillText(this.german, x + w / 2, y + 160 * s);
+            // Seal: "learned"
+            hanko(ctx, x + w - 17 * s, y + h - 17 * s, 18 * s, '覚');
 
             ctx.restore();
         }
@@ -5823,7 +5927,7 @@
                 const octx = oc.getContext('2d');
                 octx.textAlign = 'center';
                 octx.textBaseline = 'middle';
-                octx.font = `bold 72px ${CJK_FONT}`;
+                octx.font = `800 72px ${CJK_FONT}`;
                 octx.fillStyle = INK_COLOR;
                 octx.globalAlpha = 0.2;
                 octx.fillText(ch, 49, 49);
@@ -5854,7 +5958,7 @@
             const cw = canvas.width / dpr;
             const ch = canvas.height / dpr;
             ctx.globalAlpha = alpha * 0.55;
-            ctx.fillStyle = '#000000';
+            ctx.fillStyle = '#0d0b09';
             ctx.fillRect(0, 0, cw, ch);
 
             ctx.globalAlpha = alpha;
@@ -5868,37 +5972,25 @@
             const bannerX = (cw - bannerW) / 2;
             const bannerY = (ch - bannerH) / 2 - 20 * s;
 
-            // Banner fill
-            ctx.fillStyle = PARCHMENT_BG;
-            ctx.strokeStyle = '#b8863a';
-            ctx.lineWidth = 2 * s;
-            roundRect(ctx, bannerX, bannerY, bannerW, bannerH, 6 * s);
+            // Hanging-scroll mount: indigo silk border around toned paper
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            roundRect(ctx, bannerX - 8 * s + 2 * s, bannerY - 8 * s + 4 * s, bannerW + 16 * s, bannerH + 16 * s, 8 * s);
             ctx.fill();
-            ctx.stroke();
-
-            // Inner border
-            ctx.strokeStyle = 'rgba(180,100,40,0.25)';
+            ctx.fillStyle = '#26344a';
+            roundRect(ctx, bannerX - 8 * s, bannerY - 8 * s, bannerW + 16 * s, bannerH + 16 * s, 8 * s);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(201,154,58,0.6)';
             ctx.lineWidth = 0.8 * s;
-            roundRect(ctx, bannerX + 6 * s, bannerY + 6 * s, bannerW - 12 * s, bannerH - 12 * s, 3 * s);
             ctx.stroke();
-
-            // Paper texture on banner
-            ctx.globalAlpha = alpha * 0.04;
-            for (let i = 0; i < 12; i++) {
-                const tx = bannerX + bannerW * (0.05 + Math.sin(i * 3.1) * 0.45 + 0.45);
-                const ty = bannerY + bannerH * (0.1 + Math.cos(i * 2.3) * 0.4 + 0.4);
-                ctx.beginPath();
-                ctx.arc(tx, ty, (4 + i * 1.2) * s, 0, Math.PI * 2);
-                ctx.fillStyle = '#c8a060';
-                ctx.fill();
-            }
+            paperCard(ctx, bannerX, bannerY, bannerW, bannerH, 3 * s);
             ctx.globalAlpha = alpha;
 
             // Milestone label
-            ctx.font = `${Math.round(7 * s)}px ${CJK_FONT}`;
-            ctx.fillStyle = '#b8863a';
+            ctx.font = `700 ${Math.round(9.5 * s)}px ${UI_FONT}`;
+            ctx.fillStyle = '#a2402c';
             ctx.textAlign = 'center';
-            ctx.fillText(`${this.milestone} Wörter gelernt`, cw / 2, bannerY + 18 * s);
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${this.milestone} Wörter gelernt`, cw / 2, bannerY + 17 * s);
 
             // Draw characters sequentially
             const charsStartX = (cw - totalCharsW) / 2;
@@ -5938,15 +6030,16 @@
             if (allRevealed) {
                 const textAlpha = Math.min(1, (elapsed - this.charCount * this.revealPerChar) / 40);
                 ctx.globalAlpha = alpha * textAlpha;
-                ctx.font = `${Math.round(9 * s)}px ${CJK_FONT}`;
-                ctx.fillStyle = '#5a4530';
+                ctx.font = `500 ${Math.round(11 * s)}px ${UI_FONT}`;
+                ctx.fillStyle = '#4a3828';
                 ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
                 ctx.fillText(this.kana, cw / 2, bannerY + 88 * s);
 
                 // German translation
-                ctx.font = `${Math.round(8 * s)}px ${CJK_FONT}`;
-                ctx.fillStyle = '#7a6a55';
-                ctx.fillText(this.german, cw / 2, bannerY + 104 * s);
+                ctx.font = `700 ${Math.round(11 * s)}px ${UI_FONT}`;
+                ctx.fillStyle = '#7a5434';
+                ctx.fillText(this.german, cw / 2, bannerY + 105 * s);
 
                 // Decorative divider
                 ctx.beginPath();
@@ -5957,9 +6050,10 @@
                 ctx.stroke();
 
                 // Source attribution
-                ctx.font = `italic ${Math.round(6.5 * s)}px ${CJK_FONT}`;
-                ctx.fillStyle = '#a09080';
-                ctx.fillText('— Japanisches Sprichwort', cw / 2, bannerY + 132 * s);
+                ctx.font = `500 ${Math.round(9 * s)}px ${UI_FONT}`;
+                ctx.fillStyle = '#8a7660';
+                ctx.fillText('— Japanisches Sprichwort (ことわざ)', cw / 2, bannerY + 132 * s);
+                hanko(ctx, bannerX + bannerW - 20 * s, bannerY + bannerH - 20 * s, 20 * s, '諺');
             }
 
             ctx.restore();
@@ -10966,30 +11060,30 @@
     }
 
     // NPC reaction bubbles
-    const NPC_REACTIONS = ['哇！','好！','哈哈！','嗯？','看！','哦！','厉害！'];
+    const NPC_REACTIONS = ['わあ！','いいね！','ははは！','ん？','見て！','おお！','すごい！'];
 
     // ── Multi-step NPC Interactions ──
     const NPC_INTERACTION_DEFS = [
         { id: 'share_tea', label: 'Tee teilen', minRel: 20, phases: [
-            { action: 'move_kitchen', duration: 80, chat: '去拿茶。' },
-            { action: 'move_partner', duration: 80, chat: '给你茶！' },
+            { action: 'move_kitchen', duration: 80, chat: 'お茶を取ってくる。' },
+            { action: 'move_partner', duration: 80, chat: 'はい、お茶どうぞ！' },
             { action: 'drink_together', duration: 100, chat: null },
         ]},
         { id: 'walk_together', label: 'Spaziergang', minRel: 40, phases: [
-            { action: 'greet', duration: 40, chat: '一起走吧！' },
+            { action: 'greet', duration: 40, chat: '一緒に歩こう！' },
             { action: 'walk_garden', duration: 120, chat: null },
-            { action: 'arrive', duration: 60, chat: '真好。' },
+            { action: 'arrive', duration: 60, chat: '気持ちいいね。' },
         ]},
         { id: 'show_item', label: 'Etwas zeigen', minRel: 10, phases: [
-            { action: 'find', duration: 60, chat: '看！' },
-            { action: 'show', duration: 80, chat: '这个好看！' },
+            { action: 'find', duration: 60, chat: '見て！' },
+            { action: 'show', duration: 80, chat: 'これ、きれいでしょう！' },
             { action: 'react', duration: 60, chat: null },
         ]},
         { id: 'quarrel_reconcile', label: 'Streit & Versöhnung', minRel: 30, phases: [
-            { action: 'argue', duration: 60, chat: '不对！' },
-            { action: 'walk_away', duration: 100, chat: '哼！' },
+            { action: 'argue', duration: 60, chat: '違うよ！' },
+            { action: 'walk_away', duration: 100, chat: 'ふん！' },
             { action: 'return', duration: 80, chat: null },
-            { action: 'reconcile', duration: 60, chat: '对不起。' },
+            { action: 'reconcile', duration: 60, chat: 'ごめんね。' },
         ]},
     ];
 
@@ -11974,7 +12068,7 @@
                 const npc = pickIdleNpc();
                 if (!npc) return;
                 const chicken = wildlife.find(w => w.type === 'rabbit' || w.type === 'crane'); // use any land animal
-                npcBubbles.push(new SpeechBubble(npc, '抓住它！', [], false));
+                npcBubbles.push(new SpeechBubble(npc, 'つかまえて！', [], false));
                 // NPC runs around erratically
                 activeMicroEvent = { id: 'chicken_chase', npc, timer: 180, phase: 0 };
                 alertNearbyNPCs(npc.x, npc.y, 100, 80);
@@ -11984,7 +12078,7 @@
                 // NPC drops something, makes a surprised sound, picks it up
                 const npc = pickIdleNpc();
                 if (!npc) return;
-                npcBubbles.push(new SpeechBubble(npc, '哎呀！', [], false));
+                npcBubbles.push(new SpeechBubble(npc, 'あっ！', [], false));
                 activeMicroEvent = { id: 'dropped_basket', npc, timer: 160,
                     itemX: npc.x + randFloat(-8, 8), itemY: npc.y + randFloat(5, 12), phase: 0 };
                 alertNearbyNPCs(npc.x, npc.y, 80, 60);
@@ -11994,7 +12088,7 @@
                 // NPC finds a pretty stone and shows it around
                 const npc = pickIdleNpc();
                 if (!npc) return;
-                npcBubbles.push(new SpeechBubble(npc, '看！好石头！', [], false));
+                npcBubbles.push(new SpeechBubble(npc, '見て！いい石だ！', [], false));
                 activeMicroEvent = { id: 'rare_stone', npc, timer: 200, phase: 0 };
                 // Nearby NPCs turn toward finder and react
                 alertNearbyNPCs(npc.x, npc.y, 100, 100);
@@ -12053,7 +12147,7 @@
                 if (!bamboo) return;
                 setTargetWithPath(hider, bamboo.x + randFloat(-5, 5), bamboo.y + randFloat(-5, 5));
                 hider.state = 'moving';
-                npcBubbles.push(new SpeechBubble(seeker, '你在哪里？', [], false));
+                npcBubbles.push(new SpeechBubble(seeker, 'どこにいるの？', [], false));
                 activeMicroEvent = { id: 'child_hide', seeker, hider, bamboo, timer: 250, phase: 0 };
                 break;
             }
@@ -12082,7 +12176,7 @@
                     ev.npc.state = 'moving';
                 }
                 if (ev.timer <= 30 && ev.phase < 1000) {
-                    npcBubbles.push(new SpeechBubble(ev.npc, '太快了…', [], false));
+                    npcBubbles.push(new SpeechBubble(ev.npc, '速すぎる…', [], false));
                     ev.phase = 1000; // prevent re-trigger
                 }
                 break;
@@ -12094,7 +12188,7 @@
                     ev.npc.state = 'moving';
                 }
                 if (ev.phase > 120 && ev.phase < 122) {
-                    npcBubbles.push(new SpeechBubble(ev.npc, '好了！', [], false));
+                    npcBubbles.push(new SpeechBubble(ev.npc, 'できた！', [], false));
                 }
                 break;
             case 'rare_stone':
@@ -12102,23 +12196,23 @@
                 if (ev.phase > 100 && ev.phase < 102) {
                     // Finder shows stone — a nearby NPC reacts
                     const watcher = npcs.find(n => n !== ev.npc && Math.abs(n.x - ev.npc.x) < 60);
-                    if (watcher) npcBubbles.push(new SpeechBubble(watcher, '真漂亮！', [], false));
+                    if (watcher) npcBubbles.push(new SpeechBubble(watcher, 'きれいだね！', [], false));
                 }
                 break;
             case 'splash_well':
                 ev.phase += dt;
                 if (ev.phase > 80 && ev.phase < 82) {
-                    npcBubbles.push(new SpeechBubble(ev.npc, '哎呀！水！', [], false));
+                    npcBubbles.push(new SpeechBubble(ev.npc, 'あっ！水が！', [], false));
                     sfx('drink');
                 }
                 break;
             case 'big_fish':
                 ev.phase += dt;
                 if (ev.phase > 80 && ev.phase < 82) {
-                    npcBubbles.push(new SpeechBubble(ev.npc, '好大的鱼！', [], false));
+                    npcBubbles.push(new SpeechBubble(ev.npc, '大きい魚だ！', [], false));
                 }
                 if (ev.phase > 140 && ev.phase < 142) {
-                    npcBubbles.push(new SpeechBubble(ev.npc, '跑了…', [], false));
+                    npcBubbles.push(new SpeechBubble(ev.npc, '逃げられた…', [], false));
                 }
                 break;
             case 'cat_nap':
@@ -12131,8 +12225,8 @@
                     ev.seeker.state = 'moving';
                 }
                 if (ev.phase > 170 && ev.phase < 172) {
-                    npcBubbles.push(new SpeechBubble(ev.seeker, '找到你了！', [], false));
-                    npcBubbles.push(new SpeechBubble(ev.hider, '哈哈！', [], false));
+                    npcBubbles.push(new SpeechBubble(ev.seeker, '見つけた！', [], false));
+                    npcBubbles.push(new SpeechBubble(ev.hider, 'ははは！', [], false));
                 }
                 break;
         }
@@ -12350,7 +12444,7 @@
                 case 'reconcile':
                     ia.npc1.facing = Math.atan2(ia.npc2.y - ia.npc1.y, ia.npc2.x - ia.npc1.x);
                     ia.npc2.facing = Math.atan2(ia.npc1.y - ia.npc2.y, ia.npc1.x - ia.npc2.x);
-                    npcBubbles.push(new SpeechBubble(ia.npc2, '没关系。', [], false));
+                    npcBubbles.push(new SpeechBubble(ia.npc2, '大丈夫だよ。', [], false));
                     break;
                 case 'drink_together': case 'arrive': case 'react':
                     if (phase.chat) npcBubbles.push(new SpeechBubble(ia.npc2, npcContextualChatter(ia.npc2, ia.npc1), [], false));
@@ -12381,6 +12475,14 @@
     // ============================================================
     //  OBJECT CLICK TOOLTIP
     // ============================================================
+    // German names for the places, shown when a place is clicked
+    const OBJECT_DE = {
+        house: 'Wohnhaus', teahouse: 'Teehaus', market: 'Markt', well: 'Brunnen', bridge: 'Brücke',
+        pagoda: 'Fünfstöckige Pagode', torii: 'Schreintor', bamboo: 'Bambus', garden: 'Garten', kitchen: 'Kochstelle',
+        workshop: 'Schreibstube', fish_pond: 'Teich', shrine: 'Schrein', lantern_post: 'Steinlaterne',
+        rice_paddy: 'Reisfeld', dock: 'Anlegestelle', lotus_pond: 'Lotusteich', flower: 'Blumen', willow: 'Trauerweide',
+        school: 'Dorfschule', medicine_hut: 'Apotheke', stable: 'Pferdestall', tea_terrace: 'Teefeld', viewpoint: 'Aussichtspunkt',
+    };
     function showObjectTooltip(obj) {
         // Map object types to vocab IDs
         const typeToVocab = {
@@ -12393,26 +12495,16 @@
             school: 'student', medicine_hut: 'medicine', stable: 'horse',
             tea_terrace: 'tea', viewpoint: 'mountain'
         };
-        const vocabId = typeToVocab[obj.type] || obj.type;
-        const vocabEntry = vocab[vocabId];
-        if (vocabEntry) {
-            objectTooltip = {
-                obj: obj,
-                japaneseWord: vocabEntry.kanji + ' (' + vocabEntry.kana + ')',
-                germanWord: obj.label,
-                timer: 180,
-                maxTimer: 180
-            };
-            sfx('speak');
-        } else {
-            objectTooltip = {
-                obj: obj,
-                japaneseWord: '???',
-                germanWord: obj.label,
-                timer: 180,
-                maxTimer: 180
-            };
-        }
+        void typeToVocab;
+        objectTooltip = {
+            obj: obj,
+            kanji: obj.label,
+            romaji: obj.romaji || '',
+            german: OBJECT_DE[obj.type] || '',
+            timer: 180,
+            maxTimer: 180
+        };
+        sfx('speak');
     }
 
     function updateObjectTooltip(dt) {
@@ -12424,67 +12516,46 @@
 
     function drawObjectTooltip(ctx) {
         if (!objectTooltip) return;
-        const obj = objectTooltip.obj;
-        const x = obj.x * canvasScale;
-        const y = (obj.y - obj.h / 2 - 25) * canvasScale;
-        const s = canvasScale;
-        const alpha = objectTooltip.timer < 40 ? objectTooltip.timer / 40 :
-                      objectTooltip.timer > objectTooltip.maxTimer - 20 ? (objectTooltip.maxTimer - objectTooltip.timer) / 20 : 1;
-
+        const t = objectTooltip, obj = t.obj, s = canvasScale;
+        const alpha = t.timer < 40 ? t.timer / 40 : t.timer > t.maxTimer - 20 ? (t.maxTimer - t.timer) / 20 : 1;
         ctx.save();
         ctx.globalAlpha = alpha;
-
-        // Highlight circle
+        // Ground ring around the place
         const pulse = Math.sin(gameTick * 0.1) * 0.2 + 0.8;
-        ctx.strokeStyle = `rgba(200,169,110,${pulse})`;
-        ctx.lineWidth = 2 * s;
+        ctx.strokeStyle = `rgba(201,154,58,${pulse})`;
+        ctx.lineWidth = 1.6 * s;
         ctx.beginPath();
-        ctx.arc(obj.x * s, obj.y * s, (Math.max(obj.w, obj.h) / 2 + 8) * s, 0, Math.PI * 2);
+        ctx.ellipse(obj.x * s, (obj.y + obj.h * 0.25) * s, (obj.w / 2 + 8) * s, (obj.h / 3 + 5) * s, 0, 0, Math.PI * 2);
         ctx.stroke();
-
-        // Text
-        const japaneseText = objectTooltip.japaneseWord.charAt(0).toUpperCase() + objectTooltip.japaneseWord.slice(1);
-        const germanText = `(${objectTooltip.germanWord})`;
-        ctx.font = `bold ${Math.round(12 * s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
-        const tw1 = ctx.measureText(japaneseText).width;
-        ctx.font = `${Math.round(10 * s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
-        const tw2 = ctx.measureText(germanText).width;
-        const totalW = Math.max(tw1, tw2);
-        const pad = 8 * s;
-        const bw = totalW + pad * 2;
-        const bh = 32 * s;
-        const bx = x - bw / 2;
-        const by = y - bh;
-
-        // Background
-        ctx.fillStyle = 'rgba(20,18,12,0.9)';
-        roundRect(ctx, bx, by, bw, bh, 4 * s);
-        ctx.fill();
-        ctx.strokeStyle = '#d4a030';
-        ctx.lineWidth = s;
-        roundRect(ctx, bx, by, bw, bh, 4 * s);
-        ctx.stroke();
-
-        // Pointer
+        // Card above the object: big kanji, romaji, German
+        const kanjiPx = Math.round(16 * s), smallPx = Math.round(9.5 * s);
+        ctx.font = `700 ${kanjiPx}px ${CJK_FONT}`;
+        const kw = ctx.measureText(t.kanji).width;
+        ctx.font = `500 ${smallPx}px ${UI_FONT}`;
+        const lw = Math.max(ctx.measureText(t.romaji).width, ctx.measureText(t.german).width);
+        const w = kw + lw + 34 * s, h = 34 * s;
+        const spr = getObjectSprite(obj);
+        const top = obj.y + (spr ? spr.oy : -obj.h / 2);
+        const x0 = obj.x * s - w / 2, y0 = (top - 8) * s - h;
+        inkCard(ctx, x0, y0, w, h, 8 * s, 'rgba(201,154,58,0.55)');
+        ctx.fillStyle = 'rgba(29,25,20,0.95)';
         ctx.beginPath();
-        ctx.moveTo(x - 4*s, by + bh);
-        ctx.lineTo(x, by + bh + 5*s);
-        ctx.lineTo(x + 4*s, by + bh);
-        ctx.fillStyle = 'rgba(20,18,12,0.9)';
+        ctx.moveTo(obj.x * s - 5 * s, y0 + h - 0.5);
+        ctx.lineTo(obj.x * s, y0 + h + 5 * s);
+        ctx.lineTo(obj.x * s + 5 * s, y0 + h - 0.5);
         ctx.fill();
-
-        // Japanese word
-        ctx.font = `bold ${Math.round(12 * s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
-        ctx.fillStyle = '#d4a030';
-        ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(japaneseText, x, by + 10 * s);
-
-        // German
-        ctx.font = `${Math.round(10 * s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
-        ctx.fillStyle = '#8a7e6a';
-        ctx.fillText(germanText, x, by + 23 * s);
-
+        ctx.textAlign = 'left';
+        ctx.font = `700 ${kanjiPx}px ${CJK_FONT}`;
+        ctx.fillStyle = '#f3ead8';
+        ctx.fillText(t.kanji, x0 + 11 * s, y0 + h / 2 + 0.5 * s);
+        ctx.fillStyle = 'rgba(243,234,216,0.16)';
+        ctx.fillRect(x0 + kw + 17 * s, y0 + 7 * s, 1 * s, h - 14 * s);
+        ctx.font = `500 ${smallPx}px ${UI_FONT}`;
+        ctx.fillStyle = '#c99a3a';
+        ctx.fillText(t.romaji, x0 + kw + 23 * s, y0 + h * 0.33);
+        ctx.fillStyle = '#ece2cb';
+        ctx.fillText(t.german, x0 + kw + 23 * s, y0 + h * 0.7);
         ctx.restore();
     }
 
@@ -12509,7 +12580,7 @@
 
         // 1 correct + 2 wrong — distractors must look different from the answer and each other
         const label = v => v.kanji + ' (' + v.kana + ')';
-        const options = [{ word: label(targetVocab), correct: true }];
+        const options = [{ word: label(targetVocab), kanji: targetVocab.kanji, kana: targetVocab.kana, correct: true }];
         const used = new Set([label(targetVocab), targetVocab.de]);
         const otherIds = Object.keys(vocab).filter(id => id !== targetId);
         while (options.length < 3 && otherIds.length > 0) {
@@ -12517,7 +12588,7 @@
             const v = vocab[wrongId];
             if (used.has(label(v)) || v.de === targetVocab.de) continue;
             used.add(label(v));
-            options.push({ word: label(v), correct: false });
+            options.push({ word: label(v), kanji: v.kanji, kana: v.kana, correct: false });
         }
         // Shuffle
         for (let i = options.length - 1; i > 0; i--) {
@@ -12613,113 +12684,96 @@
         if (!quizActive || !quizData) return;
         const s = canvasScale;
 
-        // Highlight related object
+        // Highlight the related object on the ground
         if (quizData.highlightObj && quizResult === null) {
             const obj = quizData.highlightObj;
             const pulse = Math.sin(gameTick * 0.1) * 0.3 + 0.7;
             ctx.save();
             setWorldTransform(ctx);
-            ctx.strokeStyle = `rgba(255,220,80,${pulse * 0.8})`;
-            ctx.lineWidth = 2.5 * s;
-            ctx.setLineDash([4*s, 3*s]);
+            ctx.strokeStyle = `rgba(201,154,58,${pulse * 0.85})`;
+            ctx.lineWidth = 2 * s;
+            ctx.setLineDash([5 * s, 4 * s]);
             ctx.beginPath();
-            ctx.arc(obj.x*s, obj.y*s, (Math.max(obj.w, obj.h)/2 + 12)*s, 0, Math.PI*2);
+            ctx.ellipse(obj.x * s, (obj.y + obj.h * 0.25) * s, (obj.w / 2 + 10) * s, (obj.h / 3 + 6) * s, 0, 0, Math.PI * 2);
             ctx.stroke();
-            ctx.setLineDash([]);
             ctx.restore();
         }
 
-        // Measure option text to determine panel width
-        const optFont = `${Math.round(11*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
+        const opts = quizData.options;
+        const optCount = opts.length;
+        const kanjiPx = Math.round(17 * s), kanaPx = Math.round(9 * s);
         ctx.save();
-        ctx.font = optFont;
-        const optCount = quizData.options.length;
-        const minOptW = 60 * s;
-        const padding = 16 * s; // horizontal padding inside each button
-        let maxTextW = 0;
-        for (let i = 0; i < optCount; i++) {
-            const tw = ctx.measureText(quizData.options[i].word).width;
-            if (tw > maxTextW) maxTextW = tw;
+        let maxW = 0;
+        for (const o of opts) {
+            ctx.font = `700 ${kanjiPx}px ${CJK_FONT}`;
+            const kw = ctx.measureText(o.kanji || o.word).width;
+            ctx.font = `500 ${kanaPx}px ${UI_FONT}`;
+            maxW = Math.max(maxW, kw, ctx.measureText(o.kana || '').width);
         }
         ctx.restore();
-        const optW = Math.max(minOptW, maxTextW + padding);
-        const gap = 6 * s;
-        const panelPad = 20 * s; // left+right panel padding
-        const neededW = optCount * optW + (optCount - 1) * gap + panelPad;
-        const panelW = Math.max(280 * s, neededW);
-
-        // Panel at bottom center
-        const panelH = (quizResult ? 50 : 100) * s;
+        const gap = 8 * s, pad = 14 * s;
+        const optW = Math.max(74 * s, maxW + 22 * s), optH = 50 * s;
+        const panelW = Math.min(camera.viewW - 16, Math.max(300 * s, optCount * optW + (optCount - 1) * gap + pad * 2));
+        const panelH = (quizResult ? 58 : 122) * s;
         const panelX = (camera.viewW - panelW) / 2;
-        const panelY = camera.viewH - panelH - 15 * s;
-
+        const panelY = camera.viewH - panelH - 16 * s;
+        const edge = quizResult === 'correct' ? 'rgba(134,171,111,0.8)' : quizResult === 'wrong' ? 'rgba(201,105,79,0.8)' : 'rgba(201,154,58,0.6)';
         ctx.save();
-
-        // Background
-        ctx.fillStyle = 'rgba(20,18,12,0.9)';
-        roundRect(ctx, panelX, panelY, panelW, panelH, 8*s);
-        ctx.fill();
-        ctx.strokeStyle = quizResult === 'correct' ? '#6a8a5a' : quizResult === 'wrong' ? '#a05a4a' : '#d4a030';
-        ctx.lineWidth = 2 * s;
-        roundRect(ctx, panelX, panelY, panelW, panelH, 8*s);
-        ctx.stroke();
-
+        inkCard(ctx, panelX, panelY, panelW, panelH, 12 * s, edge);
         const cx = panelX + panelW / 2;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
 
         if (quizResult) {
-            ctx.font = `bold ${Math.round(14*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = quizResult === 'correct' ? '#6aee6a' : '#ee6a6a';
-            ctx.fillText(quizResult === 'correct' ? 'Richtig!' : 'Falsch!', cx, panelY + panelH / 2);
+            const ok = quizResult === 'correct';
+            const right = opts.find(o => o.correct);
+            hanko(ctx, panelX + 30 * s, panelY + panelH / 2, 26 * s, ok ? '正' : '誤', ok ? -0.08 : 0.08);
+            ctx.textAlign = 'left';
+            ctx.font = `700 ${Math.round(14 * s)}px ${UI_FONT}`;
+            ctx.fillStyle = ok ? '#a8cf90' : '#e48b72';
+            ctx.fillText(ok ? 'Richtig! 正解' : 'Leider falsch', panelX + 54 * s, panelY + panelH / 2 - 8 * s);
+            ctx.font = `500 ${Math.round(10.5 * s)}px ${UI_FONT}`;
+            ctx.fillStyle = '#ad9f86';
+            ctx.fillText(ok ? `${persons[1].name} fühlt sich großartig.` : `„${quizData.germanWord}“ = ${right ? right.kanji + ' (' + right.kana + ')' : ''}`, panelX + 54 * s, panelY + panelH / 2 + 9 * s);
         } else {
-            // Timer bar
-            const timerPct = Math.max(0, quizTimer / QUIZ_DURATION);
-            const barY = panelY + 8*s;
-            const barH = 4*s;
-            const barW = panelW - 20*s;
-            const barX = panelX + 10*s;
-            ctx.fillStyle = '#2a2420';
-            roundRect(ctx, barX, barY, barW, barH, 2*s);
-            ctx.fill();
-            ctx.fillStyle = timerPct > 0.3 ? '#d4a030' : '#a05a4a';
-            if (barW * timerPct > 0) {
-                roundRect(ctx, barX, barY, barW * timerPct, barH, 2*s);
-                ctx.fill();
-            }
-
-            // Question
-            ctx.font = `bold ${Math.round(13*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#e0d8c0';
-            ctx.fillText(`"${quizData.germanWord}" = ?`, cx, panelY + 28*s);
-
-            // Options — centered within panel
+            // Timer: a thin line along the top edge
+            const pct = Math.max(0, quizTimer / QUIZ_DURATION);
+            ctx.save();
+            roundRect(ctx, panelX, panelY, panelW, panelH, 12 * s);
+            ctx.clip();
+            ctx.fillStyle = 'rgba(243,234,216,0.08)';
+            ctx.fillRect(panelX, panelY, panelW, 3 * s);
+            ctx.fillStyle = pct > 0.3 ? '#c99a3a' : '#c9694f';
+            ctx.fillRect(panelX, panelY, panelW * pct, 3 * s);
+            ctx.restore();
+            // Prompt
+            ctx.font = `500 ${Math.round(9.5 * s)}px ${UI_FONT}`;
+            ctx.fillStyle = '#ad9f86';
+            ctx.fillText('Welches Wort bedeutet', cx, panelY + 18 * s);
+            ctx.font = `700 ${Math.round(16 * s)}px ${UI_FONT}`;
+            ctx.fillStyle = '#f3ead8';
+            ctx.fillText(`„${quizData.germanWord}“?`, cx, panelY + 36 * s);
+            // Options
             quizOptionRects = [];
-            const optY = panelY + 48*s;
-            const totalOptsW = optCount * optW + (optCount - 1) * gap;
-            const optsStartX = panelX + (panelW - totalOptsW) / 2;
-            const optH = 48*s;
-
+            const totalW = optCount * optW + (optCount - 1) * gap;
+            const startX = panelX + (panelW - totalW) / 2, oy = panelY + 56 * s;
             for (let i = 0; i < optCount; i++) {
-                const ox = optsStartX + i * (optW + gap);
-                const oy = optY;
+                const o = opts[i], ox = startX + i * (optW + gap);
                 quizOptionRects.push({ x: ox, y: oy, w: optW, h: optH });
-
-                ctx.fillStyle = '#2a2420';
-                roundRect(ctx, ox, oy, optW, optH, 4*s);
+                ctx.fillStyle = '#2e2922';
+                roundRect(ctx, ox, oy, optW, optH, 8 * s);
                 ctx.fill();
-                ctx.strokeStyle = '#4a3e30';
+                ctx.strokeStyle = 'rgba(243,234,216,0.12)';
                 ctx.lineWidth = s;
-                roundRect(ctx, ox, oy, optW, optH, 4*s);
                 ctx.stroke();
-
-                ctx.font = optFont;
-                ctx.fillStyle = '#d4a030';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(quizData.options[i].word, ox + optW/2, oy + optH/2);
+                ctx.font = `700 ${kanjiPx}px ${CJK_FONT}`;
+                ctx.fillStyle = '#f3ead8';
+                ctx.fillText(o.kanji || o.word, ox + optW / 2, oy + optH * 0.42);
+                if (o.kana) {
+                    ctx.font = `500 ${kanaPx}px ${UI_FONT}`;
+                    ctx.fillStyle = '#c99a3a';
+                    ctx.fillText(o.kana, ox + optW / 2, oy + optH * 0.78);
+                }
             }
         }
         ctx.restore();
@@ -12727,18 +12781,24 @@
 
     function drawFreezeIndicator(ctx, person) {
         if (learnerFreezeTimer <= 0) return;
-        const x = person.x * canvasScale;
-        const y = (person.y - 20) * canvasScale;
         const s = canvasScale;
-        const t = gameTick * 0.08;
-
+        const x = person.x * s, y = (person.y - 30) * s;
+        const t = gameTick * 0.07;
         ctx.save();
-        ctx.fillStyle = '#e8d040';
-        ctx.font = `bold ${Math.round(10*s)}px 'Courier New','Noto Sans JP','Hiragino Kaku Gothic Pro','Yu Gothic',monospace`;
+        ctx.font = `800 ${Math.round(13 * s)}px ${CJK_FONT}`;
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 2.6 * s;
+        ctx.strokeStyle = 'rgba(29,25,20,0.85)';
         for (let i = 0; i < 3; i++) {
-            const angle = t + i * (Math.PI * 2 / 3);
-            ctx.fillText('*', x + Math.cos(angle)*14*s, y + Math.sin(angle)*7*s);
+            const a = t + i * (Math.PI * 2 / 3);
+            const depth = Math.sin(a) * 0.5 + 0.5;
+            ctx.globalAlpha = 0.55 + depth * 0.45;
+            ctx.fillStyle = i === 0 ? '#ef9a7e' : '#f3ead8';
+            const qx = x + Math.cos(a) * 14 * s, qy = y + Math.sin(a) * 4.5 * s;
+            ctx.strokeText('？', qx, qy);
+            ctx.fillText('？', qx, qy);
         }
         ctx.restore();
     }
@@ -12860,8 +12920,8 @@
         // Help command
         const lower = raw.toLowerCase();
         if (lower === 'hilfe' || lower === 'help' || lower === '?') {
-            showCommandFeedback('Gelernte Wörter eingeben (Pinyin oder Hanzi). Beispiele: "chi fan", "he cha", "kan shu"');
-            addLog('Hilfe: Gelernte Wörter als Befehle eingeben (Pinyin oder Hanzi).', 'speak');
+            showCommandFeedback('Gelernte Wörter als Befehl eingeben (Romaji, Kana oder Kanji). Beispiele: "mizu", "cha nomu", "hon yomu"');
+            addLog('Hilfe: Gelernte Wörter als Befehle eingeben (Romaji, Kana oder Kanji).', 'speak');
             inputEl.value = '';
             return;
         }
@@ -13216,7 +13276,7 @@
             addLog(`${p1.name} (Einheimischer) — Ges:${p1.geschick} Neu:${p1.neugier} Soz:${p1.geselligkeit} Wah:${p1.wahrnehmung}`, 'speak');
             addLog(`${p2.name} (Reisender) — Ges:${p2.geschick} Neu:${p2.neugier} Soz:${p2.geselligkeit} Wah:${p2.wahrnehmung}`, 'learn');
             addLog(`${npcCount} weitere Stadtbewohner sind anwesend.`, 'speak');
-            addLog('Willkommen in Longmen! Die Simulation beginnt...', 'speak');
+            addLog('Willkommen in 日本語村 (Nihongo Mura)! Die Simulation beginnt …', 'speak');
         }
 
         // Nobody starts inside a building or the well (random spawns, older saves)
